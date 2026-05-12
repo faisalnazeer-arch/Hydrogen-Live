@@ -1,0 +1,12 @@
+node_modules
+.cache
+.env
+.env.local
+.shopify/*.json
+!.shopify/project.json
+dist
+build
+/.mf
+.wrangler
+storefrontapi.generated.d.ts
+customer-accountapi.generated.d.ts
