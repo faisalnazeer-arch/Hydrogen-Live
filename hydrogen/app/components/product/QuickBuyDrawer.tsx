@@ -8,11 +8,17 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Loader2, Minus, Plus, ShoppingBag } from "lucide-react";
+import { useFetcher } from "react-router";
 import { useQuickBuyStore } from "@/stores/quickBuyStore";
 import { useCartStore } from "@/stores/cartStore";
 import { formatPrice, shopifyImageUrl } from "@/lib/shopify";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import {
+  SubscriptionSelector,
+  parseSellingPlanGroups,
+  type SellingPlanGroup,
+} from "./SubscriptionSelector";
 
 export function QuickBuyDrawer() {
   const { product, isOpen, close } = useQuickBuyStore();
@@ -28,23 +34,55 @@ export function QuickBuyDrawer() {
 
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [qty, setQty] = useState(1);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+
+  // Lazy-fetch selling plans when drawer opens
+  const planFetcher = useFetcher<{ groups: any[]; discountMap: Record<string, number> }>();
+  const [sellingPlanGroups, setSellingPlanGroups] = useState<SellingPlanGroup[]>([]);
 
   useEffect(() => {
     if (!node) return;
     const firstAvail = variants.find((v) => v.availableForSale) ?? variants[0];
     const map: Record<string, string> = {};
-    firstAvail?.selectedOptions.forEach((o) => (map[o.name] = o.value));
+    firstAvail?.selectedOptions.forEach((o: any) => (map[o.name] = o.value));
     setSelected(map);
     setQty(1);
+    setSelectedPlanId(null);
+    setSellingPlanGroups([]);
   }, [node, variants]);
 
-  const matched = variants.find((v) =>
-    v.selectedOptions.every((o) => selected[o.name] === o.value)
+  useEffect(() => {
+    if (isOpen && node?.handle && planFetcher.state === "idle" && !planFetcher.data) {
+      planFetcher.load(`/api/selling-plans/${node.handle}`);
+    }
+  }, [isOpen, node?.handle]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (planFetcher.data?.groups) {
+      setSellingPlanGroups(
+        parseSellingPlanGroups(planFetcher.data.groups, planFetcher.data.discountMap ?? {}),
+      );
+    }
+  }, [planFetcher.data]);
+
+  const matched = variants.find((v: any) =>
+    v.selectedOptions.every((o: any) => selected[o.name] === o.value)
   );
 
   if (!node) return null;
   const img = node.images.edges[0]?.node;
-  const price = matched?.price ?? node.priceRange.minVariantPrice;
+  const basePrice = matched?.price ?? node.priceRange.minVariantPrice;
+
+  const activePlan = sellingPlanGroups.flatMap((g) => g.plans).find((p) => p.id === selectedPlanId);
+  const displayPrice =
+    activePlan && activePlan.discount > 0
+      ? {
+          amount: String(
+            (parseFloat(basePrice.amount) * (1 - activePlan.discount / 100)).toFixed(2)
+          ),
+          currencyCode: basePrice.currencyCode,
+        }
+      : basePrice;
 
   const handleAdd = async () => {
     if (!matched) return;
@@ -52,12 +90,14 @@ export function QuickBuyDrawer() {
       product: product!,
       variantId: matched.id,
       variantTitle: matched.title,
-      price: matched.price,
+      price: displayPrice,
       quantity: qty,
       selectedOptions: matched.selectedOptions,
+      sellingPlanId: selectedPlanId,
+      sellingPlanName: activePlan?.name ?? null,
     });
-    toast.success("Added to cart", {
-      description: `${node.title} • ${matched.title}`,
+    toast.success(selectedPlanId ? "Subscription added" : "Added to cart", {
+      description: `${node.title} · ${matched.title}`,
     });
     close();
   };
@@ -84,8 +124,13 @@ export function QuickBuyDrawer() {
             <div className="flex flex-col">
               <div className="font-medium leading-tight">{node.title}</div>
               <div className="mt-2 font-display text-2xl font-bold text-crimson">
-                {formatPrice(price.amount, price.currencyCode)}
+                {formatPrice(displayPrice.amount, displayPrice.currencyCode)}
               </div>
+              {activePlan && activePlan.discount > 0 && (
+                <div className="text-xs text-muted-foreground line-through">
+                  {formatPrice(basePrice.amount, basePrice.currencyCode)}
+                </div>
+              )}
               {matched && !matched.availableForSale && (
                 <div className="mt-1 text-xs font-semibold text-destructive">
                   Out of stock
@@ -95,21 +140,19 @@ export function QuickBuyDrawer() {
           </div>
 
           <div className="mt-6 space-y-5">
-            {options.map((opt) => (
+            {options.map((opt: any) => (
               <div key={opt.name}>
                 <div className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   {opt.name}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {opt.values.map((value) => {
+                  {opt.values.map((value: string) => {
                     const active = selected[opt.name] === value;
-                    // disable values that have no available variant in combination with other selections
                     const candidate = variants.find(
-                      (v) =>
-                        v.selectedOptions.find((o) => o.name === opt.name)
-                          ?.value === value &&
+                      (v: any) =>
+                        v.selectedOptions.find((o: any) => o.name === opt.name)?.value === value &&
                         v.selectedOptions.every(
-                          (o) =>
+                          (o: any) =>
                             o.name === opt.name ||
                             selected[o.name] === undefined ||
                             selected[o.name] === o.value
@@ -120,16 +163,13 @@ export function QuickBuyDrawer() {
                       <button
                         key={value}
                         type="button"
-                        onClick={() =>
-                          setSelected((s) => ({ ...s, [opt.name]: value }))
-                        }
+                        onClick={() => setSelected((s) => ({ ...s, [opt.name]: value }))}
                         className={cn(
                           "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
                           active
                             ? "border-crimson bg-crimson text-crimson-foreground"
                             : "border-border bg-background hover:border-crimson",
-                          disabled &&
-                            "cursor-not-allowed opacity-50 line-through hover:border-border"
+                          disabled && "cursor-not-allowed opacity-50 line-through hover:border-border"
                         )}
                       >
                         {value}
@@ -139,6 +179,15 @@ export function QuickBuyDrawer() {
                 </div>
               </div>
             ))}
+
+            {/* Subscription selector — only shown when plans are loaded */}
+            {sellingPlanGroups.length > 0 && (
+              <SubscriptionSelector
+                groups={sellingPlanGroups}
+                selectedPlanId={selectedPlanId}
+                onSelect={setSelectedPlanId}
+              />
+            )}
 
             <div>
               <div className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -178,7 +227,8 @@ export function QuickBuyDrawer() {
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
-                <ShoppingBag className="mr-2 h-4 w-4" /> Add to Cart
+                <ShoppingBag className="mr-2 h-4 w-4" />
+                {selectedPlanId ? "Subscribe" : "Add to Cart"}
               </>
             )}
           </Button>

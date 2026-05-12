@@ -1,0 +1,84 @@
+const JUDGEME_BASE = "https://judge.me/api/v1";
+
+export interface JudgemeReviewer {
+  name: string;
+}
+
+export interface JudgemeReview {
+  id: number;
+  title: string;
+  body: string;
+  rating: number;
+  reviewer: JudgemeReviewer;
+  created_at: string;
+  verified: "verified_buyer" | "unverified" | string;
+  pictures: { urls: { original: string; small: string } }[];
+}
+
+export interface JudgemeReviewsResponse {
+  reviews: JudgemeReview[];
+  current_page: number;
+  per_page: number;
+  total_count: number;
+}
+
+export interface JudgemeRatingSummary {
+  average: number;
+  count: number;
+  /** Distribution: index 0 = 1-star count … index 4 = 5-star count */
+  histogram: [number, number, number, number, number];
+}
+
+export async function fetchJudgemeReviews(
+  handle: string,
+  shopDomain: string,
+  apiToken: string,
+  page = 1,
+  perPage = 10,
+): Promise<JudgemeReviewsResponse> {
+  const url =
+    `${JUDGEME_BASE}/reviews?api_token=${apiToken}` +
+    `&shop_domain=${shopDomain}&handle=${handle}` +
+    `&page=${page}&per_page=${perPage}`;
+  try {
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) return emptyResponse(page, perPage);
+    return (await res.json()) as JudgemeReviewsResponse;
+  } catch {
+    return emptyResponse(page, perPage);
+  }
+}
+
+export async function fetchJudgemeRating(
+  shopifyProductGid: string,
+  shopDomain: string,
+  apiToken: string,
+): Promise<JudgemeRatingSummary> {
+  // Judge.me uses the numeric Shopify product ID as external_id
+  const externalId = shopifyProductGid.split("/").pop() ?? "";
+  const url =
+    `${JUDGEME_BASE}/products/${externalId}` +
+    `?api_token=${apiToken}&shop_domain=${shopDomain}`;
+  try {
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) return emptySummary();
+    const data = (await res.json()) as {
+      product?: { average_rating?: number; reviews_count?: number };
+    };
+    return {
+      average: data.product?.average_rating ?? 0,
+      count: data.product?.reviews_count ?? 0,
+      histogram: [0, 0, 0, 0, 0],
+    };
+  } catch {
+    return emptySummary();
+  }
+}
+
+function emptyResponse(page: number, perPage: number): JudgemeReviewsResponse {
+  return { reviews: [], current_page: page, per_page: perPage, total_count: 0 };
+}
+
+function emptySummary(): JudgemeRatingSummary {
+  return { average: 0, count: 0, histogram: [0, 0, 0, 0, 0] };
+}

@@ -30,6 +30,16 @@ type Pages = {
       "handle": string;
     };
   };
+  "/api/reviews/:handle": {
+    params: {
+      "handle": string;
+    };
+  };
+  "/api/selling-plans/:handle": {
+    params: {
+      "handle": string;
+    };
+  };
   "/account": {
     params: {};
   };
@@ -53,7 +63,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/cart" | "/search" | "/collections/:handle" | "/products/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
+    page: "/" | "/cart" | "/search" | "/collections/:handle" | "/products/:handle" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
   };
   "routes/_index.tsx": {
     id: "routes/_index";
@@ -75,6 +85,14 @@ type RouteFiles = {
     id: "routes/products.$handle";
     page: "/products/:handle";
   };
+  "routes/api.reviews.$handle.tsx": {
+    id: "routes/api.reviews.$handle";
+    page: "/api/reviews/:handle";
+  };
+  "routes/api.selling-plans.$handle.tsx": {
+    id: "routes/api.selling-plans.$handle";
+    page: "/api/selling-plans/:handle";
+  };
   "routes/account.tsx": {
     id: "routes/account";
     page: "/account" | "/account/authorize" | "/account/logout";
@@ -91,23 +109,23 @@ type RouteFiles = {
     id: "routes/account_.logout";
     page: "/account/logout";
   };
-  "../node_modules/@shopify/hydrogen/dist/vite/virtual-routes/layout.jsx": {
-    id: "/Users/laptechpk/Downloads/hydrogen Shopify/mls-uae-test-store-main/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/layout";
+  "../../../../..//Headless loveable code/Hydrogen-Lovable/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/layout.jsx": {
+    id: "/Headless loveable code/Hydrogen-Lovable/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/layout";
     page: "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json" | "/";
   };
-  "../node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/graphiql.jsx": {
+  "../../../../..//Headless loveable code/Hydrogen-Lovable/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/graphiql.jsx": {
     id: "vite/virtual-routes/routes/graphiql";
     page: "/graphiql";
   };
-  "../node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/subrequest-profiler.jsx": {
+  "../../../../..//Headless loveable code/Hydrogen-Lovable/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/subrequest-profiler.jsx": {
     id: "vite/virtual-routes/routes/subrequest-profiler";
     page: "/subrequest-profiler";
   };
-  "../node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/[.]well-known.appspecific.com[.]chrome[.]devtools[.]json.jsx": {
+  "../../../../..//Headless loveable code/Hydrogen-Lovable/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/[.]well-known.appspecific.com[.]chrome[.]devtools[.]json.jsx": {
     id: "vite/virtual-routes/routes/[.]well-known.appspecific.com[.]chrome[.]devtools[.]json";
     page: "/.well-known/appspecific/com.chrome.devtools.json";
   };
-  "../node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/index.jsx": {
+  "../../../../..//Headless loveable code/Hydrogen-Lovable/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/index.jsx": {
     id: "vite/virtual-routes/routes/index";
     page: "/";
   };
@@ -120,11 +138,13 @@ type RouteModules = {
   "routes/search": typeof import("./app/routes/search.tsx");
   "routes/collections.$handle": typeof import("./app/routes/collections.$handle.tsx");
   "routes/products.$handle": typeof import("./app/routes/products.$handle.tsx");
+  "routes/api.reviews.$handle": typeof import("./app/routes/api.reviews.$handle.tsx");
+  "routes/api.selling-plans.$handle": typeof import("./app/routes/api.selling-plans.$handle.tsx");
   "routes/account": typeof import("./app/routes/account.tsx");
   "routes/account._index": typeof import("./app/routes/account._index.tsx");
   "routes/account_.authorize": typeof import("./app/routes/account_.authorize.tsx");
   "routes/account_.logout": typeof import("./app/routes/account_.logout.tsx");
-  "/Users/laptechpk/Downloads/hydrogen Shopify/mls-uae-test-store-main/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/layout": unknown;
+  "/Headless loveable code/Hydrogen-Lovable/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/layout": unknown;
   "vite/virtual-routes/routes/graphiql": unknown;
   "vite/virtual-routes/routes/subrequest-profiler": unknown;
   "vite/virtual-routes/routes/[.]well-known.appspecific.com[.]chrome[.]devtools[.]json": unknown;

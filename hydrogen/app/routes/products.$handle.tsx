@@ -10,6 +10,14 @@ import { useWishlistStore } from "~/stores/wishlistStore";
 import { toast } from "sonner";
 import { Link } from "react-router";
 import mlsLogo from "~/assets/mls-logo.png";
+import { fetchJudgemeReviews, fetchJudgemeRating } from "~/lib/judgeme";
+import { JudgemeReviews } from "~/components/reviews/JudgemeReviews";
+import { StarRating } from "~/components/reviews/StarRating";
+import {
+  SubscriptionSelector,
+  parseSellingPlanGroups,
+  type SellingPlanGroup,
+} from "~/components/product/SubscriptionSelector";
 
 const PRODUCT_QUERY = `#graphql
   query Product($handle: String!) {
@@ -29,6 +37,27 @@ const PRODUCT_QUERY = `#graphql
           compareAtPrice { amount currencyCode }
           selectedOptions { name value }
           image { url altText }
+          sellingPlanAllocations(first: 10) {
+            nodes {
+              sellingPlan { id }
+              priceAdjustments {
+                price { amount currencyCode }
+                compareAtPrice { amount currencyCode }
+              }
+            }
+          }
+        }
+      }
+      sellingPlanGroups(first: 10) {
+        nodes {
+          name
+          sellingPlans(first: 10) {
+            nodes {
+              id
+              name
+              recurringDeliveries
+            }
+          }
         }
       }
     }
@@ -38,9 +67,43 @@ const PRODUCT_QUERY = `#graphql
 export async function loader({ params, context }: LoaderFunctionArgs) {
   const { handle } = params;
   if (!handle) throw new Response("Missing handle", { status: 400 });
-  const data = await context.storefront.query(PRODUCT_QUERY, { variables: { handle } });
+
+  const { env } = context;
+  const shopDomain = env.PUBLIC_STORE_DOMAIN;
+  const judgemeToken = env.JUDGEME_API_TOKEN;
+
+  const [data, reviewsData] = await Promise.all([
+    context.storefront.query(PRODUCT_QUERY, { variables: { handle } }),
+    fetchJudgemeReviews(handle, shopDomain, judgemeToken, 1, 10),
+  ]);
+
   if (!data.product) throw new Response("Not found", { status: 404 });
-  return { product: data.product };
+
+  const rating = await fetchJudgemeRating(data.product.id, shopDomain, judgemeToken);
+
+  // Build planId -> discount% map from the first variant's allocations
+  const planDiscounts: Record<string, number> = {};
+  const firstVariantAllocations =
+    data.product.variants?.nodes?.[0]?.sellingPlanAllocations?.nodes ?? [];
+  for (const alloc of firstVariantAllocations) {
+    const planId = alloc.sellingPlan?.id;
+    const adj = alloc.priceAdjustments?.[0];
+    if (!planId || !adj) continue;
+    const price = parseFloat(adj.price?.amount ?? "0");
+    const compare = parseFloat(adj.compareAtPrice?.amount ?? "0");
+    if (compare > 0 && price < compare) {
+      planDiscounts[planId] = Math.round(((compare - price) / compare) * 100);
+    }
+  }
+
+  return {
+    product: data.product,
+    reviews: reviewsData.reviews,
+    reviewsTotalCount: reviewsData.total_count,
+    rating,
+    sellingPlanGroupsRaw: data.product.sellingPlanGroups?.nodes ?? [],
+    planDiscounts,
+  };
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => [
@@ -48,14 +111,19 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => [
 ];
 
 export default function Product() {
-  const { product } = useLoaderData<typeof loader>();
+  const { product, reviews, reviewsTotalCount, rating, sellingPlanGroupsRaw, planDiscounts } =
+    useLoaderData<typeof loader>();
   const variants = product.variants.nodes;
   const images = product.images.nodes;
   const origin = getOriginFromTags(product.tags);
 
+  const sellingPlanGroups: SellingPlanGroup[] = parseSellingPlanGroups(sellingPlanGroupsRaw, planDiscounts);
+  const hasPlans = sellingPlanGroups.length > 0;
+
   const [selectedVariantId, setSelectedVariantId] = useState(variants[0]?.id ?? "");
   const [activeImage, setActiveImage] = useState(0);
   const [qty, setQty] = useState(1);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
 
   const addItem = useCartStore((s) => s.addItem);
   const isLoading = useCartStore((s) => s.isLoading);
@@ -107,18 +175,33 @@ export default function Product() {
     },
   };
 
+  // When a subscription plan is active, compute the discounted price for display
+  const activePlan = sellingPlanGroups.flatMap((g) => g.plans).find((p) => p.id === selectedPlanId);
+  const subscriptionPrice = activePlan && activePlan.discount > 0
+    ? {
+        amount: String(
+          (parseFloat(variant?.price.amount ?? "0") * (1 - activePlan.discount / 100)).toFixed(2)
+        ),
+        currencyCode: variant?.price.currencyCode ?? "AED",
+      }
+    : null;
+  const displayPrice = subscriptionPrice ?? variant?.price;
+
   const handleAddToCart = async () => {
     if (!variant) return;
+    const planName = activePlan?.name ?? null;
     await addItem({
       product: shopifyProduct,
       variantId: variant.id,
       variantTitle: variant.title,
-      price: variant.price,
+      price: displayPrice ?? variant.price,
       quantity: qty,
       selectedOptions: variant.selectedOptions,
+      sellingPlanId: selectedPlanId,
+      sellingPlanName: planName,
     });
-    toast.success("Added to cart", {
-      description: `${product.title}${variant.title !== "Default Title" ? ` · ${variant.title}` : ""}`,
+    toast.success(selectedPlanId ? "Subscription added" : "Added to cart", {
+      description: `${product.title}${variant.title !== "Default Title" ? ` · ${variant.title}` : ""}${planName ? ` · ${planName}` : ""}`,
       position: "top-center",
     });
   };
@@ -138,7 +221,7 @@ export default function Product() {
         </nav>
       </div>
 
-      <div className="container mx-auto grid gap-8 px-4 pb-16 md:grid-cols-2 md:gap-12">
+      <div className="container mx-auto grid gap-8 px-4 pb-8 md:grid-cols-2 md:gap-12">
         {/* Image gallery */}
         <div className="flex flex-col gap-3">
           <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
@@ -188,14 +271,27 @@ export default function Product() {
             <h1 className="font-display mt-1 text-2xl font-extrabold leading-tight sm:text-3xl">
               {product.title}
             </h1>
+            {reviewsTotalCount > 0 && (
+              <div className="mt-2 flex items-center gap-2">
+                <StarRating rating={rating.average} size="sm" />
+                <span className="text-xs text-muted-foreground">
+                  {rating.average.toFixed(1)} · {reviewsTotalCount} {reviewsTotalCount === 1 ? "review" : "reviews"}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Price */}
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-display text-2xl font-bold text-crimson">
-              {formatPrice(variant?.price.amount ?? "0", currency)}
+              {formatPrice(displayPrice?.amount ?? variant?.price.amount ?? "0", currency)}
             </span>
-            {variant?.compareAtPrice && (
+            {subscriptionPrice && (
+              <span className="text-base text-muted-foreground line-through">
+                {formatPrice(variant?.price.amount ?? "0", currency)}
+              </span>
+            )}
+            {!subscriptionPrice && variant?.compareAtPrice && (
               <span className="text-base text-muted-foreground line-through">
                 {formatPrice(variant.compareAtPrice.amount, currency)}
               </span>
@@ -238,6 +334,15 @@ export default function Product() {
                 );
               })}
             </div>
+          )}
+
+          {/* Subscription plans */}
+          {hasPlans && (
+            <SubscriptionSelector
+              groups={sellingPlanGroups}
+              selectedPlanId={selectedPlanId}
+              onSelect={setSelectedPlanId}
+            />
           )}
 
           {/* Quantity + Add to Cart */}
@@ -314,6 +419,16 @@ export default function Product() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Reviews */}
+      <div className="container mx-auto px-4 pb-16">
+        <JudgemeReviews
+          reviews={reviews}
+          rating={rating}
+          totalCount={reviewsTotalCount}
+          handle={product.handle}
+        />
       </div>
     </div>
   );

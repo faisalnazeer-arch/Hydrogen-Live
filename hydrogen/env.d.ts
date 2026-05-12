@@ -1,5 +1,6 @@
 /// <reference types="@shopify/remix-oxygen" />
 /// <reference types="@shopify/oxygen-workers-types" />
+/// <reference types="vite/client" />
 
 import type { Storefront, CustomerAccount, HydrogenCart, HydrogenSessionData } from "@shopify/hydrogen";
 import type { AppSession } from "~/lib/session";
@@ -15,6 +16,9 @@ declare global {
     PUBLIC_CUSTOMER_ACCOUNT_CLIENT_ID: string;
     PUBLIC_CUSTOMER_ACCOUNT_API_URL: string;
     PUBLIC_CHECKOUT_DOMAIN: string;
+    JUDGEME_API_TOKEN: string;
+    PUBLIC_HEADER_MENU_HANDLE?: string;
+    PUBLIC_FOOTER_MENU_HANDLE?: string;
   }
 }
 
