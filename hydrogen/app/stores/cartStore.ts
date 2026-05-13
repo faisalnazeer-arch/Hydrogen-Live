@@ -14,6 +14,7 @@ export interface CartItem {
   price: MoneyV2;
   quantity: number;
   selectedOptions: Array<{ name: string; value: string }>;
+  sellingPlanId?: string | null;
 }
 
 interface CartStore {
@@ -89,8 +90,10 @@ function isCartNotFoundError(
 }
 
 async function createShopifyCart(item: CartItem) {
+  const line: Record<string, any> = { quantity: item.quantity, merchandiseId: item.variantId };
+  if (item.sellingPlanId) line.sellingPlanId = item.sellingPlanId;
   const data = await storefrontApiRequest<any>(CART_CREATE_MUTATION, {
-    input: { lines: [{ quantity: item.quantity, merchandiseId: item.variantId }] },
+    input: { lines: [line] },
   });
   if (data?.data?.cartCreate?.userErrors?.length > 0) return null;
   const cart = data?.data?.cartCreate?.cart;
@@ -105,9 +108,11 @@ async function createShopifyCart(item: CartItem) {
 }
 
 async function addLineToShopifyCart(cartId: string, item: CartItem) {
+  const line: Record<string, any> = { quantity: item.quantity, merchandiseId: item.variantId };
+  if (item.sellingPlanId) line.sellingPlanId = item.sellingPlanId;
   const data = await storefrontApiRequest<any>(CART_LINES_ADD_MUTATION, {
     cartId,
-    lines: [{ quantity: item.quantity, merchandiseId: item.variantId }],
+    lines: [line],
   });
   const userErrors = data?.data?.cartLinesAdd?.userErrors || [];
   if (isCartNotFoundError(userErrors)) return { success: false, cartNotFound: true as const };
@@ -153,7 +158,9 @@ export const useCartStore = create<CartStore>()(
 
       addItem: async (item) => {
         const { items, cartId, clearCart } = get();
-        const existing = items.find((i) => i.variantId === item.variantId);
+        const existing = items.find(
+          (i) => i.variantId === item.variantId && i.sellingPlanId === item.sellingPlanId
+        );
         set({ isLoading: true });
         try {
           if (!cartId) {

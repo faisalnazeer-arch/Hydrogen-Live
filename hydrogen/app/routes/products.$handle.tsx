@@ -13,6 +13,7 @@ import mlsLogo from "~/assets/mls-logo.png";
 import { fetchJudgemeReviews, buildRatingSummary } from "~/lib/judgeme";
 import { JudgemeReviews } from "~/components/reviews/JudgemeReviews";
 import { StarRating } from "~/components/reviews/StarRating";
+import { SubscriptionSelector, parseSellingPlanGroups } from "~/components/product/SubscriptionSelector";
 
 const PRODUCT_QUERY = `#graphql
   query Product($handle: String!) {
@@ -25,6 +26,14 @@ const PRODUCT_QUERY = `#graphql
         minVariantPrice { amount currencyCode }
         maxVariantPrice { amount currencyCode }
       }
+      sellingPlanGroups(first: 10) {
+        nodes {
+          name
+          sellingPlans(first: 10) {
+            nodes { id name recurringDeliveries }
+          }
+        }
+      }
       variants(first: 50) {
         nodes {
           id title availableForSale quantityAvailable
@@ -32,6 +41,15 @@ const PRODUCT_QUERY = `#graphql
           compareAtPrice { amount currencyCode }
           selectedOptions { name value }
           image { url altText }
+          sellingPlanAllocations(first: 10) {
+            nodes {
+              sellingPlan { id }
+              priceAdjustments {
+                price { amount currencyCode }
+                compareAtPrice { amount currencyCode }
+              }
+            }
+          }
         }
       }
       metafields(identifiers: [
@@ -63,11 +81,27 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     handle, shopDomain, judgemeToken, 1, 10, externalId
   );
 
-  // Build rating summary from the reviews response
   const rating = buildRatingSummary(reviewsData);
+
+  // Build discount map from first variant's selling plan allocations
+  const firstVariantAllocations =
+    data.product.variants?.nodes?.[0]?.sellingPlanAllocations?.nodes ?? [];
+  const discountMap: Record<string, number> = {};
+  for (const alloc of firstVariantAllocations) {
+    const planId = alloc.sellingPlan?.id;
+    const adj = alloc.priceAdjustments?.[0];
+    if (!planId || !adj) continue;
+    const price = parseFloat(adj.price?.amount ?? "0");
+    const compare = parseFloat(adj.compareAtPrice?.amount ?? "0");
+    if (compare > 0 && price < compare) {
+      discountMap[planId] = Math.round(((compare - price) / compare) * 100);
+    }
+  }
 
   return {
     product: data.product,
+    sellingPlanGroupsRaw: data.product.sellingPlanGroups?.nodes ?? [],
+    discountMap,
     reviews: reviewsData.reviews,
     reviewsTotalCount: reviewsData.total_count,
     rating,
@@ -82,7 +116,7 @@ export const meta: MetaFunction<typeof loader> = ({ matches }) => {
 };
 
 export default function Product() {
-  const { product, reviews, reviewsTotalCount, rating } = useLoaderData<typeof loader>();
+  const { product, sellingPlanGroupsRaw, discountMap, reviews, reviewsTotalCount, rating } = useLoaderData<typeof loader>();
   const variants = product.variants.nodes;
   const images = product.images.nodes;
   const origin = getOriginFromTags(product.tags);
@@ -96,6 +130,9 @@ export default function Product() {
   const [selectedVariantId, setSelectedVariantId] = useState(variants[0]?.id ?? "");
   const [activeImage, setActiveImage] = useState(0);
   const [qty, setQty] = useState(1);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+
+  const sellingPlanGroups = parseSellingPlanGroups(sellingPlanGroupsRaw, discountMap);
 
   const addItem = useCartStore((s) => s.addItem);
   const isLoading = useCartStore((s) => s.isLoading);
@@ -104,6 +141,17 @@ export default function Product() {
 
   const variant = variants.find((v: any) => v.id === selectedVariantId) ?? variants[0];
   const currency = variant?.price.currencyCode ?? "AED";
+
+  // Find the subscription price for the selected plan + variant
+  const selectedAllocation = selectedPlanId
+    ? (variant as any)?.sellingPlanAllocations?.nodes?.find(
+        (a: any) => a.sellingPlan?.id === selectedPlanId
+      )
+    : null;
+  const displayPrice = selectedAllocation?.priceAdjustments?.[0]?.price ?? variant?.price;
+  const displayCompareAt = selectedAllocation
+    ? selectedAllocation.priceAdjustments?.[0]?.compareAtPrice ?? variant?.compareAtPrice
+    : variant?.compareAtPrice;
 
   // Jump to variant's image when selection changes
   useEffect(() => {
@@ -153,9 +201,10 @@ export default function Product() {
       product: shopifyProduct,
       variantId: variant.id,
       variantTitle: variant.title,
-      price: variant.price,
+      price: displayPrice,
       quantity: qty,
       selectedOptions: variant.selectedOptions,
+      sellingPlanId: selectedPlanId ?? undefined,
     });
     toast.success("Added to cart", {
       description: `${product.title}${variant.title !== "Default Title" ? ` · ${variant.title}` : ""}`,
@@ -247,11 +296,11 @@ export default function Product() {
           {/* Price */}
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-display text-2xl font-bold text-crimson">
-              {formatPrice(variant?.price.amount ?? "0", currency)}
+              {formatPrice(displayPrice?.amount ?? "0", currency)}
             </span>
-            {variant?.compareAtPrice && (
+            {displayCompareAt && (
               <span className="text-base text-muted-foreground line-through">
-                {formatPrice(variant.compareAtPrice.amount, currency)}
+                {formatPrice(displayCompareAt.amount, currency)}
               </span>
             )}
             <StockBadge available={variant?.availableForSale ?? false} qty={variant?.quantityAvailable ?? null} />
@@ -292,6 +341,15 @@ export default function Product() {
                 );
               })}
             </div>
+          )}
+
+          {/* Subscription selector */}
+          {sellingPlanGroups.length > 0 && (
+            <SubscriptionSelector
+              groups={sellingPlanGroups}
+              selectedPlanId={selectedPlanId}
+              onSelect={setSelectedPlanId}
+            />
           )}
 
           {/* Quantity + Add to Cart */}
