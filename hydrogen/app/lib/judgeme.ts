@@ -20,6 +20,8 @@ export interface JudgemeReviewsResponse {
   current_page: number;
   per_page: number;
   total_count: number;
+  /** Average rating returned by JudgMe in the reviews response */
+  rating?: number;
 }
 
 export interface JudgemeRatingSummary {
@@ -35,11 +37,17 @@ export async function fetchJudgemeReviews(
   apiToken: string,
   page = 1,
   perPage = 10,
+  /** Numeric Shopify product ID extracted from the GID — strengthens per-product filtering */
+  externalId?: string,
 ): Promise<JudgemeReviewsResponse> {
-  const url =
-    `${JUDGEME_BASE}/reviews?api_token=${apiToken}` +
-    `&shop_domain=${shopDomain}&handle=${handle}` +
+  let url =
+    `${JUDGEME_BASE}/reviews?api_token=${encodeURIComponent(apiToken)}` +
+    `&shop_domain=${encodeURIComponent(shopDomain)}` +
+    `&handle=${encodeURIComponent(handle)}` +
     `&page=${page}&per_page=${perPage}`;
+  if (externalId) {
+    url += `&product_external_id=${encodeURIComponent(externalId)}`;
+  }
   try {
     const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) return emptyResponse(page, perPage);
@@ -73,6 +81,28 @@ export async function fetchJudgemeRating(
   } catch {
     return emptySummary();
   }
+}
+
+/**
+ * Build a JudgemeRatingSummary from a reviews API response.
+ * Uses the `rating` field from the response for the average (most accurate),
+ * and computes the histogram from the loaded reviews.
+ */
+export function buildRatingSummary(
+  data: JudgemeReviewsResponse
+): JudgemeRatingSummary {
+  const histogram: [number, number, number, number, number] = [0, 0, 0, 0, 0];
+  let ratingSum = 0;
+  for (const r of data.reviews) {
+    ratingSum += r.rating;
+    const idx = Math.min(Math.max(Math.round(r.rating) - 1, 0), 4);
+    histogram[idx]++;
+  }
+  // Prefer the API-provided average; fall back to computing from loaded reviews
+  const computedAvg =
+    data.reviews.length > 0 ? ratingSum / data.reviews.length : 0;
+  const average = data.rating != null && data.rating > 0 ? data.rating : computedAvg;
+  return { average, count: data.total_count, histogram };
 }
 
 function emptyResponse(page: number, perPage: number): JudgemeReviewsResponse {

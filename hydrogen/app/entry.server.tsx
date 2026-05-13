@@ -12,7 +12,11 @@ export default async function handleRequest(
   remixContext: EntryContext,
   context: AppLoadContext
 ) {
-  const { nonce, header, NonceProvider } = createContentSecurityPolicy(
+  // We use createContentSecurityPolicy only to get the nonce + NonceProvider
+  // so that useNonce() in root.tsx works correctly. We do NOT use the generated
+  // CSP header because React Router v7 streaming scripts don't receive nonces,
+  // which blocks hydration. Instead we use a permissive CSP with 'unsafe-inline'.
+  const { nonce, NonceProvider } = createContentSecurityPolicy(
     context.env
       ? {
           shop: {
@@ -42,7 +46,21 @@ export default async function handleRequest(
   }
 
   responseHeaders.set("Content-Type", "text/html");
-  responseHeaders.set("Content-Security-Policy", header);
+
+  // Use 'unsafe-inline' so React Router streaming hydration scripts are not
+  // blocked by CSP. A nonce-based policy would block them because those inline
+  // scripts are injected without nonces by React Router's streaming layer.
+  responseHeaders.set(
+    "Content-Security-Policy",
+    [
+      "default-src 'self' 'unsafe-inline' https://cdn.shopify.com https://shopify.com http://localhost:* ws://localhost:* wss://localhost:*",
+      "img-src 'self' data: https: blob:",
+      "media-src 'self' https: blob:",
+      "connect-src 'self' https://cdn.shopify.com https://shopify.com https://*.myshopify.com http://localhost:* ws://localhost:* wss://localhost:*",
+      "font-src 'self' https: data:",
+      "frame-src https://www.youtube.com https://player.vimeo.com https://shopify.com",
+    ].join("; ")
+  );
 
   return new Response(body, {
     headers: responseHeaders,

@@ -4,7 +4,8 @@ import { useLoaderData, Link } from "react-router";
 import { Heart, SlidersHorizontal, X, ChevronDown, Loader2 } from "lucide-react";
 import { OriginBadge } from "~/components/product/OriginBadge";
 import { StockBadge } from "~/components/product/StockBadge";
-import { formatPrice, getOriginFromTags, shopifyImageUrl, type ShopifyProduct } from "~/lib/shopify";
+import { formatPrice, getOriginFromTags, parseRatingMetafields, shopifyImageUrl, type ShopifyProduct } from "~/lib/shopify";
+import { StarRating } from "~/components/reviews/StarRating";
 import { useQuickBuyStore } from "~/stores/quickBuyStore";
 import { useCartStore } from "~/stores/cartStore";
 import { useWishlistStore } from "~/stores/wishlistStore";
@@ -37,6 +38,10 @@ const COLLECTION_QUERY = `#graphql
                 }
               }
             }
+            metafields(identifiers: [
+              {namespace: "reviews", key: "rating"}
+              {namespace: "reviews", key: "rating_count"}
+            ]) { key value }
           }
         }
       }
@@ -69,10 +74,15 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
   return { collection: data.collection, sortIdx };
 }
 
-export const meta: MetaFunction<typeof loader> = ({ data }) => [
-  { title: `${data?.collection?.title ?? "Collection"} — MLS UAE` },
-  { name: "description", content: data?.collection?.description ?? "" },
-];
+export const meta: MetaFunction<typeof loader> = ({ matches }) => {
+  const loaderData = matches.find((m) => m.id === "routes/collections.$handle")?.data as
+    | { collection?: { title?: string; description?: string } }
+    | undefined;
+  return [
+    { title: `${loaderData?.collection?.title ?? "Collection"} — MLS UAE` },
+    { name: "description", content: loaderData?.collection?.description ?? "" },
+  ];
+};
 
 export default function Collection() {
   const { collection, sortIdx } = useLoaderData<typeof loader>();
@@ -253,23 +263,30 @@ function ProductCard({ product }: { product: ShopifyProduct }) {
     variants.length > 1 ||
     node.options.some((o) => o.values.length > 1 && o.values[0] !== "Default Title");
 
+  const { average: avgRating, count: reviewCount } = parseRatingMetafields(node.metafields);
+
   const openQuickBuy = useQuickBuyStore((s) => s.open);
   const addItem = useCartStore((s) => s.addItem);
-  const isLoading = useCartStore((s) => s.isLoading);
   const wishlisted = useWishlistStore((s) => s.has(node.id));
   const toggleWishlist = useWishlistStore((s) => s.toggle);
+  const [isAdding, setIsAdding] = useState(false);
 
   const handleAddToCart = async () => {
     if (!firstAvailable) return;
-    await addItem({
-      product,
-      variantId: firstAvailable.id,
-      variantTitle: firstAvailable.title,
-      price: firstAvailable.price,
-      quantity: 1,
-      selectedOptions: firstAvailable.selectedOptions,
-    });
-    toast.success("Added to cart", { description: node.title, position: "top-center" });
+    setIsAdding(true);
+    try {
+      await addItem({
+        product,
+        variantId: firstAvailable.id,
+        variantTitle: firstAvailable.title,
+        price: firstAvailable.price,
+        quantity: 1,
+        selectedOptions: firstAvailable.selectedOptions,
+      });
+      toast.success("Added to cart", { description: node.title, position: "top-center" });
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   return (
@@ -278,7 +295,7 @@ function ProductCard({ product }: { product: ShopifyProduct }) {
         {img1 && (
           <img src={shopifyImageUrl(img1.url, 600)} alt={img1.altText ?? node.title}
             loading="lazy"
-            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500 group-hover:opacity-0" />
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${img2 ? "group-hover:opacity-0" : ""}`} />
         )}
         {img2 && (
           <img src={shopifyImageUrl(img2.url, 600)} alt={img2.altText ?? node.title}
@@ -304,10 +321,10 @@ function ProductCard({ product }: { product: ShopifyProduct }) {
 
       <div className="flex flex-1 flex-col gap-2 p-3">
         <StockBadge available={!!firstAvailable?.availableForSale} qty={firstAvailable?.quantityAvailable ?? null} />
-        <Link to={`/products/${node.handle}`} className="min-h-[2.4rem] text-sm font-medium leading-snug hover:text-crimson">
+        <Link to={`/products/${node.handle}`} className="min-h-[1.8rem] text-sm font-medium leading-snug hover:text-crimson">
           {node.title}
         </Link>
-        <div className="mt-auto flex flex-col gap-2 pt-1">
+        <div className="mt-auto flex flex-col gap-1.5 pt-1">
           <div className="flex flex-wrap items-baseline gap-x-1.5 leading-tight">
             {showFrom && <span className="text-[10px] uppercase tracking-wider text-muted-foreground">From</span>}
             <span className="font-display text-base font-bold text-crimson">{formatPrice(minPrice, currency)}</span>
@@ -315,6 +332,14 @@ function ProductCard({ product }: { product: ShopifyProduct }) {
               <span className="text-xs text-muted-foreground line-through">
                 {formatPrice(firstAvailable.compareAtPrice.amount, currency)}
               </span>
+            )}
+          </div>
+          <div className="flex h-5 items-center gap-1">
+            {avgRating > 0 && (
+              <>
+                <StarRating rating={avgRating} size="sm" />
+                <span className="text-[11px] text-muted-foreground">({reviewCount})</span>
+              </>
             )}
           </div>
           {hasOptions ? (
@@ -329,10 +354,10 @@ function ProductCard({ product }: { product: ShopifyProduct }) {
             <button
               type="button"
               onClick={handleAddToCart}
-              disabled={!firstAvailable?.availableForSale || isLoading}
+              disabled={!firstAvailable?.availableForSale || isAdding}
               className="w-full rounded-lg bg-crimson px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-rich-red disabled:opacity-50"
             >
-              {isLoading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Add to Cart"}
+              {isAdding ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Add to Cart"}
             </button>
           )}
         </div>

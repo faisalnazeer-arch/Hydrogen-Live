@@ -1,11 +1,8 @@
-import { useMemo, useState, useRef, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, X, Volume2, VolumeX, ChevronUp, ChevronDown, ShoppingBag } from "lucide-react";
 import {
-  storefrontApiRequest,
-  REELS_QUERY,
   formatPrice,
   shopifyImageUrl,
   type ReelProduct,
@@ -14,93 +11,9 @@ import { Button } from "@/components/ui/button";
 import { HScroller } from "./HScroller";
 import { cn } from "@/lib/utils";
 
-interface RawEdge {
-  node: {
-    id: string;
-    title: string;
-    handle: string;
-    priceRange: { minVariantPrice: { amount: string; currencyCode: string } };
-    featuredImage: { url: string; altText: string | null } | null;
-    media: {
-      edges: Array<{
-        node: {
-          mediaContentType: string;
-          previewImage?: { url: string; altText: string | null } | null;
-          sources?: Array<{ url: string; mimeType: string; format: string; width: number; height: number }>;
-          embedUrl?: string;
-        };
-      }>;
-    };
-  };
-}
 
-function pickReels(edges: RawEdge[]): ReelProduct[] {
-  const reels: ReelProduct[] = [];
-  for (const e of edges) {
-    const n = e.node;
-    const videoNode = n.media.edges.find(
-      (m) => m.node.mediaContentType === "VIDEO" || m.node.mediaContentType === "EXTERNAL_VIDEO"
-    );
-    if (!videoNode) continue;
-    const isExternal = videoNode.node.mediaContentType === "EXTERNAL_VIDEO";
-    // Prefer mp4 source if multiple
-    const mp4 = videoNode.node.sources?.find((s) => s.mimeType === "video/mp4")
-      ?? videoNode.node.sources?.[0];
-    reels.push({
-      id: n.id,
-      title: n.title,
-      handle: n.handle,
-      price: n.priceRange.minVariantPrice,
-      poster: videoNode.node.previewImage?.url ?? n.featuredImage?.url ?? null,
-      videoUrl: !isExternal ? mp4?.url ?? null : null,
-      embedUrl: isExternal ? videoNode.node.embedUrl ?? null : null,
-    });
-  }
-  return reels;
-}
-
-export function ReelsCarousel() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["reels"],
-    queryFn: async () => {
-      // Try tagged "reel" first, fall back to all recent products and filter client-side.
-      let res = await storefrontApiRequest<any>(REELS_QUERY, {
-        first: 20,
-        query: "tag:reel",
-      });
-      let edges: RawEdge[] = res?.data?.products?.edges ?? [];
-      let reels = pickReels(edges);
-      if (reels.length === 0) {
-        res = await storefrontApiRequest<any>(REELS_QUERY, { first: 30, query: null });
-        edges = res?.data?.products?.edges ?? [];
-        reels = pickReels(edges);
-      }
-      return reels;
-    },
-  });
-
-  const reels = useMemo(() => data ?? [], [data]);
+export function ReelsCarousel({ reels }: { reels: ReelProduct[] }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-
-  if (isLoading) {
-    return (
-      <section className="container mx-auto px-4 py-12">
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <div>
-            <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">
-              Watch & shop
-            </div>
-            <h2 className="font-display text-2xl font-extrabold md:text-3xl">MLS Reels</h2>
-          </div>
-        </div>
-        <div className="flex gap-3 overflow-hidden">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="aspect-[9/16] w-[160px] flex-shrink-0 animate-pulse rounded-xl bg-muted md:w-[200px]" />
-          ))}
-        </div>
-      </section>
-    );
-  }
 
   if (reels.length === 0) return null;
 
@@ -164,7 +77,7 @@ function ReelCard({ reel: r, onOpen }: { reel: ReelProduct; onOpen: () => void }
           src={shopifyImageUrl(r.poster, 400)}
           alt={r.title}
           loading="lazy"
-          className="absolute inset-0 h-full w-full object-cover transition-opacity duration-300 group-hover:opacity-0"
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${r.videoUrl ? "group-hover:opacity-0" : ""}`}
         />
       )}
       {/* Hover video */}

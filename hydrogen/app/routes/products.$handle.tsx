@@ -4,20 +4,15 @@ import { useLoaderData } from "react-router";
 import { Heart, Minus, Plus, Truck, ShieldCheck, RefreshCw, Loader2 } from "lucide-react";
 import { OriginBadge } from "~/components/product/OriginBadge";
 import { StockBadge } from "~/components/product/StockBadge";
-import { formatPrice, getOriginFromTags, shopifyImageUrl, type ShopifyProduct } from "~/lib/shopify";
+import { formatPrice, getOriginFromTags, parseRatingMetafields, shopifyImageUrl, type ShopifyProduct } from "~/lib/shopify";
 import { useCartStore } from "~/stores/cartStore";
 import { useWishlistStore } from "~/stores/wishlistStore";
 import { toast } from "sonner";
 import { Link } from "react-router";
 import mlsLogo from "~/assets/mls-logo.png";
-import { fetchJudgemeReviews, fetchJudgemeRating } from "~/lib/judgeme";
+import { fetchJudgemeReviews, buildRatingSummary } from "~/lib/judgeme";
 import { JudgemeReviews } from "~/components/reviews/JudgemeReviews";
 import { StarRating } from "~/components/reviews/StarRating";
-import {
-  SubscriptionSelector,
-  parseSellingPlanGroups,
-  type SellingPlanGroup,
-} from "~/components/product/SubscriptionSelector";
 
 const PRODUCT_QUERY = `#graphql
   query Product($handle: String!) {
@@ -37,29 +32,12 @@ const PRODUCT_QUERY = `#graphql
           compareAtPrice { amount currencyCode }
           selectedOptions { name value }
           image { url altText }
-          sellingPlanAllocations(first: 10) {
-            nodes {
-              sellingPlan { id }
-              priceAdjustments {
-                price { amount currencyCode }
-                compareAtPrice { amount currencyCode }
-              }
-            }
-          }
         }
       }
-      sellingPlanGroups(first: 10) {
-        nodes {
-          name
-          sellingPlans(first: 10) {
-            nodes {
-              id
-              name
-              recurringDeliveries
-            }
-          }
-        }
-      }
+      metafields(identifiers: [
+        {namespace: "reviews", key: "rating"}
+        {namespace: "reviews", key: "rating_count"}
+      ]) { key value }
     }
   }
 ` as const;
@@ -72,77 +50,71 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
   const shopDomain = env.PUBLIC_STORE_DOMAIN;
   const judgemeToken = env.JUDGEME_API_TOKEN;
 
-  const [data, reviewsData] = await Promise.all([
-    context.storefront.query(PRODUCT_QUERY, { variables: { handle } }),
-    fetchJudgemeReviews(handle, shopDomain, judgemeToken, 1, 10),
-  ]);
-
+  // Fetch product first so we have the numeric ID for JudgMe filtering
+  const data = await context.storefront.query(PRODUCT_QUERY, {
+    variables: { handle },
+  });
   if (!data.product) throw new Response("Not found", { status: 404 });
 
-  const rating = await fetchJudgemeRating(data.product.id, shopDomain, judgemeToken);
+  // Extract numeric Shopify product ID from the GID (gid://shopify/Product/123…)
+  const externalId = data.product.id.split("/").pop() ?? undefined;
 
-  // Build planId -> discount% map from the first variant's allocations
-  const planDiscounts: Record<string, number> = {};
-  const firstVariantAllocations =
-    data.product.variants?.nodes?.[0]?.sellingPlanAllocations?.nodes ?? [];
-  for (const alloc of firstVariantAllocations) {
-    const planId = alloc.sellingPlan?.id;
-    const adj = alloc.priceAdjustments?.[0];
-    if (!planId || !adj) continue;
-    const price = parseFloat(adj.price?.amount ?? "0");
-    const compare = parseFloat(adj.compareAtPrice?.amount ?? "0");
-    if (compare > 0 && price < compare) {
-      planDiscounts[planId] = Math.round(((compare - price) / compare) * 100);
-    }
-  }
+  const reviewsData = await fetchJudgemeReviews(
+    handle, shopDomain, judgemeToken, 1, 10, externalId
+  );
+
+  // Build rating summary from the reviews response
+  const rating = buildRatingSummary(reviewsData);
 
   return {
     product: data.product,
     reviews: reviewsData.reviews,
     reviewsTotalCount: reviewsData.total_count,
     rating,
-    sellingPlanGroupsRaw: data.product.sellingPlanGroups?.nodes ?? [],
-    planDiscounts,
   };
 }
 
-export const meta: MetaFunction<typeof loader> = ({ data }) => [
-  { title: `${data?.product?.title ?? "Product"} — MLS UAE` },
-];
+export const meta: MetaFunction<typeof loader> = ({ matches }) => {
+  const loaderData = matches.find((m) => m.id === "routes/products.$handle")?.data as
+    | { product?: { title?: string } }
+    | undefined;
+  return [{ title: `${loaderData?.product?.title ?? "Product"} — MLS UAE` }];
+};
 
 export default function Product() {
-  const { product, reviews, reviewsTotalCount, rating, sellingPlanGroupsRaw, planDiscounts } =
-    useLoaderData<typeof loader>();
+  const { product, reviews, reviewsTotalCount, rating } = useLoaderData<typeof loader>();
   const variants = product.variants.nodes;
   const images = product.images.nodes;
   const origin = getOriginFromTags(product.tags);
 
-  const sellingPlanGroups: SellingPlanGroup[] = parseSellingPlanGroups(sellingPlanGroupsRaw, planDiscounts);
-  const hasPlans = sellingPlanGroups.length > 0;
+  // Use the rating built from the reviews response (reliable).
+  // Fall back to Shopify metafields (written by JudgMe sync) if the API returned 0.
+  const metaRating = parseRatingMetafields((product as any).metafields);
+  const displayRating = rating.average > 0 ? rating : metaRating;
+  const displayCount = reviewsTotalCount > 0 ? reviewsTotalCount : metaRating.count;
 
   const [selectedVariantId, setSelectedVariantId] = useState(variants[0]?.id ?? "");
   const [activeImage, setActiveImage] = useState(0);
   const [qty, setQty] = useState(1);
-  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
 
   const addItem = useCartStore((s) => s.addItem);
   const isLoading = useCartStore((s) => s.isLoading);
   const wishlisted = useWishlistStore((s) => s.has(product.id));
   const toggleWishlist = useWishlistStore((s) => s.toggle);
 
-  const variant = variants.find((v) => v.id === selectedVariantId) ?? variants[0];
+  const variant = variants.find((v: any) => v.id === selectedVariantId) ?? variants[0];
   const currency = variant?.price.currencyCode ?? "AED";
 
   // Jump to variant's image when selection changes
   useEffect(() => {
     if (!variant?.image?.url) return;
-    const idx = images.findIndex((img) => img.url === variant.image!.url);
+    const idx = images.findIndex((img: any) => img.url === variant.image!.url);
     if (idx !== -1) setActiveImage(idx);
   }, [selectedVariantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasOptions =
     product.options.length > 1 ||
-    product.options.some((o) => o.values.length > 1 && o.values[0] !== "Default Title");
+    product.options.some((o: any) => o.values.length > 1 && o.values[0] !== "Default Title");
 
   // Build ShopifyProduct shape so CartDrawer can display it
   const shopifyProduct: ShopifyProduct = {
@@ -155,11 +127,11 @@ export default function Product() {
       tags: product.tags,
       vendor: product.vendor ?? "",
       productType: "",
-      availableForSale: variants.some((v) => v.availableForSale),
+      availableForSale: variants.some((v: any) => v.availableForSale),
       priceRange: product.priceRange,
-      images: { edges: images.map((img) => ({ node: img })) },
+      images: { edges: images.map((img: any) => ({ node: img })) },
       variants: {
-        edges: variants.map((v) => ({
+        edges: variants.map((v: any) => ({
           node: {
             id: v.id,
             title: v.title,
@@ -175,33 +147,18 @@ export default function Product() {
     },
   };
 
-  // When a subscription plan is active, compute the discounted price for display
-  const activePlan = sellingPlanGroups.flatMap((g) => g.plans).find((p) => p.id === selectedPlanId);
-  const subscriptionPrice = activePlan && activePlan.discount > 0
-    ? {
-        amount: String(
-          (parseFloat(variant?.price.amount ?? "0") * (1 - activePlan.discount / 100)).toFixed(2)
-        ),
-        currencyCode: variant?.price.currencyCode ?? "AED",
-      }
-    : null;
-  const displayPrice = subscriptionPrice ?? variant?.price;
-
   const handleAddToCart = async () => {
     if (!variant) return;
-    const planName = activePlan?.name ?? null;
     await addItem({
       product: shopifyProduct,
       variantId: variant.id,
       variantTitle: variant.title,
-      price: displayPrice ?? variant.price,
+      price: variant.price,
       quantity: qty,
       selectedOptions: variant.selectedOptions,
-      sellingPlanId: selectedPlanId,
-      sellingPlanName: planName,
     });
-    toast.success(selectedPlanId ? "Subscription added" : "Added to cart", {
-      description: `${product.title}${variant.title !== "Default Title" ? ` · ${variant.title}` : ""}${planName ? ` · ${planName}` : ""}`,
+    toast.success("Added to cart", {
+      description: `${product.title}${variant.title !== "Default Title" ? ` · ${variant.title}` : ""}`,
       position: "top-center",
     });
   };
@@ -246,7 +203,7 @@ export default function Product() {
 
           {images.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
-              {images.map((img, i) => (
+              {images.map((img: any, i: any) => (
                 <button
                   key={i}
                   type="button"
@@ -271,27 +228,28 @@ export default function Product() {
             <h1 className="font-display mt-1 text-2xl font-extrabold leading-tight sm:text-3xl">
               {product.title}
             </h1>
-            {reviewsTotalCount > 0 && (
-              <div className="mt-2 flex items-center gap-2">
-                <StarRating rating={rating.average} size="sm" />
-                <span className="text-xs text-muted-foreground">
-                  {rating.average.toFixed(1)} · {reviewsTotalCount} {reviewsTotalCount === 1 ? "review" : "reviews"}
+            {displayRating.average > 0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth" })
+                }
+                className="mt-2 flex items-center gap-2 hover:opacity-80 transition-opacity"
+              >
+                <StarRating rating={displayRating.average} size="sm" />
+                <span className="text-xs text-muted-foreground underline-offset-2 hover:underline">
+                  {displayRating.average.toFixed(1)} · {displayCount} {displayCount === 1 ? "review" : "reviews"}
                 </span>
-              </div>
+              </button>
             )}
           </div>
 
           {/* Price */}
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-display text-2xl font-bold text-crimson">
-              {formatPrice(displayPrice?.amount ?? variant?.price.amount ?? "0", currency)}
+              {formatPrice(variant?.price.amount ?? "0", currency)}
             </span>
-            {subscriptionPrice && (
-              <span className="text-base text-muted-foreground line-through">
-                {formatPrice(variant?.price.amount ?? "0", currency)}
-              </span>
-            )}
-            {!subscriptionPrice && variant?.compareAtPrice && (
+            {variant?.compareAtPrice && (
               <span className="text-base text-muted-foreground line-through">
                 {formatPrice(variant.compareAtPrice.amount, currency)}
               </span>
@@ -302,18 +260,18 @@ export default function Product() {
           {/* Variant selector */}
           {hasOptions && (
             <div className="flex flex-col gap-3">
-              {product.options.map((option) => {
+              {product.options.map((option: any) => {
                 if (option.values.length === 1 && option.values[0] === "Default Title") return null;
                 return (
                   <div key={option.name}>
                     <p className="mb-2 text-sm font-semibold">{option.name}</p>
                     <div className="flex flex-wrap gap-2">
-                      {option.values.map((value) => {
-                        const matchingVariant = variants.find((v) =>
-                          v.selectedOptions.some((o) => o.name === option.name && o.value === value)
+                      {option.values.map((value: any) => {
+                        const matchingVariant = variants.find((v: any) =>
+                          v.selectedOptions.some((o: any) => o.name === option.name && o.value === value)
                         );
                         const active = variant?.selectedOptions.some(
-                          (o) => o.name === option.name && o.value === value
+                          (o: any) => o.name === option.name && o.value === value
                         );
                         return (
                           <button
@@ -334,15 +292,6 @@ export default function Product() {
                 );
               })}
             </div>
-          )}
-
-          {/* Subscription plans */}
-          {hasPlans && (
-            <SubscriptionSelector
-              groups={sellingPlanGroups}
-              selectedPlanId={selectedPlanId}
-              onSelect={setSelectedPlanId}
-            />
           )}
 
           {/* Quantity + Add to Cart */}
@@ -422,7 +371,7 @@ export default function Product() {
       </div>
 
       {/* Reviews */}
-      <div className="container mx-auto px-4 pb-16">
+      <div id="reviews" className="container mx-auto px-4 pb-16">
         <JudgemeReviews
           reviews={reviews}
           rating={rating}

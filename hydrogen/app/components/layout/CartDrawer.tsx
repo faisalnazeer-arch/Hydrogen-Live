@@ -7,7 +7,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, Trash2, ExternalLink, Loader2, ShoppingBag, RefreshCw } from "lucide-react";
+import { Minus, Plus, Trash2, ExternalLink, Loader2, ShoppingBag } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { formatPrice, shopifyImageUrl } from "@/lib/shopify";
 
@@ -96,9 +96,8 @@ export function CartDrawer() {
             <ul className="divide-y divide-border">
               {items.map((item) => {
                 const img = item.product.node.images.edges[0]?.node;
-                const lineId = item.lineId;
                 return (
-                  <li key={item.lineId ?? item.variantId} className="flex gap-3 p-4">
+                  <li key={item.variantId} className="flex gap-3 p-4">
                     <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-md bg-muted">
                       {img && (
                         <img
@@ -116,22 +115,14 @@ export function CartDrawer() {
                         {item.selectedOptions.map((o) => o.value).join(" · ") ||
                           item.variantTitle}
                       </div>
-                      {/* Subscription badge */}
-                      {item.sellingPlanName && (
-                        <div className="inline-flex w-fit items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                          <RefreshCw className="h-2.5 w-2.5" />
-                          {item.sellingPlanName}
-                        </div>
-                      )}
                       <div className="mt-auto flex items-center justify-between">
                         <div className="flex items-center rounded border border-border">
                           <button
                             type="button"
                             aria-label="Decrease"
-                            disabled={!lineId}
-                            className="grid h-7 w-7 place-items-center hover:bg-muted disabled:opacity-40"
+                            className="grid h-7 w-7 place-items-center hover:bg-muted"
                             onClick={() =>
-                              lineId && updateQuantity(lineId, item.quantity - 1)
+                              updateQuantity(item.variantId, item.quantity - 1)
                             }
                           >
                             <Minus className="h-3 w-3" />
@@ -140,10 +131,9 @@ export function CartDrawer() {
                           <button
                             type="button"
                             aria-label="Increase"
-                            disabled={!lineId}
-                            className="grid h-7 w-7 place-items-center hover:bg-muted disabled:opacity-40"
+                            className="grid h-7 w-7 place-items-center hover:bg-muted"
                             onClick={() =>
-                              lineId && updateQuantity(lineId, item.quantity + 1)
+                              updateQuantity(item.variantId, item.quantity + 1)
                             }
                           >
                             <Plus className="h-3 w-3" />
@@ -160,9 +150,8 @@ export function CartDrawer() {
                     <button
                       type="button"
                       aria-label="Remove"
-                      disabled={!lineId}
-                      onClick={() => lineId && removeItem(lineId)}
-                      className="self-start text-muted-foreground hover:text-crimson disabled:opacity-40"
+                      onClick={() => removeItem(item.variantId)}
+                      className="self-start text-muted-foreground hover:text-crimson"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

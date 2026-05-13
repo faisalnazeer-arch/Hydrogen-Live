@@ -117,6 +117,10 @@ export const PRODUCT_FRAGMENT = `
       }
     }
     options { name values }
+    metafields(identifiers: [
+      {namespace: "reviews", key: "rating"}
+      {namespace: "reviews", key: "rating_count"}
+    ]) { key value }
   }
 `;
 
@@ -209,6 +213,25 @@ export interface ReelProduct {
   embedUrl: string | null;
 }
 
+
+/** Parse JudgMe rating + count from Shopify product metafields. */
+export function parseRatingMetafields(
+  metafields?: Array<{ key: string; value: string } | null>
+): { average: number; count: number } {
+  const ratingMeta = metafields?.find((m) => m?.key === "rating");
+  const countMeta = metafields?.find((m) => m?.key === "rating_count");
+  let average = 0;
+  if (ratingMeta?.value) {
+    try {
+      const parsed = JSON.parse(ratingMeta.value);
+      average = parseFloat(parsed.value ?? parsed) || 0;
+    } catch {
+      average = parseFloat(ratingMeta.value) || 0;
+    }
+  }
+  const count = countMeta ? parseInt(countMeta.value, 10) || 0 : 0;
+  return { average, count };
+}
 
 export function getOriginFromTags(tags: string[] = []): string | null {
   const origins: Record<string, string> = {

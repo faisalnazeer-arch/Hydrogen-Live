@@ -83,6 +83,10 @@ const HOME_QUERY = `#graphql
                     tags
                     vendor
                     productType
+                    metafields(identifiers: [
+                      {namespace: "reviews", key: "rating"}
+                      {namespace: "reviews", key: "rating_count"}
+                    ]) { key value }
                   }
                 }
               }
@@ -96,7 +100,8 @@ const HOME_QUERY = `#graphql
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-import type { ShopifyProduct } from "../lib/shopify";
+import type { ShopifyProduct, ReelProduct } from "../lib/shopify";
+import { REELS_QUERY } from "../lib/shopify";
 
 interface FeaturedCollectionEntry {
   id: string;
@@ -114,10 +119,15 @@ function parseFeaturedCollections(nodes: any[]): FeaturedCollectionEntry[] {
       );
       const collection = fieldMap["collection"]?.reference;
       if (!collection?.handle) return null;
+      const metaTitle = fieldMap["title"]?.value ?? null;
+      // If the metaobject title looks like a handle (e.g. "year-end-mixed"), ignore it
+      const isHandleLike = metaTitle ? /^[a-z0-9-]+$/.test(metaTitle) : true;
+      const title = (!isHandleLike && metaTitle) ? metaTitle : (collection.title ?? "");
+
       return {
         id: node.id,
         handle: collection.handle as string,
-        title: (fieldMap["title"]?.value ?? collection.title ?? "") as string,
+        title,
         subTitle: (fieldMap["sub_title"]?.value ?? undefined) as string | undefined,
         products: (collection.products?.edges ?? []) as ShopifyProduct[],
       };
@@ -137,18 +147,56 @@ const FALLBACK_COLLECTIONS: FeaturedCollectionEntry[] = [
   { id: "f3", handle: "australian-wagyu-beef-mb-4-5", title: "Australian Wagyu", subTitle: "Marbling MB 4/5", products: [] },
 ];
 
+function pickReels(edges: any[]): ReelProduct[] {
+  const reels: ReelProduct[] = [];
+  for (const e of edges) {
+    const n = e.node;
+    const videoNode = n.media?.edges?.find(
+      (m: any) => m.node.mediaContentType === "VIDEO" || m.node.mediaContentType === "EXTERNAL_VIDEO"
+    );
+    if (!videoNode) continue;
+    const isExternal = videoNode.node.mediaContentType === "EXTERNAL_VIDEO";
+    const mp4 = videoNode.node.sources?.find((s: any) => s.mimeType === "video/mp4")
+      ?? videoNode.node.sources?.[0];
+    reels.push({
+      id: n.id,
+      title: n.title,
+      handle: n.handle,
+      price: n.priceRange.minVariantPrice,
+      poster: videoNode.node.previewImage?.url ?? n.featuredImage?.url ?? null,
+      videoUrl: !isExternal ? (mp4?.url ?? null) : null,
+      embedUrl: isExternal ? (videoNode.node.embedUrl ?? null) : null,
+    });
+  }
+  return reels;
+}
+
 export async function loader({ context }: LoaderFunctionArgs) {
-  const data = await context.storefront.query(HOME_QUERY);
+  const [data, reelTagged] = await Promise.all([
+    context.storefront.query(HOME_QUERY),
+    context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" } }),
+  ]);
+
   const parsed = parseFeaturedCollections(data?.featuredCollections?.nodes ?? []);
+
+  let reels = pickReels(reelTagged?.products?.edges ?? []);
+  if (reels.length === 0) {
+    const reelAll = await context.storefront.query(REELS_QUERY, {
+      variables: { first: 30, query: undefined },
+    });
+    reels = pickReels(reelAll?.products?.edges ?? []);
+  }
+
   return {
     heroSlides: data?.heroBanners?.nodes ?? [],
     trustBadges: data?.trustBadges?.nodes ?? [],
     featuredCollections: parsed.length > 0 ? parsed : FALLBACK_COLLECTIONS,
+    reels,
   };
 }
 
 export default function Home() {
-  const { heroSlides, trustBadges, featuredCollections } = useLoaderData<typeof loader>();
+  const { heroSlides, trustBadges, featuredCollections, reels } = useLoaderData<typeof loader>();
   return (
     <>
       <HeroBanner slides={heroSlides} />
@@ -165,7 +213,7 @@ export default function Home() {
           products={fc.products}
         />
       ))}
-      <ReelsCarousel />
+      <ReelsCarousel reels={reels} />
       <ShopByCategory />
       <ShopByCuts />
       <ShopByOrigin />

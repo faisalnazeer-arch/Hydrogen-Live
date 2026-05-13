@@ -118,16 +118,21 @@ export function HeroBanner({ slides: rawSlides = [] }: HeroBannerProps) {
   }, [isSingle]);
 
   return (
-    // overflow-hidden clips the slides; position:relative anchors the buttons/dots
-    <section className="relative bg-charcoal overflow-hidden">
-      {/* ── Slide track — CSS transform scroll ── */}
-      <div
-        className="flex transition-transform duration-500 ease-in-out will-change-transform"
-        style={{ transform: `translateX(-${current * 100}%)` }}
-      >
-        {slides.map((slide, i) => (
-          <SlideItem key={slide.id} slide={slide} active={i === current} />
-        ))}
+    <section className="relative bg-charcoal">
+      {/* overflow-hidden on the immediate wrapper ensures translateX clips correctly */}
+      <div className="overflow-hidden">
+        <div
+          className="flex"
+          style={{
+            transform: `translateX(-${current * 100}%)`,
+            transition: "transform 500ms ease-in-out",
+            willChange: "transform",
+          }}
+        >
+          {slides.map((slide, i) => (
+            <SlideItem key={slide.id} slide={slide} active={i === current} />
+          ))}
+        </div>
       </div>
 
       {/* ── Arrows ── */}
@@ -194,9 +199,8 @@ function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
           alt={slide.desktopImage.altText ?? ""}
           draggable={false}
           className={cn(
-            "pointer-events-none absolute inset-0 h-full w-full select-none object-cover transition-transform duration-[1200ms] ease-out",
+            "pointer-events-none absolute inset-0 h-full w-full select-none object-cover",
             slide.mobileImage ? "hidden md:block" : "block",
-            active ? "scale-[1.03]" : "scale-100",
           )}
         />
       ) : isStatic ? (
@@ -215,9 +219,8 @@ function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
           alt={slide.mobileImage.altText ?? ""}
           draggable={false}
           className={cn(
-            "pointer-events-none absolute inset-0 h-full w-full select-none object-cover transition-transform duration-[1200ms] ease-out",
+            "pointer-events-none absolute inset-0 h-full w-full select-none object-cover",
             slide.desktopImage ? "block md:hidden" : "block",
-            active ? "scale-[1.03]" : "scale-100",
           )}
         />
       )}
