@@ -28,12 +28,7 @@ export default {
       const langCookie = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
       const language = langCookie === "ar" ? "AR" : "EN";
 
-      const baseStorefrontHeaders = getStorefrontHeaders(request) as Record<string, string>;
-      const storefrontHeaders = language === "AR"
-        ? { ...baseStorefrontHeaders, "Accept-Language": "ar" }
-        : baseStorefrontHeaders;
-
-      const { storefront } = createStorefrontClient({
+      const { storefront: baseStorefront } = createStorefrontClient({
         cache,
         waitUntil,
         i18n: { language: language as "EN" | "AR", country: "AE" },
@@ -41,9 +36,28 @@ export default {
         privateStorefrontToken: env.PRIVATE_STOREFRONT_API_TOKEN,
         storeDomain: env.PUBLIC_STORE_DOMAIN,
         storefrontId: env.PUBLIC_STOREFRONT_ID,
-        storefrontHeaders,
+        storefrontHeaders: getStorefrontHeaders(request),
         storefrontApiVersion: env.PUBLIC_STOREFRONT_API_VERSION || "2025-07",
       });
+
+      // Wrap storefront so every query/mutate automatically includes Accept-Language: ar
+      // when the user has selected Arabic. @inContext alone is not enough because the
+      // Hydrogen channel doesn't have Arabic in its channel-level language settings,
+      // but the Accept-Language header bypasses that and returns T Lab translations.
+      const storefront = language === "AR"
+        ? new Proxy(baseStorefront, {
+            get(target, prop) {
+              if (prop === "query" || prop === "mutate") {
+                return (doc: string, opts: any = {}) =>
+                  (target as any)[prop](doc, {
+                    ...opts,
+                    headers: { "Accept-Language": "ar", ...(opts.headers ?? {}) },
+                  });
+              }
+              return (target as any)[prop];
+            },
+          })
+        : baseStorefront;
 
       const customerAccount = createCustomerAccountClient({
         waitUntil,
@@ -54,7 +68,7 @@ export default {
       } as any);
 
       const cart = createCartHandler({
-        storefront,
+        storefront: baseStorefront,
         customerAccount,
         getCartId: cartGetIdDefault(request.headers),
         setCartId: cartSetIdDefault(),
