@@ -12,7 +12,7 @@ import { HScroller } from "./HScroller";
 import { cn } from "@/lib/utils";
 
 
-export function ReelsCarousel({ reels }: { reels: ReelProduct[] }) {
+export function ReelsCarousel({ reels, label = "Watch & Shop", heading = "MLS Reels" }: { reels: ReelProduct[]; label?: string; heading?: string }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   if (reels.length === 0) return null;
@@ -22,9 +22,9 @@ export function ReelsCarousel({ reels }: { reels: ReelProduct[] }) {
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
           <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">
-            Watch & shop
+            {label}
           </div>
-          <h2 className="font-display text-2xl font-extrabold md:text-3xl">MLS Reels</h2>
+          <h2 className="font-display text-2xl font-extrabold md:text-3xl">{heading}</h2>
         </div>
       </div>
 

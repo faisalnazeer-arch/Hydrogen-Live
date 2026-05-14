@@ -82,6 +82,41 @@ const HOME_QUERY = `#graphql
         }
       }
     }
+    reelsSection: metaobjects(type: "reels_section", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
+          references(first: 20) {
+            nodes {
+              ... on Product {
+                id
+                title
+                handle
+                priceRange { minVariantPrice { amount currencyCode } }
+                featuredImage { url altText }
+                media(first: 5) {
+                  edges {
+                    node {
+                      mediaContentType
+                      ... on Video {
+                        previewImage { url }
+                        sources { url mimeType }
+                      }
+                      ... on ExternalVideo {
+                        embedUrl
+                        previewImage { url }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
     promoSideBySide: metaobjects(type: "promo_side_by_side", first: 1) {
       nodes {
         id
@@ -154,6 +189,42 @@ const HOME_QUERY = `#graphql
 
 import type { ShopifyProduct, ReelProduct } from "../lib/shopify";
 import { REELS_QUERY } from "../lib/shopify";
+
+interface ReelsSectionConfig {
+  label: string;
+  heading: string;
+  reels: ReelProduct[];
+}
+
+function parseReelsSection(nodes: any[]): ReelsSectionConfig | null {
+  const node = nodes[0];
+  if (!node) return null;
+  const f = Object.fromEntries(node.fields.map((x: any) => [x.key, x]));
+  const productNodes: any[] = f["products"]?.references?.nodes ?? [];
+  const reels: ReelProduct[] = [];
+  for (const p of productNodes) {
+    const videoEdge = p.media?.edges?.find(
+      (e: any) => e.node.mediaContentType === "VIDEO" || e.node.mediaContentType === "EXTERNAL_VIDEO"
+    );
+    if (!videoEdge) continue;
+    const isExternal = videoEdge.node.mediaContentType === "EXTERNAL_VIDEO";
+    const mp4 = videoEdge.node.sources?.find((s: any) => s.mimeType === "video/mp4") ?? videoEdge.node.sources?.[0];
+    reels.push({
+      id: p.id,
+      title: p.title,
+      handle: p.handle,
+      price: p.priceRange.minVariantPrice,
+      poster: videoEdge.node.previewImage?.url ?? p.featuredImage?.url ?? null,
+      videoUrl: !isExternal ? (mp4?.url ?? null) : null,
+      embedUrl: isExternal ? (videoEdge.node.embedUrl ?? null) : null,
+    });
+  }
+  return {
+    label: f["label"]?.value ?? "Watch & Shop",
+    heading: f["heading"]?.value ?? "MLS Reels",
+    reels,
+  };
+}
 
 interface FeaturedCollectionEntry {
   id: string;
@@ -255,13 +326,19 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const priceSection = parsePriceRangeSection(data?.priceRangeSection?.nodes ?? []);
   const priceTiles = parsePriceTiles(data?.priceTiles?.nodes ?? []);
   const promo = parsePromoSideBySide(data?.promoSideBySide?.nodes ?? []);
+  const reelsConfig = parseReelsSection(data?.reelsSection?.nodes ?? []);
 
-  let reels = pickReels(reelTagged?.products?.edges ?? []);
+  // Use curated products from metaobject; fall back to tag:reel query when none are set
+  let reels: ReelProduct[] = reelsConfig?.reels ?? [];
   if (reels.length === 0) {
-    const reelAll = await context.storefront.query(REELS_QUERY, {
-      variables: { first: 30, query: undefined },
-    });
-    reels = pickReels(reelAll?.products?.edges ?? []);
+    let taggedEdges = reelTagged?.products?.edges ?? [];
+    if (taggedEdges.length === 0) {
+      const reelAll = await context.storefront.query(REELS_QUERY, {
+        variables: { first: 30, query: undefined },
+      });
+      taggedEdges = reelAll?.products?.edges ?? [];
+    }
+    reels = pickReels(taggedEdges);
   }
 
   return {
@@ -272,12 +349,14 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     priceSection,
     priceTiles,
     promo,
+    reelsLabel: reelsConfig?.label ?? "Watch & Shop",
+    reelsHeading: reelsConfig?.heading ?? "MLS Reels",
     reels,
   };
 }
 
 export default function Home() {
-  const { heroSlides, trustBadges, featuredCollections, collectionCards, priceSection, priceTiles, promo, reels } = useLoaderData<typeof loader>();
+  const { heroSlides, trustBadges, featuredCollections, collectionCards, priceSection, priceTiles, promo, reelsLabel, reelsHeading, reels } = useLoaderData<typeof loader>();
   const t = useT();
   return (
     <>
@@ -299,7 +378,7 @@ export default function Home() {
           products={fc.products}
         />
       ))}
-      <ReelsCarousel reels={reels} />
+      <ReelsCarousel reels={reels} label={reelsLabel} heading={reelsHeading} />
       <ShopByCategory />
       <ShopByCuts />
       <ShopByOrigin />
