@@ -1,9 +1,11 @@
 import { Truck, RefreshCw, ShieldCheck, Award } from "lucide-react";
+import { useT, type TKey } from "@/i18n/strings";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface TrustBadge {
   id: string;
+  handle: string | null;
   iconUrl: string | null;
   heading: string | null;
   subTitle: string | null;
@@ -11,6 +13,7 @@ interface TrustBadge {
 
 interface RawMetaobjectNode {
   id: string;
+  handle?: string | null;
   fields: Array<{
     key: string;
     value: string | null;
@@ -21,10 +24,10 @@ interface RawMetaobjectNode {
 // ── Default (static) badges used when no metaobject data is provided ───────
 
 const DEFAULT_BADGES = [
-  { Icon: RefreshCw, title: "Free Returns", desc: "Quality guaranteed" },
-  { Icon: Truck, title: "Same-Day Delivery", desc: "Across UAE & Oman" },
-  { Icon: ShieldCheck, title: "100% Halal", desc: "Certified butchered" },
-  { Icon: Award, title: "Premium Cuts", desc: "Hand-selected daily" },
+  { Icon: RefreshCw, headingKey: "trust.free_returns" as TKey, descKey: "trust.free_returns_sub" as TKey },
+  { Icon: Truck,     headingKey: "trust.same_day" as TKey,     descKey: "trust.same_day_sub" as TKey },
+  { Icon: ShieldCheck, headingKey: "trust.halal" as TKey,      descKey: "trust.halal_sub" as TKey },
+  { Icon: Award,     headingKey: "trust.premium" as TKey,      descKey: "trust.premium_sub" as TKey },
 ];
 
 const DEFAULT_ICONS = [RefreshCw, Truck, ShieldCheck, Award];
@@ -38,11 +41,11 @@ function parseBadges(nodes: RawMetaobjectNode[]): TrustBadge[] {
       const heading = fieldMap["heading"]?.value ?? null;
       const subTitle = fieldMap["sub_title"]?.value ?? null;
 
-      // Skip entries with neither heading nor subtitle
       if (!heading && !subTitle) return null;
 
       return {
         id: node.id,
+        handle: node.handle ?? null,
         iconUrl: fieldMap["icon"]?.reference?.image?.url ?? null,
         heading,
         subTitle,
@@ -58,6 +61,7 @@ interface TrustBadgesProps {
 }
 
 export function TrustBadges({ badges: rawBadges = [] }: TrustBadgesProps) {
+  const t = useT();
   const parsed = rawBadges.length > 0 ? parseBadges(rawBadges) : null;
   const useDynamic = parsed && parsed.length > 0;
 
@@ -68,8 +72,8 @@ export function TrustBadges({ badges: rawBadges = [] }: TrustBadgesProps) {
           ? parsed.map((badge, i) => (
               <DynamicBadge key={badge.id} badge={badge} index={i} />
             ))
-          : DEFAULT_BADGES.map(({ Icon, title, desc }) => (
-              <StaticBadge key={title} Icon={Icon} title={title} desc={desc} />
+          : DEFAULT_BADGES.map(({ Icon, headingKey, descKey }) => (
+              <StaticBadge key={headingKey} Icon={Icon} title={t(headingKey)} desc={t(descKey)} />
             ))}
       </div>
     </section>
@@ -78,16 +82,25 @@ export function TrustBadges({ badges: rawBadges = [] }: TrustBadgesProps) {
 
 // ── Dynamic badge (from metaobject) ───────────────────────────────────────
 
-function DynamicBadge({ badge, index }: { badge: TrustBadge; index: number }) {
+function DynamicBadge({
+  badge,
+  index,
+}: {
+  badge: TrustBadge;
+  index: number;
+}) {
   const FallbackIcon = DEFAULT_ICONS[index % DEFAULT_ICONS.length];
 
+  const heading = badge.heading;
+  const subTitle = badge.subTitle;
+
   return (
-    <div className="flex flex-col items-center gap-2 rounded-lg bg-background/60 p-4 text-center md:flex-row md:gap-3 md:bg-transparent md:p-0 md:text-left">
+    <div className="flex flex-col items-center gap-2 rounded-lg bg-background/60 p-4 text-center md:flex-row md:gap-3 md:bg-transparent md:p-0 md:text-start">
       <div className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-full bg-crimson/10 text-crimson md:h-12 md:w-12">
         {badge.iconUrl ? (
           <img
             src={badge.iconUrl}
-            alt={badge.heading ?? ""}
+            alt={heading ?? ""}
             className="h-6 w-6 object-contain"
           />
         ) : (
@@ -95,14 +108,14 @@ function DynamicBadge({ badge, index }: { badge: TrustBadge; index: number }) {
         )}
       </div>
       <div className="min-w-0">
-        {badge.heading && (
+        {heading && (
           <div className="font-display text-[13px] font-bold leading-tight md:text-sm">
-            {badge.heading}
+            {heading}
           </div>
         )}
-        {badge.subTitle && (
+        {subTitle && (
           <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground md:text-xs">
-            {badge.subTitle}
+            {subTitle}
           </div>
         )}
       </div>
@@ -122,7 +135,7 @@ function StaticBadge({
   desc: string;
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-lg bg-background/60 p-4 text-center md:flex-row md:gap-3 md:bg-transparent md:p-0 md:text-left">
+    <div className="flex flex-col items-center gap-2 rounded-lg bg-background/60 p-4 text-center md:flex-row md:gap-3 md:bg-transparent md:p-0 md:text-start">
       <div className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-full bg-crimson/10 text-crimson md:h-12 md:w-12">
         <Icon className="h-5 w-5" />
       </div>

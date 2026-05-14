@@ -5,7 +5,7 @@ import { HeroBanner } from "../components/home/HeroBanner";
 import { TrustBadges } from "../components/home/TrustBadges";
 import { FeaturedCollections } from "../components/home/FeaturedCollections";
 import type { FeaturedCollectionCard } from "../components/home/FeaturedCollections";
-import { PriceRangeShop } from "../components/home/PriceRangeShop";
+import { PriceRangeShop, parsePriceRangeSection, parsePriceTiles } from "../components/home/PriceRangeShop";
 import { PromoSideBySide } from "../components/home/PromoSideBySide";
 import { CategorySection } from "../components/home/CategorySection";
 import { ShopByCategory } from "../components/home/ShopByCategory";
@@ -36,6 +36,7 @@ const HOME_QUERY = `#graphql
     trustBadges: metaobjects(type: "icon_with_text", first: 10) {
       nodes {
         id
+        handle
         fields {
           key
           value
@@ -48,6 +49,26 @@ const HOME_QUERY = `#graphql
       }
     }
     featuredCollectionList: metaobjects(type: "featured_collection_list", first: 20) {
+      nodes {
+        id
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage {
+              image { url altText }
+            }
+          }
+        }
+      }
+    }
+    priceRangeSection: metaobjects(type: "price_range_section", first: 1) {
+      nodes {
+        id
+        fields { key value }
+      }
+    }
+    priceTiles: metaobjects(type: "price_range_tile", first: 20) {
       nodes {
         id
         fields {
@@ -217,6 +238,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
   const parsed = parseFeaturedCollections(data?.featuredCollections?.nodes ?? []);
   const collectionCards = parseFeaturedCollectionList(data?.featuredCollectionList?.nodes ?? []);
+  const priceSection = parsePriceRangeSection(data?.priceRangeSection?.nodes ?? []);
+  const priceTiles = parsePriceTiles(data?.priceTiles?.nodes ?? []);
 
   let reels = pickReels(reelTagged?.products?.edges ?? []);
   if (reels.length === 0) {
@@ -231,12 +254,14 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     trustBadges: data?.trustBadges?.nodes ?? [],
     featuredCollections: parsed.length > 0 ? parsed : FALLBACK_COLLECTIONS,
     collectionCards,
+    priceSection,
+    priceTiles,
     reels,
   };
 }
 
 export default function Home() {
-  const { heroSlides, trustBadges, featuredCollections, collectionCards, reels } = useLoaderData<typeof loader>();
+  const { heroSlides, trustBadges, featuredCollections, collectionCards, priceSection, priceTiles, reels } = useLoaderData<typeof loader>();
   const t = useT();
   return (
     <>
@@ -247,7 +272,7 @@ export default function Home() {
         title={t("home.featured")}
         subtitle={t("home.featured_sub")}
       />
-      <PriceRangeShop />
+      <PriceRangeShop section={priceSection} tiles={priceTiles} />
       <PromoSideBySide />
       {featuredCollections.map((fc) => (
         <CategorySection

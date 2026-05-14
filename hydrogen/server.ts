@@ -28,6 +28,11 @@ export default {
       const langCookie = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
       const language = langCookie === "ar" ? "AR" : "EN";
 
+      const baseStorefrontHeaders = getStorefrontHeaders(request) as Record<string, string>;
+      const storefrontHeaders = language === "AR"
+        ? { ...baseStorefrontHeaders, "Accept-Language": "ar" }
+        : baseStorefrontHeaders;
+
       const { storefront } = createStorefrontClient({
         cache,
         waitUntil,
@@ -36,7 +41,7 @@ export default {
         privateStorefrontToken: env.PRIVATE_STOREFRONT_API_TOKEN,
         storeDomain: env.PUBLIC_STORE_DOMAIN,
         storefrontId: env.PUBLIC_STOREFRONT_ID,
-        storefrontHeaders: getStorefrontHeaders(request) as any,
+        storefrontHeaders,
         storefrontApiVersion: env.PUBLIC_STOREFRONT_API_VERSION || "2025-07",
       });
 
