@@ -25,10 +25,13 @@ export default {
         AppSession.init(request, [env.SESSION_SECRET]),
       ]);
 
+      const langCookie = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
+      const language = langCookie === "ar" ? "AR" : "EN";
+
       const { storefront } = createStorefrontClient({
         cache,
         waitUntil,
-        i18n: { language: "EN", country: "AE" },
+        i18n: { language: language as "EN" | "AR", country: "AE" },
         publicStorefrontToken: env.PUBLIC_STOREFRONT_API_TOKEN,
         privateStorefrontToken: env.PRIVATE_STOREFRONT_API_TOKEN,
         storeDomain: env.PUBLIC_STORE_DOMAIN,

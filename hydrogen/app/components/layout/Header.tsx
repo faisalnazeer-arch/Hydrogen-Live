@@ -130,6 +130,27 @@ export function Header() {
           </div>
         </div>
 
+        {/* Desktop language toggle */}
+        <div className="hidden items-center gap-0.5 rounded-full bg-muted p-0.5 text-[11px] font-semibold uppercase tracking-wider lg:flex">
+          <button
+            type="button"
+            onClick={() => useLocaleStore.getState().setLocale("en")}
+            aria-pressed={locale === "en"}
+            className={`rounded-full px-3 py-1 transition-colors ${locale === "en" ? "bg-crimson text-crimson-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            EN
+          </button>
+          <button
+            type="button"
+            onClick={() => useLocaleStore.getState().setLocale("ar")}
+            aria-pressed={locale === "ar"}
+            lang="ar"
+            className={`rounded-full px-3 py-1 transition-colors ${locale === "ar" ? "bg-crimson text-crimson-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            ع
+          </button>
+        </div>
+
         <div className="ms-auto flex items-center gap-1">
           <Link to="/account/login" aria-label={t("nav.account")} className="hidden sm:inline-flex">
             <Button variant="ghost" size="icon">

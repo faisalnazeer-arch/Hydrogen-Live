@@ -6,6 +6,7 @@ import {
   ScrollRestoration,
 } from "react-router";
 import type { LinksFunction, LoaderFunctionArgs } from "react-router";
+import { useEffect } from "react";
 import { useNonce } from "@shopify/hydrogen";
 import styles from "./styles.css?url";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -16,12 +17,13 @@ import { AnnouncementBar } from "./components/layout/AnnouncementBar";
 import { QuickBuyDrawer } from "./components/product/QuickBuyDrawer";
 import { Toaster } from "./components/ui/sonner";
 import { useCartSync } from "./hooks/useCartSync";
+import { useLocaleStore, dirFor } from "./stores/localeStore";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: styles },
 ];
 
-export async function loader({ context }: LoaderFunctionArgs) {
+export async function loader(_: LoaderFunctionArgs) {
   return {};
 }
 
@@ -34,7 +36,7 @@ const queryClient = new QueryClient({
 export function Layout({ children }: { children: React.ReactNode }) {
   const nonce = useNonce();
   return (
-    <html lang="en">
+    <html lang="en" dir="ltr">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -60,9 +62,21 @@ function CartSyncWrapper() {
   return null;
 }
 
+// Syncs the locale store to <html> lang and dir attributes client-side
+function LocaleSync() {
+  const locale = useLocaleStore((s) => s.locale);
+  useEffect(() => {
+    const html = document.documentElement;
+    html.lang = locale;
+    html.dir = dirFor(locale);
+  }, [locale]);
+  return null;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <LocaleSync />
       <CartSyncWrapper />
       <div className="flex min-h-screen flex-col">
         <AnnouncementBar />

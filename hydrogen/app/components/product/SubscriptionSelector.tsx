@@ -1,5 +1,6 @@
 import { cn } from "~/lib/utils";
 import { CheckCircle2 } from "lucide-react";
+import { useT } from "~/i18n/strings";
 
 export interface SellingPlan {
   id: string;
@@ -29,6 +30,8 @@ export function SubscriptionSelector({
   currency = "AED",
   className,
 }: SubscriptionSelectorProps) {
+  const t = useT();
+
   if (groups.length === 0) return null;
 
   const allPlans = groups.flatMap((g) => g.plans);
@@ -63,7 +66,7 @@ export function SubscriptionSelector({
             onChange={() => onSelect(null)}
             className="accent-crimson"
           />
-          <span className="font-semibold">One-time</span>
+          <span className="font-semibold">{t("subscription.one_time")}</span>
         </div>
         <span className="text-sm font-semibold">{fmt(regularPriceNum)}</span>
       </label>
@@ -83,13 +86,13 @@ export function SubscriptionSelector({
       >
         {/* Badge */}
         {bestDiscount > 0 && (
-          <span className="absolute right-0 top-0 rounded-bl-lg rounded-tr-lg bg-crimson px-3 py-1 text-xs font-bold text-white">
-            Save up to {bestDiscount}%
+          <span className="absolute end-0 top-0 rounded-bl-lg rounded-tr-lg bg-crimson px-3 py-1 text-xs font-bold text-white">
+            {t("subscription.save_up_to")} {bestDiscount}%
           </span>
         )}
 
         {/* Header row */}
-        <div className={cn("flex items-start justify-between px-4 pb-3 pt-4", bestDiscount > 0 ? "pr-24" : "pr-4")}>
+        <div className={cn("flex items-start justify-between px-4 pb-3 pt-4", bestDiscount > 0 ? "pe-24" : "pe-4")}>
           <label className="flex cursor-pointer items-center gap-3">
             <input
               type="radio"
@@ -98,7 +101,7 @@ export function SubscriptionSelector({
               onChange={() => onSelect(allPlans[0]?.id ?? null)}
               className="mt-0.5 accent-crimson"
             />
-            <span className="text-base font-bold">Subscribe &amp; save</span>
+            <span className="text-base font-bold">{t("subscription.subscribe_save")}</span>
           </label>
           <div className="flex flex-col items-end">
             {activePlan?.discount > 0 && (
@@ -116,26 +119,26 @@ export function SubscriptionSelector({
         {isSubscribing && (
           <div className="px-4 pb-4">
             <ul className="flex flex-col gap-1.5">
-              <BenefitItem text="Get 10% off" />
-              <BenefitItem text="Subscription of less than AED 100 order value has AED 15 delivery fees. We deliver as per your schedule." />
-              <BenefitItem text="No commitment cancel anytime." />
+              <BenefitItem text={t("subscription.benefit_10_off")} />
+              <BenefitItem text={t("subscription.benefit_delivery_small")} />
+              <BenefitItem text={t("subscription.benefit_cancel")} />
             </ul>
 
             <p className="mt-3 text-sm">
-              <span className="font-semibold">Please note:</span> If your subscription order
-              value is more than AED 100 then you will get the following:
+              <span className="font-semibold">{t("subscription.note_prefix")}</span>{" "}
+              {t("subscription.note_detail")}
             </p>
 
             <ul className="mt-1.5 flex flex-col gap-1.5">
-              <BenefitItem text="Free delivery; we deliver as per your schedule." />
-              <BenefitItem text="Free NZ Beef Ribeye Steak 250gm x 1." />
-              <BenefitItem text="No commitment, cancel anytime." />
+              <BenefitItem text={t("subscription.free_delivery")} />
+              <BenefitItem text={t("subscription.free_steak")} />
+              <BenefitItem text={t("subscription.no_commitment")} />
             </ul>
 
             {/* Frequency picker */}
             {allPlans.length > 0 && (
               <div className="mt-4">
-                <p className="mb-2 text-sm font-bold">Deliver every:</p>
+                <p className="mb-2 text-sm font-bold">{t("subscription.deliver_every")}</p>
                 <div className="flex flex-wrap gap-2">
                   {allPlans.map((plan) => (
                     <button
@@ -159,7 +162,7 @@ export function SubscriptionSelector({
                               : "text-muted-foreground",
                           )}
                         >
-                          save {plan.discount}%
+                          {t("subscription.save_pct")} {plan.discount}%
                         </span>
                       )}
                     </button>

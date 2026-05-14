@@ -13,7 +13,13 @@ export const useLocaleStore = create<LocaleState>()(
   persist(
     (set) => ({
       locale: "en",
-      setLocale: (locale) => set({ locale }),
+      setLocale: (locale) => {
+        set({ locale });
+        // Sync to cookie so SSR can read the language preference
+        if (typeof document !== "undefined") {
+          document.cookie = `lang=${locale};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
+        }
+      },
     }),
     { name: "mls_locale" }
   )

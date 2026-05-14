@@ -7,6 +7,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useT } from "@/i18n/strings";
 
 type FLink = { label: string; to: string };
 
@@ -26,14 +27,16 @@ const HELP_LINKS: FLink[] = [
 ];
 
 export function Footer() {
+  const t = useT();
+
   return (
     <footer className="mt-16 bg-charcoal text-charcoal-foreground">
       <div className="container mx-auto px-4 py-12">
         {/* Desktop / tablet */}
         <div className="hidden gap-10 md:grid md:grid-cols-4">
           <BrandCol />
-          <FooterCol heading="Shop" links={SHOP_LINKS} />
-          <FooterCol heading="Help" links={HELP_LINKS} />
+          <FooterCol heading={t("footer.shop")} links={SHOP_LINKS} />
+          <FooterCol heading={t("footer.help")} links={HELP_LINKS} />
           <ContactCol />
         </div>
 
@@ -43,7 +46,7 @@ export function Footer() {
           <Accordion type="single" collapsible className="mt-6">
             <AccordionItem value="shop" className="border-off-white/10">
               <AccordionTrigger className="font-display text-sm font-bold uppercase tracking-wider text-gold hover:no-underline">
-                Shop
+                {t("footer.shop")}
               </AccordionTrigger>
               <AccordionContent>
                 <FooterLinks links={SHOP_LINKS} />
@@ -51,7 +54,7 @@ export function Footer() {
             </AccordionItem>
             <AccordionItem value="help" className="border-off-white/10">
               <AccordionTrigger className="font-display text-sm font-bold uppercase tracking-wider text-gold hover:no-underline">
-                Help
+                {t("footer.help")}
               </AccordionTrigger>
               <AccordionContent>
                 <FooterLinks links={HELP_LINKS} />
@@ -59,7 +62,7 @@ export function Footer() {
             </AccordionItem>
             <AccordionItem value="contact" className="border-off-white/10">
               <AccordionTrigger className="font-display text-sm font-bold uppercase tracking-wider text-gold hover:no-underline">
-                Get in Touch
+                {t("footer.contact")}
               </AccordionTrigger>
               <AccordionContent>
                 <ContactList />
@@ -71,8 +74,8 @@ export function Footer() {
 
       <div className="border-t border-off-white/10">
         <div className="container mx-auto flex flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-off-white/60 sm:flex-row">
-          <span>© {new Date().getFullYear()} Muscat Livestock Store. 100% Halal certified.</span>
-          <span>Premium butcher cuts · Delivered fresh</span>
+          <span>© {new Date().getFullYear()} {t("footer.copyright")}</span>
+          <span>{t("footer.tagline")}</span>
         </div>
       </div>
     </footer>
@@ -80,6 +83,7 @@ export function Footer() {
 }
 
 function BrandCol() {
+  const t = useT();
   return (
     <div>
       <div className="mb-4">
@@ -89,10 +93,7 @@ function BrandCol() {
           className="h-14 w-auto brightness-0 invert"
         />
       </div>
-      <p className="text-sm text-off-white/70">
-        Premium fresh red meat — beef, lamb, mutton & specialty cuts —
-        delivered across the UAE & Oman.
-      </p>
+      <p className="text-sm text-off-white/70">{t("footer.brand")}</p>
       <div className="mt-4 flex gap-3">
         <a href="#" aria-label="Instagram" className="hover:text-gold">
           <Instagram className="h-5 w-5" />
@@ -106,10 +107,11 @@ function BrandCol() {
 }
 
 function ContactCol() {
+  const t = useT();
   return (
     <div>
       <h4 className="mb-4 font-display text-sm font-bold uppercase tracking-wider text-gold">
-        Get in Touch
+        {t("footer.contact")}
       </h4>
       <ContactList />
     </div>

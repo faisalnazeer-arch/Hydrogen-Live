@@ -1,5 +1,6 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
+import { useT } from "../i18n/strings";
 import { HeroBanner } from "../components/home/HeroBanner";
 import { TrustBadges } from "../components/home/TrustBadges";
 import { FeaturedCollections } from "../components/home/FeaturedCollections";
@@ -233,11 +234,16 @@ export async function loader({ context }: LoaderFunctionArgs) {
 
 export default function Home() {
   const { heroSlides, trustBadges, featuredCollections, collectionCards, reels } = useLoaderData<typeof loader>();
+  const t = useT();
   return (
     <>
       <HeroBanner slides={heroSlides} />
       <TrustBadges badges={trustBadges} />
-      <FeaturedCollections cards={collectionCards} />
+      <FeaturedCollections
+        cards={collectionCards}
+        title={t("home.featured")}
+        subtitle={t("home.featured_sub")}
+      />
       <PriceRangeShop />
       <PromoSideBySide />
       {featuredCollections.map((fc) => (

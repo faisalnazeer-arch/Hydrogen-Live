@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2, ExternalLink, Loader2, ShoppingBag } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { formatPrice, shopifyImageUrl } from "@/lib/shopify";
+import { useT } from "@/i18n/strings";
 
 const FREE_SHIPPING_THRESHOLD = 150;
 
@@ -25,6 +26,8 @@ export function CartDrawer() {
     getCheckoutUrl,
     syncCart,
   } = useCartStore();
+
+  const t = useT();
 
   useEffect(() => {
     if (isOpen) syncCart();
@@ -47,15 +50,15 @@ export function CartDrawer() {
     }
   };
 
+  const itemLabel = totalItems === 1 ? t("cart.item") : t("cart.items");
+
   return (
     <Sheet open={isOpen} onOpenChange={setOpen}>
       <SheetContent className="flex w-full flex-col p-0 sm:max-w-md">
         <SheetHeader className="border-b border-border px-6 py-4">
-          <SheetTitle className="font-display text-xl">Your Cart</SheetTitle>
+          <SheetTitle className="font-display text-xl">{t("cart.title")}</SheetTitle>
           <SheetDescription>
-            {totalItems === 0
-              ? "Your cart is empty"
-              : `${totalItems} item${totalItems !== 1 ? "s" : ""}`}
+            {totalItems === 0 ? t("cart.empty") : `${totalItems} ${itemLabel}`}
           </SheetDescription>
         </SheetHeader>
 
@@ -63,15 +66,15 @@ export function CartDrawer() {
           <div className="border-b border-border bg-bone px-6 py-3">
             {remaining > 0 ? (
               <p className="text-xs text-foreground">
-                Add{" "}
+                {t("cart.add_prefix")}{" "}
                 <span className="font-bold text-crimson">
                   {formatPrice(remaining, currency)}
                 </span>{" "}
-                for free delivery
+                {t("cart.add_suffix")}
               </p>
             ) : (
               <p className="text-xs font-semibold text-emerald-700">
-                🎉 You unlocked free delivery!
+                {t("cart.free_unlocked")}
               </p>
             )}
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-border">
@@ -87,9 +90,9 @@ export function CartDrawer() {
           {items.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
               <ShoppingBag className="h-12 w-12 text-muted-foreground" />
-              <p className="text-muted-foreground">Your cart is empty</p>
+              <p className="text-muted-foreground">{t("cart.empty")}</p>
               <Button onClick={() => setOpen(false)} variant="outline">
-                Continue shopping
+                {t("cart.continue")}
               </Button>
             </div>
           ) : (
@@ -165,7 +168,7 @@ export function CartDrawer() {
         {items.length > 0 && (
           <div className="border-t border-border p-4">
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-sm font-medium">Subtotal</span>
+              <span className="text-sm font-medium">{t("cart.subtotal")}</span>
               <span className="font-display text-xl font-bold text-crimson">
                 {formatPrice(subtotal, currency)}
               </span>
@@ -180,7 +183,7 @@ export function CartDrawer() {
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  <ExternalLink className="mr-2 h-4 w-4" /> Checkout
+                  <ExternalLink className="me-2 h-4 w-4" /> {t("cart.checkout")}
                 </>
               )}
             </Button>
@@ -189,7 +192,7 @@ export function CartDrawer() {
               onClick={() => setOpen(false)}
               className="mt-2 w-full text-center text-xs text-muted-foreground hover:text-foreground"
             >
-              Continue shopping
+              {t("cart.continue")}
             </button>
           </div>
         )}
