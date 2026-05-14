@@ -11,7 +11,7 @@ interface MegaMenuProps {
 
 export function MegaMenu({ columns }: MegaMenuProps) {
   return (
-    <div className="absolute left-4 right-4 top-full z-50 hidden pt-3 group-hover:block">
+    <div className="absolute left-4 right-4 top-full z-50 hidden group-hover:block">
       <div className="rounded-md border border-border bg-card p-6 shadow-[var(--shadow-card)]">
         <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
           {columns.map((col) => (
