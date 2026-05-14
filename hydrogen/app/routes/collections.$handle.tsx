@@ -61,6 +61,8 @@ const SORT_OPTIONS = [
 const ORIGINS = ["AUS", "NZ", "JP", "ZA", "USA", "PAK", "ARG", "BRZ", "NL"];
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
+  const lang = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
+  const language = (lang === "ar" ? "AR" : "EN") as "AR" | "EN";
   const { handle } = params;
   if (!handle) throw new Response("Missing handle", { status: 400 });
 
@@ -74,8 +76,8 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
       first: 60,
       sortKey,
       reverse,
-      language: context.storefront.i18n.language,
-      country: context.storefront.i18n.country,
+      language,
+      country: "AE" as const,
     },
   });
   if (!data.collection) throw new Response("Not found", { status: 404 });

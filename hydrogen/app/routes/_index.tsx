@@ -207,8 +207,9 @@ function pickReels(edges: any[]): ReelProduct[] {
   return reels;
 }
 
-export async function loader({ context }: LoaderFunctionArgs) {
-  const i18n = { language: context.storefront.i18n.language, country: context.storefront.i18n.country };
+export async function loader({ context, request }: LoaderFunctionArgs) {
+  const lang = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
+  const i18n = { language: lang === "ar" ? "AR" : "EN", country: "AE" } as const;
   const [data, reelTagged] = await Promise.all([
     context.storefront.query(HOME_QUERY, { variables: i18n }),
     context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" } }),

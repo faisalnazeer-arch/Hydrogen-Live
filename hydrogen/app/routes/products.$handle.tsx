@@ -61,7 +61,7 @@ const PRODUCT_QUERY = `#graphql
   }
 ` as const;
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const { handle } = params;
   if (!handle) throw new Response("Missing handle", { status: 400 });
 
@@ -70,12 +70,11 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
   const judgemeToken = env.JUDGEME_API_TOKEN;
 
   // Fetch product first so we have the numeric ID for JudgMe filtering
+  const lang = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
+  const language = (lang === "ar" ? "AR" : "EN") as "AR" | "EN";
+
   const data = await context.storefront.query(PRODUCT_QUERY, {
-    variables: {
-      handle,
-      language: context.storefront.i18n.language,
-      country: context.storefront.i18n.country,
-    },
+    variables: { handle, language, country: "AE" as const },
   });
   if (!data.product) throw new Response("Not found", { status: 404 });
 
