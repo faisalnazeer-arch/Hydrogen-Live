@@ -6,7 +6,7 @@ import { TrustBadges } from "../components/home/TrustBadges";
 import { FeaturedCollections } from "../components/home/FeaturedCollections";
 import type { FeaturedCollectionCard } from "../components/home/FeaturedCollections";
 import { PriceRangeShop, parsePriceRangeSection, parsePriceTiles } from "../components/home/PriceRangeShop";
-import { PromoSideBySide } from "../components/home/PromoSideBySide";
+import { PromoSideBySide, parsePromoSideBySide, type PromoSideBySideData } from "../components/home/PromoSideBySide";
 import { CategorySection } from "../components/home/CategorySection";
 import { ShopByCategory } from "../components/home/ShopByCategory";
 import { ShopByCuts } from "../components/home/ShopByCuts";
@@ -69,6 +69,20 @@ const HOME_QUERY = `#graphql
       }
     }
     priceTiles: metaobjects(type: "price_range_tile", first: 20) {
+      nodes {
+        id
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage {
+              image { url altText }
+            }
+          }
+        }
+      }
+    }
+    promoSideBySide: metaobjects(type: "promo_side_by_side", first: 1) {
       nodes {
         id
         fields {
@@ -240,6 +254,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const collectionCards = parseFeaturedCollectionList(data?.featuredCollectionList?.nodes ?? []);
   const priceSection = parsePriceRangeSection(data?.priceRangeSection?.nodes ?? []);
   const priceTiles = parsePriceTiles(data?.priceTiles?.nodes ?? []);
+  const promo = parsePromoSideBySide(data?.promoSideBySide?.nodes ?? []);
 
   let reels = pickReels(reelTagged?.products?.edges ?? []);
   if (reels.length === 0) {
@@ -256,12 +271,13 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     collectionCards,
     priceSection,
     priceTiles,
+    promo,
     reels,
   };
 }
 
 export default function Home() {
-  const { heroSlides, trustBadges, featuredCollections, collectionCards, priceSection, priceTiles, reels } = useLoaderData<typeof loader>();
+  const { heroSlides, trustBadges, featuredCollections, collectionCards, priceSection, priceTiles, promo, reels } = useLoaderData<typeof loader>();
   const t = useT();
   return (
     <>
@@ -273,7 +289,7 @@ export default function Home() {
         subtitle={t("home.featured_sub")}
       />
       <PriceRangeShop section={priceSection} tiles={priceTiles} />
-      <PromoSideBySide />
+      <PromoSideBySide promo={promo} />
       {featuredCollections.map((fc) => (
         <CategorySection
           key={fc.id}
