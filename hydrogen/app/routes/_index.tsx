@@ -85,29 +85,33 @@ const HOME_QUERY = `#graphql
     reelsSection: metaobjects(type: "reels_section", first: 1) {
       nodes {
         id
+        fields { key value }
+      }
+    }
+    reelItems: metaobjects(type: "reel_item", first: 20) {
+      nodes {
+        id
         fields {
           key
           value
-          references(first: 20) {
-            nodes {
-              ... on Product {
-                id
-                title
-                handle
-                priceRange { minVariantPrice { amount currencyCode } }
-                featuredImage { url altText }
-                media(first: 5) {
-                  edges {
-                    node {
-                      mediaContentType
-                      ... on Video {
-                        previewImage { url }
-                        sources { url mimeType }
-                      }
-                      ... on ExternalVideo {
-                        embedUrl
-                        previewImage { url }
-                      }
+          reference {
+            ... on Product {
+              id
+              title
+              handle
+              priceRange { minVariantPrice { amount currencyCode } }
+              featuredImage { url altText }
+              media(first: 5) {
+                edges {
+                  node {
+                    mediaContentType
+                    ... on Video {
+                      previewImage { url }
+                      sources { url mimeType }
+                    }
+                    ... on ExternalVideo {
+                      embedUrl
+                      previewImage { url }
                     }
                   }
                 }
@@ -191,18 +195,26 @@ import type { ShopifyProduct, ReelProduct } from "../lib/shopify";
 import { REELS_QUERY } from "../lib/shopify";
 
 interface ReelsSectionConfig {
-  label: string;
+  subHeading: string;
   heading: string;
-  reels: ReelProduct[];
 }
 
-function parseReelsSection(nodes: any[]): ReelsSectionConfig | null {
+function parseReelsSectionConfig(nodes: any[]): ReelsSectionConfig {
   const node = nodes[0];
-  if (!node) return null;
+  if (!node) return { subHeading: "Watch & Shop", heading: "MLS Reels" };
   const f = Object.fromEntries(node.fields.map((x: any) => [x.key, x]));
-  const productNodes: any[] = f["products"]?.references?.nodes ?? [];
+  return {
+    subHeading: f["sub_heading"]?.value ?? f["label"]?.value ?? "Watch & Shop",
+    heading: f["heading"]?.value ?? "MLS Reels",
+  };
+}
+
+function parseReelItems(nodes: any[]): ReelProduct[] {
   const reels: ReelProduct[] = [];
-  for (const p of productNodes) {
+  for (const node of nodes) {
+    const f = Object.fromEntries(node.fields.map((x: any) => [x.key, x]));
+    const p = f["product"]?.reference;
+    if (!p) continue;
     const videoEdge = p.media?.edges?.find(
       (e: any) => e.node.mediaContentType === "VIDEO" || e.node.mediaContentType === "EXTERNAL_VIDEO"
     );
@@ -219,11 +231,7 @@ function parseReelsSection(nodes: any[]): ReelsSectionConfig | null {
       embedUrl: isExternal ? (videoEdge.node.embedUrl ?? null) : null,
     });
   }
-  return {
-    label: f["label"]?.value ?? "Watch & Shop",
-    heading: f["heading"]?.value ?? "MLS Reels",
-    reels,
-  };
+  return reels;
 }
 
 interface FeaturedCollectionEntry {
@@ -326,10 +334,10 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const priceSection = parsePriceRangeSection(data?.priceRangeSection?.nodes ?? []);
   const priceTiles = parsePriceTiles(data?.priceTiles?.nodes ?? []);
   const promo = parsePromoSideBySide(data?.promoSideBySide?.nodes ?? []);
-  const reelsConfig = parseReelsSection(data?.reelsSection?.nodes ?? []);
+  const reelsConfig = parseReelsSectionConfig(data?.reelsSection?.nodes ?? []);
 
-  // Use curated products from metaobject; fall back to tag:reel query when none are set
-  let reels: ReelProduct[] = reelsConfig?.reels ?? [];
+  // Use reel_item entries from metaobject; fall back to tag:reel product query when none exist
+  let reels: ReelProduct[] = parseReelItems(data?.reelItems?.nodes ?? []);
   if (reels.length === 0) {
     let taggedEdges = reelTagged?.products?.edges ?? [];
     if (taggedEdges.length === 0) {
@@ -349,8 +357,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     priceSection,
     priceTiles,
     promo,
-    reelsLabel: reelsConfig?.label ?? "Watch & Shop",
-    reelsHeading: reelsConfig?.heading ?? "MLS Reels",
+    reelsLabel: reelsConfig.subHeading,
+    reelsHeading: reelsConfig.heading,
     reels,
   };
 }
