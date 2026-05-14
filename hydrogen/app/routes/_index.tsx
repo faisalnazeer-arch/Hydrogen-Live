@@ -3,6 +3,7 @@ import { useLoaderData } from "react-router";
 import { HeroBanner } from "../components/home/HeroBanner";
 import { TrustBadges } from "../components/home/TrustBadges";
 import { FeaturedCollections } from "../components/home/FeaturedCollections";
+import type { FeaturedCollectionCard } from "../components/home/FeaturedCollections";
 import { PriceRangeShop } from "../components/home/PriceRangeShop";
 import { PromoSideBySide } from "../components/home/PromoSideBySide";
 import { CategorySection } from "../components/home/CategorySection";
@@ -39,6 +40,20 @@ const HOME_QUERY = `#graphql
           reference {
             ... on MediaImage {
               image { url }
+            }
+          }
+        }
+      }
+    }
+    featuredCollectionList: metaobjects(type: "featured_collection_list", first: 20) {
+      nodes {
+        id
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage {
+              image { url altText }
             }
           }
         }
@@ -135,6 +150,25 @@ function parseFeaturedCollections(nodes: any[]): FeaturedCollectionEntry[] {
     .filter((e): e is FeaturedCollectionEntry => e !== null);
 }
 
+function parseFeaturedCollectionList(nodes: any[]): FeaturedCollectionCard[] {
+  return nodes
+    .map((node) => {
+      const fieldMap = Object.fromEntries(node.fields.map((f: any) => [f.key, f]));
+      const heading = (fieldMap["heading"]?.value ?? "") as string;
+      if (!heading) return null;
+      const card: FeaturedCollectionCard = {
+        id: node.id as string,
+        heading,
+        subHeading: (fieldMap["sub_heading"]?.value ?? "") as string,
+        url: (fieldMap["url"]?.value ?? "#") as string,
+        imageUrl: (fieldMap["image"]?.reference?.image?.url ?? null) as string | null,
+        imageAlt: (fieldMap["image"]?.reference?.image?.altText ?? "") as string,
+      };
+      return card;
+    })
+    .filter(Boolean) as FeaturedCollectionCard[];
+}
+
 export const meta: MetaFunction = () => [
   { title: "MLS UAE — Premium Meats" },
   { name: "description", content: "Premium Wagyu, Angus, lamb and more — delivered." },
@@ -178,6 +212,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
   ]);
 
   const parsed = parseFeaturedCollections(data?.featuredCollections?.nodes ?? []);
+  const collectionCards = parseFeaturedCollectionList(data?.featuredCollectionList?.nodes ?? []);
 
   let reels = pickReels(reelTagged?.products?.edges ?? []);
   if (reels.length === 0) {
@@ -191,17 +226,18 @@ export async function loader({ context }: LoaderFunctionArgs) {
     heroSlides: data?.heroBanners?.nodes ?? [],
     trustBadges: data?.trustBadges?.nodes ?? [],
     featuredCollections: parsed.length > 0 ? parsed : FALLBACK_COLLECTIONS,
+    collectionCards,
     reels,
   };
 }
 
 export default function Home() {
-  const { heroSlides, trustBadges, featuredCollections, reels } = useLoaderData<typeof loader>();
+  const { heroSlides, trustBadges, featuredCollections, collectionCards, reels } = useLoaderData<typeof loader>();
   return (
     <>
       <HeroBanner slides={heroSlides} />
       <TrustBadges badges={trustBadges} />
-      <FeaturedCollections />
+      <FeaturedCollections cards={collectionCards} />
       <PriceRangeShop />
       <PromoSideBySide />
       {featuredCollections.map((fc) => (

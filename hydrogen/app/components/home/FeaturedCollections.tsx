@@ -1,32 +1,62 @@
 import { Link } from "react-router";
 import { HScroller } from "./HScroller";
 
-const COLLECTIONS = [
-  { handle: "australian-wagyu-beef-mb-4-5", title: "Australian Wagyu", tag: "Marbling MB 4/5", emoji: "🥩" },
-  { handle: "australian-black-angus-beef", title: "Black Angus", tag: "Australian", emoji: "🐂" },
-  { handle: "australian-lamb", title: "Australian Lamb", tag: "Grass-fed", emoji: "🐑" },
-  { handle: "beef-burgers-patties", title: "Burger Patties", tag: "Grill-ready", emoji: "🍔" },
-  { handle: "beef-mishkak-barbecue-cubes-fondue", title: "BBQ & Mishkak", tag: "Pre-cubed", emoji: "🔥" },
-  { handle: "box-collection", title: "Meat Boxes", tag: "Curated bundles", emoji: "📦" },
+export interface FeaturedCollectionCard {
+  id: string;
+  heading: string;
+  subHeading: string;
+  url: string;
+  imageUrl?: string | null;
+  imageAlt?: string;
+  emoji?: string;
+}
+
+const FALLBACK_CARDS: FeaturedCollectionCard[] = [
+  { id: "f1", heading: "Australian Wagyu", subHeading: "Marbling MB 4/5", url: "/collections/australian-wagyu-beef-mb-4-5", emoji: "🥩" },
+  { id: "f2", heading: "Black Angus", subHeading: "Australian", url: "/collections/australian-black-angus-beef", emoji: "🐂" },
+  { id: "f3", heading: "Australian Lamb", subHeading: "Grass-fed", url: "/collections/australian-lamb", emoji: "🐑" },
+  { id: "f4", heading: "Burger Patties", subHeading: "Grill-ready", url: "/collections/beef-burgers-patties", emoji: "🍔" },
+  { id: "f5", heading: "BBQ & Mishkak", subHeading: "Pre-cubed", url: "/collections/beef-mishkak-barbecue-cubes-fondue", emoji: "🔥" },
+  { id: "f6", heading: "Meat Boxes", subHeading: "Curated bundles", url: "/collections/box-collection", emoji: "📦" },
 ];
 
-export function FeaturedCollections() {
+interface FeaturedCollectionsProps {
+  cards?: FeaturedCollectionCard[];
+  title?: string;
+  subtitle?: string;
+}
+
+export function FeaturedCollections({
+  cards,
+  title = "Featured Collections",
+  subtitle = "Hand-picked favourites",
+}: FeaturedCollectionsProps) {
+  const items = cards && cards.length > 0 ? cards : FALLBACK_CARDS;
+
   return (
     <section className="container mx-auto px-4 py-12">
-      <SectionHeader title="Featured Collections" subtitle="Hand-picked favourites" />
+      <SectionHeader title={title} subtitle={subtitle} />
       <HScroller>
-        {COLLECTIONS.map((c) => (
+        {items.map((c) => (
           <Link
-            key={c.handle}
-            to={`/collections/${c.handle}`}
+            key={c.id}
+            to={c.url}
             className="group flex w-40 flex-shrink-0 snap-start flex-col items-center gap-3 rounded-lg border border-border bg-card p-5 text-center transition-shadow hover:shadow-[var(--shadow-elegant)] sm:w-48"
           >
-            <div className="grid h-16 w-16 place-items-center rounded-full bg-crimson/10 text-3xl transition-transform group-hover:scale-110">
-              {c.emoji}
+            <div className="grid h-16 w-16 place-items-center rounded-full bg-crimson/10 transition-transform group-hover:scale-110 overflow-hidden">
+              {c.imageUrl ? (
+                <img
+                  src={c.imageUrl}
+                  alt={c.imageAlt ?? c.heading}
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                <span className="text-3xl">{c.emoji ?? "🛒"}</span>
+              )}
             </div>
             <div>
-              <div className="font-display text-sm font-bold">{c.title}</div>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{c.tag}</div>
+              <div className="font-display text-sm font-bold">{c.heading}</div>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{c.subHeading}</div>
             </div>
           </Link>
         ))}
