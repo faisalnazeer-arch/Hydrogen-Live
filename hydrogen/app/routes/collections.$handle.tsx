@@ -13,7 +13,8 @@ import { toast } from "sonner";
 import mlsLogo from "~/assets/mls-logo.png";
 
 const COLLECTION_QUERY = `#graphql
-  query Collection($handle: String!, $first: Int!, $sortKey: ProductCollectionSortKeys, $reverse: Boolean) {
+  query Collection($handle: String!, $first: Int!, $sortKey: ProductCollectionSortKeys, $reverse: Boolean, $language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
     collection(handle: $handle) {
       id title handle description
       products(first: $first, sortKey: $sortKey, reverse: $reverse) {
@@ -68,7 +69,14 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
   const { key: sortKey, reverse } = SORT_OPTIONS[sortIdx];
 
   const data = await context.storefront.query(COLLECTION_QUERY, {
-    variables: { handle, first: 60, sortKey, reverse },
+    variables: {
+      handle,
+      first: 60,
+      sortKey,
+      reverse,
+      language: context.storefront.i18n.language,
+      country: context.storefront.i18n.country,
+    },
   });
   if (!data.collection) throw new Response("Not found", { status: 404 });
   return { collection: data.collection, sortIdx };

@@ -16,7 +16,8 @@ import { RecentlyViewed } from "../components/home/RecentlyViewed";
 import { ReelsCarousel } from "../components/home/ReelsCarousel";
 
 const HOME_QUERY = `#graphql
-  query HomeData {
+  query HomeData($language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
     heroBanners: metaobjects(type: "hero_banner", first: 10) {
       nodes {
         id
@@ -207,8 +208,9 @@ function pickReels(edges: any[]): ReelProduct[] {
 }
 
 export async function loader({ context }: LoaderFunctionArgs) {
+  const i18n = { language: context.storefront.i18n.language, country: context.storefront.i18n.country };
   const [data, reelTagged] = await Promise.all([
-    context.storefront.query(HOME_QUERY),
+    context.storefront.query(HOME_QUERY, { variables: i18n }),
     context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" } }),
   ]);
 

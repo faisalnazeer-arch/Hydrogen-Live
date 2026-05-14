@@ -16,7 +16,8 @@ import { StarRating } from "~/components/reviews/StarRating";
 import { SubscriptionSelector, parseSellingPlanGroups } from "~/components/product/SubscriptionSelector";
 
 const PRODUCT_QUERY = `#graphql
-  query Product($handle: String!) {
+  query Product($handle: String!, $language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
     product(handle: $handle) {
       id title handle descriptionHtml vendor
       tags
@@ -70,7 +71,11 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
   // Fetch product first so we have the numeric ID for JudgMe filtering
   const data = await context.storefront.query(PRODUCT_QUERY, {
-    variables: { handle },
+    variables: {
+      handle,
+      language: context.storefront.i18n.language,
+      country: context.storefront.i18n.country,
+    },
   });
   if (!data.product) throw new Response("Not found", { status: 404 });
 
