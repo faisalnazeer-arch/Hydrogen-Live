@@ -41,6 +41,12 @@ export function Header() {
   const drawerSide = dirFor(locale) === "rtl" ? "right" : "left";
   const closeMobile = () => setMobileNavOpen(false);
 
+  // Set cookie then reload so server loaders re-fetch product data in the new language
+  const switchLocale = (l: typeof locale) => {
+    useLocaleStore.getState().setLocale(l);
+    window.location.reload();
+  };
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
       {/* Top bar */}
@@ -59,7 +65,7 @@ export function Header() {
             <div className="mt-3 inline-flex items-center gap-0.5 self-start rounded-full bg-muted p-0.5 text-[11px] font-semibold uppercase tracking-wider">
               <button
                 type="button"
-                onClick={() => useLocaleStore.getState().setLocale("en")}
+                onClick={() => switchLocale("en")}
                 aria-pressed={locale === "en"}
                 className={`rounded-full px-3 py-1 transition-colors ${locale === "en" ? "bg-crimson text-crimson-foreground" : "text-muted-foreground"}`}
               >
@@ -67,7 +73,7 @@ export function Header() {
               </button>
               <button
                 type="button"
-                onClick={() => useLocaleStore.getState().setLocale("ar")}
+                onClick={() => switchLocale("ar")}
                 aria-pressed={locale === "ar"}
                 lang="ar"
                 className={`rounded-full px-3 py-1 transition-colors ${locale === "ar" ? "bg-crimson text-crimson-foreground" : "text-muted-foreground"}`}
@@ -134,7 +140,7 @@ export function Header() {
         <div className="hidden items-center gap-0.5 rounded-full bg-muted p-0.5 text-[11px] font-semibold uppercase tracking-wider lg:flex">
           <button
             type="button"
-            onClick={() => useLocaleStore.getState().setLocale("en")}
+            onClick={() => switchLocale("en")}
             aria-pressed={locale === "en"}
             className={`rounded-full px-3 py-1 transition-colors ${locale === "en" ? "bg-crimson text-crimson-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
@@ -142,7 +148,7 @@ export function Header() {
           </button>
           <button
             type="button"
-            onClick={() => useLocaleStore.getState().setLocale("ar")}
+            onClick={() => switchLocale("ar")}
             aria-pressed={locale === "ar"}
             lang="ar"
             className={`rounded-full px-3 py-1 transition-colors ${locale === "ar" ? "bg-crimson text-crimson-foreground" : "text-muted-foreground hover:text-foreground"}`}
