@@ -72,6 +72,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   // Fetch product first so we have the numeric ID for JudgMe filtering
   const lang = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
   const language = (lang === "ar" ? "AR" : "EN") as "AR" | "EN";
+  console.log(`[DEBUG] Product page: lang cookie="${lang ?? 'none'}" → requesting language=${language} for handle=${handle}`);
 
   const data = await context.storefront.query(PRODUCT_QUERY, {
     variables: { handle, language, country: "AE" as const },
@@ -128,7 +129,10 @@ export default function Product() {
   const displayRating = rating.average > 0 ? rating : metaRating;
   const displayCount = reviewsTotalCount > 0 ? reviewsTotalCount : metaRating.count;
 
-  const [selectedVariantId, setSelectedVariantId] = useState(variants[0]?.id ?? "");
+  // Track each option independently so multi-option selection works correctly
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() =>
+    Object.fromEntries((variants[0]?.selectedOptions ?? []).map((o: any) => [o.name, o.value]))
+  );
   const [activeImage, setActiveImage] = useState(0);
   const [qty, setQty] = useState(1);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
@@ -140,7 +144,15 @@ export default function Product() {
   const wishlisted = useWishlistStore((s) => s.has(product.id));
   const toggleWishlist = useWishlistStore((s) => s.toggle);
 
-  const variant = variants.find((v: any) => v.id === selectedVariantId) ?? variants[0];
+  // Resolve variant from the full combination of selected options
+  const variant =
+    variants.find((v: any) =>
+      v.selectedOptions.every((o: any) => selectedOptions[o.name] === o.value)
+    ) ?? variants[0];
+
+  const handleOptionSelect = (optionName: string, value: string) => {
+    setSelectedOptions((prev) => ({ ...prev, [optionName]: value }));
+  };
   const currency = variant?.price.currencyCode ?? "AED";
 
   // Find the subscription price for the selected plan + variant
@@ -159,7 +171,7 @@ export default function Product() {
     if (!variant?.image?.url) return;
     const idx = images.findIndex((img: any) => img.url === variant.image!.url);
     if (idx !== -1) setActiveImage(idx);
-  }, [selectedVariantId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [variant?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasOptions =
     product.options.length > 1 ||
@@ -317,17 +329,17 @@ export default function Product() {
                     <p className="mb-2 text-sm font-semibold">{option.name}</p>
                     <div className="flex flex-wrap gap-2">
                       {option.values.map((value: any) => {
+                        // Check if this value is available given the other currently-selected options
+                        const hypothetical = { ...selectedOptions, [option.name]: value };
                         const matchingVariant = variants.find((v: any) =>
-                          v.selectedOptions.some((o: any) => o.name === option.name && o.value === value)
+                          v.selectedOptions.every((o: any) => hypothetical[o.name] === o.value)
                         );
-                        const active = variant?.selectedOptions.some(
-                          (o: any) => o.name === option.name && o.value === value
-                        );
+                        const active = selectedOptions[option.name] === value;
                         return (
                           <button
                             key={value}
                             type="button"
-                            onClick={() => matchingVariant && setSelectedVariantId(matchingVariant.id)}
+                            onClick={() => handleOptionSelect(option.name, value)}
                             disabled={!matchingVariant?.availableForSale}
                             className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
                               active ? "border-crimson bg-crimson text-crimson-foreground" : "border-border bg-card hover:border-crimson"
