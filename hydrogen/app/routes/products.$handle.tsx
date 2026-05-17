@@ -210,6 +210,11 @@ export default function Product() {
     },
   };
 
+  const allPlans = sellingPlanGroups.flatMap((g) => g.plans);
+  const activePlanName = selectedPlanId
+    ? (allPlans.find((p) => p.id === selectedPlanId)?.name ?? null)
+    : null;
+
   const handleAddToCart = async () => {
     if (!variant) return;
     await addItem({
@@ -220,6 +225,7 @@ export default function Product() {
       quantity: qty,
       selectedOptions: variant.selectedOptions,
       sellingPlanId: selectedPlanId ?? undefined,
+      sellingPlanName: activePlanName,
     });
     toast.success("Added to cart", {
       description: `${product.title}${variant.title !== "Default Title" ? ` · ${variant.title}` : ""}`,

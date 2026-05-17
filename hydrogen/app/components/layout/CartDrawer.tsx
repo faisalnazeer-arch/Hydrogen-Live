@@ -121,7 +121,10 @@ export function CartDrawer() {
                       {item.sellingPlanId && (
                         <div className="flex items-center gap-1 text-xs font-medium text-green-600">
                           <span>🔄</span>
-                          <span>Subscribe &amp; Save</span>
+                          <span>
+                            Subscribe &amp; Save
+                            {item.sellingPlanName ? ` · ${item.sellingPlanName}` : ""}
+                          </span>
                         </div>
                       )}
                       <div className="mt-auto flex items-center justify-between">

@@ -15,6 +15,7 @@ export interface CartItem {
   quantity: number;
   selectedOptions: Array<{ name: string; value: string }>;
   sellingPlanId?: string | null;
+  sellingPlanName?: string | null;
 }
 
 interface CartStore {
