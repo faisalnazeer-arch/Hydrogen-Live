@@ -88,18 +88,20 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
   const rating = buildRatingSummary(reviewsData);
 
-  // Build discount map from first variant's selling plan allocations
-  const firstVariantAllocations =
-    data.product.variants?.nodes?.[0]?.sellingPlanAllocations?.nodes ?? [];
+  // Build discount map across all variants — use variant's regular price as baseline
+  // because compareAtPrice inside allocations is often null in Shopify's API
   const discountMap: Record<string, number> = {};
-  for (const alloc of firstVariantAllocations) {
-    const planId = alloc.sellingPlan?.id;
-    const adj = alloc.priceAdjustments?.[0];
-    if (!planId || !adj) continue;
-    const price = parseFloat(adj.price?.amount ?? "0");
-    const compare = parseFloat(adj.compareAtPrice?.amount ?? "0");
-    if (compare > 0 && price < compare) {
-      discountMap[planId] = Math.round(((compare - price) / compare) * 100);
+  for (const v of data.product.variants?.nodes ?? []) {
+    const variantPrice = parseFloat((v as any).price?.amount ?? "0");
+    for (const alloc of (v as any).sellingPlanAllocations?.nodes ?? []) {
+      const planId = alloc.sellingPlan?.id;
+      const adj = alloc.priceAdjustments?.[0];
+      if (!planId || !adj || discountMap[planId] !== undefined) continue;
+      const subPrice = parseFloat(adj.price?.amount ?? "0");
+      const baseline = parseFloat(adj.compareAtPrice?.amount ?? "0") || variantPrice;
+      if (baseline > 0 && subPrice < baseline) {
+        discountMap[planId] = Math.round(((baseline - subPrice) / baseline) * 100);
+      }
     }
   }
 
@@ -364,6 +366,12 @@ export default function Product() {
               onSelect={setSelectedPlanId}
               regularPrice={variant?.price.amount ?? "0"}
               currency={currency}
+              planPrices={Object.fromEntries(
+                ((variant as any)?.sellingPlanAllocations?.nodes ?? []).map((a: any) => [
+                  a.sellingPlan?.id,
+                  a.priceAdjustments?.[0]?.price?.amount,
+                ]).filter(([id, price]: [string, string]) => id && price)
+              )}
             />
           )}
 
