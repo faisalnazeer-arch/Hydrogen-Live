@@ -6,9 +6,9 @@ import { TrustBadges } from "../components/home/TrustBadges";
 import { FeaturedCollections } from "../components/home/FeaturedCollections";
 import type { FeaturedCollectionCard } from "../components/home/FeaturedCollections";
 import { PriceRangeShop, parsePriceRangeSection, parsePriceTiles } from "../components/home/PriceRangeShop";
-import { PromoSideBySide, parsePromoSideBySide, type PromoSideBySideData } from "../components/home/PromoSideBySide";
+import { PromoSideBySide, parsePromoSideBySide } from "../components/home/PromoSideBySide";
 import { CategorySection } from "../components/home/CategorySection";
-import { ShopByCategory } from "../components/home/ShopByCategory";
+import { ShopByCategory, type CategorySectionData } from "../components/home/ShopByCategory";
 import { ShopByCuts } from "../components/home/ShopByCuts";
 import { ShopByOrigin } from "../components/home/ShopByOrigin";
 import { ValueBoxesBanner } from "../components/home/ValueBoxesBanner";
@@ -126,6 +126,31 @@ const HOME_QUERY = `#graphql
           reference {
             ... on MediaImage {
               image { url altText }
+            }
+          }
+        }
+      }
+    }
+    categorySection: metaobjects(type: "mls_category_section", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
+          references(first: 20) {
+            nodes {
+              ... on Metaobject {
+                id
+                fields {
+                  key
+                  value
+                  reference {
+                    ... on MediaImage {
+                      image { url altText }
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -280,6 +305,27 @@ function parseFeaturedCollectionList(nodes: any[]): FeaturedCollectionCard[] {
     .filter(Boolean) as FeaturedCollectionCard[];
 }
 
+function parseCategorySection(nodes: any[]): CategorySectionData | null {
+  const node = nodes[0];
+  if (!node) return null;
+  const fm = Object.fromEntries(node.fields.map((f: any) => [f.key, f]));
+  const items = (fm.items?.references?.nodes ?? []).map((item: any) => {
+    const f = Object.fromEntries(item.fields.map((x: any) => [x.key, x]));
+    return {
+      id: item.id as string,
+      heading: (f.heading?.value ?? "") as string,
+      link: (f.link?.value ?? "/") as string,
+      imageUrl: (f.image?.reference?.image?.url ?? null) as string | null,
+      imageAlt: (f.image?.reference?.image?.altText ?? "") as string,
+    };
+  });
+  return {
+    eyebrow: (fm.eyebrow?.value ?? "Browse the Butcher") as string,
+    heading: (fm.heading?.value ?? "Shop by Category") as string,
+    items,
+  };
+}
+
 export const meta: MetaFunction = () => [
   { title: "MLS UAE — Premium Meats" },
   { name: "description", content: "Premium Wagyu, Angus, lamb and more — delivered." },
@@ -329,6 +375,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const priceSection = parsePriceRangeSection(data?.priceRangeSection?.nodes ?? []);
   const priceTiles = parsePriceTiles(data?.priceTiles?.nodes ?? []);
   const promo = parsePromoSideBySide(data?.promoSideBySide?.nodes ?? []);
+  const categorySection = parseCategorySection(data?.categorySection?.nodes ?? []);
   const reelsConfig = parseReelsSectionConfig(data?.reelsSection?.nodes ?? []);
 
   // Use reel_item entries from metaobject; fall back to tag:reel product query when none exist
@@ -355,11 +402,12 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     reelsLabel: reelsConfig.subHeading,
     reelsHeading: reelsConfig.heading,
     reels,
+    categorySection,
   };
 }
 
 export default function Home() {
-  const { heroSlides, trustBadges, featuredCollections, collectionCards, priceSection, priceTiles, promo, reelsLabel, reelsHeading, reels } = useLoaderData<typeof loader>();
+  const { heroSlides, trustBadges, featuredCollections, collectionCards, priceSection, priceTiles, promo, reelsLabel, reelsHeading, reels, categorySection } = useLoaderData<typeof loader>();
   const t = useT();
   return (
     <>
@@ -382,7 +430,7 @@ export default function Home() {
         />
       ))}
       <ReelsCarousel reels={reels} label={reelsLabel} heading={reelsHeading} />
-      <ShopByCategory />
+      <ShopByCategory section={categorySection} />
       <ShopByCuts />
       <ShopByOrigin />
       <ValueBoxesBanner />
