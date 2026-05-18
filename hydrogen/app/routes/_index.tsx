@@ -10,7 +10,7 @@ import { PromoSideBySide, parsePromoSideBySide } from "../components/home/PromoS
 import { CategorySection } from "../components/home/CategorySection";
 import { ShopByCategory, type CategorySectionData } from "../components/home/ShopByCategory";
 import { ShopByCuts } from "../components/home/ShopByCuts";
-import { ShopByOrigin } from "../components/home/ShopByOrigin";
+import { ShopByOrigin, type OriginSectionData } from "../components/home/ShopByOrigin";
 import { ValueBoxesBanner } from "../components/home/ValueBoxesBanner";
 import { RecentlyViewed } from "../components/home/RecentlyViewed";
 import { ReelsCarousel } from "../components/home/ReelsCarousel";
@@ -126,6 +126,31 @@ const HOME_QUERY = `#graphql
           reference {
             ... on MediaImage {
               image { url altText }
+            }
+          }
+        }
+      }
+    }
+    originSection: metaobjects(type: "mls_origin_section", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
+          references(first: 20) {
+            nodes {
+              ... on Metaobject {
+                id
+                fields {
+                  key
+                  value
+                  reference {
+                    ... on MediaImage {
+                      image { url altText }
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -326,6 +351,28 @@ function parseCategorySection(nodes: any[]): CategorySectionData | null {
   };
 }
 
+function parseOriginSection(nodes: any[]): OriginSectionData | null {
+  const node = nodes[0];
+  if (!node) return null;
+  const fm = Object.fromEntries(node.fields.map((f: any) => [f.key, f]));
+  const items = (fm.items?.references?.nodes ?? []).map((item: any) => {
+    const f = Object.fromEntries(item.fields.map((x: any) => [x.key, x]));
+    return {
+      id: item.id as string,
+      heading: (f.heading?.value ?? "") as string,
+      code: (f.code?.value ?? "") as string,
+      link: (f.link?.value ?? "/") as string,
+      imageUrl: (f.image?.reference?.image?.url ?? null) as string | null,
+      imageAlt: (f.image?.reference?.image?.altText ?? "") as string,
+    };
+  });
+  return {
+    eyebrow: (fm.eyebrow?.value ?? "From the World's Best Farms") as string,
+    heading: (fm.heading?.value ?? "Shop by Origin") as string,
+    items,
+  };
+}
+
 export const meta: MetaFunction = () => [
   { title: "MLS UAE — Premium Meats" },
   { name: "description", content: "Premium Wagyu, Angus, lamb and more — delivered." },
@@ -376,6 +423,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const priceTiles = parsePriceTiles(data?.priceTiles?.nodes ?? []);
   const promo = parsePromoSideBySide(data?.promoSideBySide?.nodes ?? []);
   const categorySection = parseCategorySection(data?.categorySection?.nodes ?? []);
+  const originSection = parseOriginSection(data?.originSection?.nodes ?? []);
   const reelsConfig = parseReelsSectionConfig(data?.reelsSection?.nodes ?? []);
 
   // Use reel_item entries from metaobject; fall back to tag:reel product query when none exist
@@ -403,11 +451,12 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     reelsHeading: reelsConfig.heading,
     reels,
     categorySection,
+    originSection,
   };
 }
 
 export default function Home() {
-  const { heroSlides, trustBadges, featuredCollections, collectionCards, priceSection, priceTiles, promo, reelsLabel, reelsHeading, reels, categorySection } = useLoaderData<typeof loader>();
+  const { heroSlides, trustBadges, featuredCollections, collectionCards, priceSection, priceTiles, promo, reelsLabel, reelsHeading, reels, categorySection, originSection } = useLoaderData<typeof loader>();
   const t = useT();
   return (
     <>
@@ -432,7 +481,7 @@ export default function Home() {
       <ReelsCarousel reels={reels} label={reelsLabel} heading={reelsHeading} />
       <ShopByCategory section={categorySection} />
       <ShopByCuts />
-      <ShopByOrigin />
+      <ShopByOrigin section={originSection} />
       <ValueBoxesBanner />
       <RecentlyViewed />
     </>
