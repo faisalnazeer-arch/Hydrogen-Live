@@ -14,7 +14,8 @@
     "env:pull": "shopify hydrogen env pull",
     "lint": "eslint --ext .js,.ts,.jsx,.tsx app",
     "typecheck": "tsc --noEmit",
-    "generate:metaobjects": "tsx scripts/generate-metaobjects.ts"
+    "generate:metaobjects": "tsx scripts/generate-metaobjects.ts",
+    "create:nav": "tsx scripts/create-nav-metaobjects.ts"
   },
   "dependencies": {
     "@graphql-codegen/cli": "^7.0.0",

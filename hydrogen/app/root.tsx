@@ -4,6 +4,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLoaderData,
 } from "react-router";
 import type { LinksFunction, LoaderFunctionArgs } from "react-router";
 import { useEffect } from "react";
@@ -23,8 +24,107 @@ export const links: LinksFunction = () => [
   { rel: "stylesheet", href: styles },
 ];
 
-export async function loader(_: LoaderFunctionArgs) {
-  return {};
+export interface NavLink {
+  label: string;
+  url: string;
+}
+
+export interface NavColumn {
+  title: string;
+  links: NavLink[];
+}
+
+export interface NavEntry {
+  id: string;
+  label: string;
+  url: string | null;
+  menu: string;
+  position: number;
+  columns: NavColumn[];
+}
+
+const NAV_QUERY = `#graphql
+  query NavMetaobjects($language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
+    navEntries: metaobjects(type: "mls_nav_entry", first: 50) {
+      nodes {
+        id
+        fields {
+          key
+          value
+          references(first: 20) {
+            nodes {
+              ... on Metaobject {
+                id
+                fields {
+                  key
+                  value
+                  references(first: 20) {
+                    nodes {
+                      ... on Metaobject {
+                        id
+                        fields { key value }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+` as const;
+
+function toPath(u: string): string {
+  try { return new URL(u).pathname || "/"; } catch { return u; }
+}
+
+function parseNavEntries(nodes: any[]): NavEntry[] {
+  return nodes
+    .map((node) => {
+      const fm = Object.fromEntries(node.fields.map((f: any) => [f.key, f]));
+      const columns: NavColumn[] = (fm.columns?.references?.nodes ?? []).map((col: any) => {
+        const cf = Object.fromEntries(col.fields.map((f: any) => [f.key, f]));
+        const links: NavLink[] = (cf.links?.references?.nodes ?? []).map((lk: any) => {
+          const lf = Object.fromEntries(lk.fields.map((f: any) => [f.key, f]));
+          return { label: lf.label?.value ?? "", url: toPath(lf.url?.value ?? "/") };
+        });
+        return { title: cf.title?.value ?? "", links };
+      });
+      return {
+        id: node.id,
+        label: fm.label?.value ?? "",
+        url: fm.url?.value ? toPath(fm.url.value) : null,
+        menu: fm.menu?.value ?? "main",
+        position: parseInt(fm.position?.value ?? "0", 10),
+        columns,
+      };
+    })
+    .sort((a, b) => a.position - b.position);
+}
+
+export async function loader({ context, request }: LoaderFunctionArgs) {
+  const lang = request.headers
+    .get("Cookie")
+    ?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
+  const language = (lang === "ar" ? "AR" : "EN") as "AR" | "EN";
+  try {
+    const nav = await context.storefront.query(NAV_QUERY, {
+      variables: { language, country: "AE" as const },
+    });
+    const all = parseNavEntries(nav?.navEntries?.nodes ?? []);
+    return {
+      mainMenu: all.filter((e) => e.menu === "main"),
+      secondaryMenu: all.filter((e) => e.menu === "secondary"),
+    };
+  } catch {
+    return {
+      mainMenu: [] as NavEntry[],
+      secondaryMenu: [] as NavEntry[],
+    };
+  }
 }
 
 const queryClient = new QueryClient({
@@ -74,13 +174,14 @@ function LocaleSync() {
 }
 
 export default function App() {
+  const { mainMenu, secondaryMenu } = useLoaderData<typeof loader>();
   return (
     <QueryClientProvider client={queryClient}>
       <LocaleSync />
       <CartSyncWrapper />
       <div className="flex min-h-screen flex-col">
         <AnnouncementBar />
-        <Header />
+        <Header mainMenu={mainMenu} secondaryMenu={secondaryMenu} />
         <main className="flex-1">
           <Outlet />
         </main>

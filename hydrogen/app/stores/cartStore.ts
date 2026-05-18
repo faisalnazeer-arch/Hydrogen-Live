@@ -12,6 +12,7 @@ export interface CartItem {
   variantId: string;
   variantTitle: string;
   price: MoneyV2;
+  compareAtPrice?: MoneyV2 | null;
   quantity: number;
   selectedOptions: Array<{ name: string; value: string }>;
   sellingPlanId?: string | null;
@@ -194,7 +195,7 @@ export const useCartStore = create<CartStore>()(
             if (result.success) {
               const current = get().items;
               set({
-                items: [...current, { ...item, lineId: result.lineId ?? null }],
+                items: [{ ...item, lineId: result.lineId ?? null }, ...current],
                 isOpen: true,
               });
             } else if (result.cartNotFound) {
@@ -276,8 +277,19 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: "mls-shopify-cart",
+      version: 2,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({ items: s.items, cartId: s.cartId, checkoutUrl: s.checkoutUrl }),
+      migrate: (persisted: any, fromVersion: number) => {
+        if (fromVersion < 2) {
+          // v1 items lack sellingPlanName — drop subscription items so they re-add with full data
+          const items = (persisted.items ?? []).map((item: any) =>
+            item.sellingPlanId ? { ...item, sellingPlanName: item.sellingPlanName ?? null } : item
+          );
+          return { ...persisted, items };
+        }
+        return persisted;
+      },
     }
   )
 );

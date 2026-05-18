@@ -7,7 +7,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, Trash2, ExternalLink, Loader2, ShoppingBag } from "lucide-react";
+import { Minus, Plus, Trash2, ExternalLink, Loader2, ShoppingBag, RefreshCw } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { formatPrice, shopifyImageUrl } from "@/lib/shopify";
 import { useT } from "@/i18n/strings";
@@ -101,6 +101,7 @@ export function CartDrawer() {
                 const img = item.product.node.images.edges[0]?.node;
                 return (
                   <li key={item.variantId} className="flex gap-3 p-4">
+                    {/* Product image */}
                     <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-md bg-muted">
                       {img && (
                         <img
@@ -110,7 +111,8 @@ export function CartDrawer() {
                         />
                       )}
                     </div>
-                    <div className="flex flex-1 flex-col gap-1">
+
+                    <div className="flex flex-1 flex-col gap-1 min-w-0">
                       <div className="text-sm font-medium leading-tight">
                         {item.product.node.title}
                       </div>
@@ -118,24 +120,32 @@ export function CartDrawer() {
                         {item.selectedOptions.map((o) => o.value).join(" · ") ||
                           item.variantTitle}
                       </div>
-                      {item.sellingPlanId && (
-                        <div className="flex items-center gap-1 text-xs font-medium text-green-600">
-                          <span>🔄</span>
-                          <span>
-                            Subscribe &amp; Save
-                            {item.sellingPlanName ? ` · ${item.sellingPlanName}` : ""}
-                          </span>
-                        </div>
-                      )}
-                      <div className="mt-auto flex items-center justify-between">
+
+                      {/* Subscription info — simple text line */}
+                      {item.sellingPlanId && (() => {
+                        const subPrice = parseFloat(item.price.amount);
+                        const regPrice = item.compareAtPrice ? parseFloat(item.compareAtPrice.amount) : 0;
+                        const savePct = regPrice > subPrice ? Math.round((1 - subPrice / regPrice) * 100) : 0;
+                        const label = [
+                          item.sellingPlanName ?? "Subscribe & Save",
+                          savePct > 0 ? `with ${savePct}% discount` : "",
+                        ].filter(Boolean).join(" ");
+                        return (
+                          <div className="flex items-center gap-1 text-xs text-green-700">
+                            <RefreshCw className="h-3 w-3 flex-shrink-0" />
+                            <span>{label}</span>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Qty controls (price shown inside subscription card for sub items) */}
+                      <div className="mt-auto flex items-center justify-between pt-1">
                         <div className="flex items-center rounded border border-border">
                           <button
                             type="button"
                             aria-label="Decrease"
                             className="grid h-7 w-7 place-items-center hover:bg-muted"
-                            onClick={() =>
-                              updateQuantity(item.variantId, item.quantity - 1)
-                            }
+                            onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
                           >
                             <Minus className="h-3 w-3" />
                           </button>
@@ -144,21 +154,32 @@ export function CartDrawer() {
                             type="button"
                             aria-label="Increase"
                             className="grid h-7 w-7 place-items-center hover:bg-muted"
-                            onClick={() =>
-                              updateQuantity(item.variantId, item.quantity + 1)
-                            }
+                            onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
                           >
                             <Plus className="h-3 w-3" />
                           </button>
                         </div>
-                        <div className="font-semibold text-crimson">
-                          {formatPrice(
-                            parseFloat(item.price.amount) * item.quantity,
-                            item.price.currencyCode
+
+                        {/* Price — always shown; strikethrough when compareAtPrice differs */}
+                        <div className="flex flex-col items-end gap-0">
+                          {item.compareAtPrice && item.compareAtPrice.amount !== item.price.amount && (
+                            <span className="text-xs text-muted-foreground line-through">
+                              {formatPrice(
+                                parseFloat(item.compareAtPrice.amount) * item.quantity,
+                                item.compareAtPrice.currencyCode
+                              )}
+                            </span>
                           )}
+                          <span className="font-bold text-crimson">
+                            {formatPrice(
+                              parseFloat(item.price.amount) * item.quantity,
+                              item.price.currencyCode
+                            )}
+                          </span>
                         </div>
                       </div>
                     </div>
+
                     <button
                       type="button"
                       aria-label="Remove"

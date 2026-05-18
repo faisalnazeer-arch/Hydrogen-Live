@@ -14,6 +14,7 @@ import { fetchJudgemeReviews, buildRatingSummary } from "~/lib/judgeme";
 import { JudgemeReviews } from "~/components/reviews/JudgemeReviews";
 import { StarRating } from "~/components/reviews/StarRating";
 import { SubscriptionSelector, parseSellingPlanGroups } from "~/components/product/SubscriptionSelector";
+import { useT } from "~/i18n/strings";
 
 const PRODUCT_QUERY = `#graphql
   query Product($handle: String!, $language: LanguageCode, $country: CountryCode)
@@ -104,6 +105,14 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
       }
     }
   }
+  // Default to 10% for any selling plan not covered by Shopify allocation data
+  for (const group of data.product.sellingPlanGroups?.nodes ?? []) {
+    for (const plan of (group as any).sellingPlans?.nodes ?? []) {
+      if (plan.id && discountMap[plan.id] === undefined) {
+        discountMap[plan.id] = 10;
+      }
+    }
+  }
 
   return {
     product: data.product,
@@ -120,6 +129,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 export default function Product() {
+  const t = useT();
   const { product, sellingPlanGroupsRaw, discountMap, reviews, reviewsTotalCount, rating } = useLoaderData<typeof loader>();
   const variants = product.variants.nodes;
   const images = product.images.nodes;
@@ -163,9 +173,23 @@ export default function Product() {
         (a: any) => a.sellingPlan?.id === selectedPlanId
       )
     : null;
-  const displayPrice = selectedAllocation?.priceAdjustments?.[0]?.price ?? variant?.price;
-  const displayCompareAt = selectedAllocation
-    ? selectedAllocation.priceAdjustments?.[0]?.compareAtPrice ?? variant?.compareAtPrice
+
+  const allocPrice = selectedAllocation?.priceAdjustments?.[0]?.price;
+  const regularAmt = parseFloat(variant?.price?.amount ?? "0");
+  const allocAmt = allocPrice ? parseFloat(allocPrice.amount) : regularAmt;
+
+  // If subscription selected but Shopify has no actual price reduction, apply 10% default
+  const activePlanDiscount = selectedPlanId ? (discountMap[selectedPlanId] ?? 10) : 0;
+  const effectiveSubAmt = selectedPlanId
+    ? (allocAmt < regularAmt ? allocAmt : regularAmt * (1 - activePlanDiscount / 100))
+    : regularAmt;
+
+  const displayPrice = selectedPlanId
+    ? { amount: effectiveSubAmt.toFixed(2), currencyCode: variant?.price?.currencyCode ?? "AED" }
+    : variant?.price;
+
+  const displayCompareAt = selectedPlanId
+    ? variant?.price  // show regular price as strikethrough when subscription active
     : variant?.compareAtPrice;
 
   // Jump to variant's image when selection changes
@@ -215,19 +239,33 @@ export default function Product() {
     ? (allPlans.find((p) => p.id === selectedPlanId)?.name ?? null)
     : null;
 
+  // Debug: log selling plan data whenever variant or selectedPlanId changes
+  useEffect(() => {
+    if (allPlans.length > 0) {
+      console.log('[DEBUG] sellingPlanGroups allPlans:', allPlans);
+      console.log('[DEBUG] variant allocations:', (variant as any)?.sellingPlanAllocations?.nodes);
+      console.log('[DEBUG] selectedPlanId:', selectedPlanId, '→ activePlanName:', activePlanName);
+    }
+  }, [variant?.id, selectedPlanId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleAddToCart = async () => {
     if (!variant) return;
+    console.log('[DEBUG] addToCart → selectedPlanId:', selectedPlanId, 'activePlanName:', activePlanName, 'allPlans:', allPlans);
+    // When subscription is selected, pass the regular variant price as compareAtPrice
+    // so the cart drawer can show the strikethrough + save %
+    const cartCompareAtPrice = selectedPlanId ? variant.price : (variant.compareAtPrice ?? null);
     await addItem({
       product: shopifyProduct,
       variantId: variant.id,
       variantTitle: variant.title,
       price: displayPrice,
+      compareAtPrice: cartCompareAtPrice,
       quantity: qty,
       selectedOptions: variant.selectedOptions,
       sellingPlanId: selectedPlanId ?? undefined,
       sellingPlanName: activePlanName,
     });
-    toast.success("Added to cart", {
+    toast.success(t("product.added"), {
       description: `${product.title}${variant.title !== "Default Title" ? ` · ${variant.title}` : ""}`,
       position: "top-center",
     });
@@ -376,7 +414,13 @@ export default function Product() {
                 ((variant as any)?.sellingPlanAllocations?.nodes ?? []).map((a: any) => [
                   a.sellingPlan?.id,
                   a.priceAdjustments?.[0]?.price?.amount,
-                ]).filter(([id, price]: [string, string]) => id && price)
+                ]).filter(([id, price]: [string, string]) => {
+                  if (!id || !price) return false;
+                  // Only pass actual discounted prices; skip same-as-regular so SubscriptionSelector
+                  // falls back to calculating the percentage discount from discountMap
+                  const regularAmt = parseFloat(variant?.price?.amount ?? "0");
+                  return parseFloat(price) < regularAmt;
+                })
               )}
             />
           )}
@@ -412,9 +456,9 @@ export default function Product() {
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : variant?.availableForSale ? (
-                "Add to Cart"
+                t("product.add")
               ) : (
-                "Out of Stock"
+                t("product.out_of_stock")
               )}
             </button>
 
@@ -431,9 +475,9 @@ export default function Product() {
           {/* Trust badges */}
           <div className="grid grid-cols-3 gap-3 rounded-xl border border-border bg-muted/40 p-4">
             {[
-              { icon: Truck, label: "Same-day delivery" },
-              { icon: ShieldCheck, label: "100% Halal certified" },
-              { icon: RefreshCw, label: "Quality guarantee" },
+              { icon: Truck, label: t("product.trust_delivery") },
+              { icon: ShieldCheck, label: t("product.trust_halal") },
+              { icon: RefreshCw, label: t("product.trust_quality") },
             ].map(({ icon: Icon, label }) => (
               <div key={label} className="flex flex-col items-center gap-1.5 text-center">
                 <Icon className="h-6 w-6 text-crimson" />
@@ -446,7 +490,7 @@ export default function Product() {
           {product.descriptionHtml && (
             <div className="border-t border-border pt-5">
               <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                Product Details
+                {t("product.details")}
               </h3>
               <div
                 className="prose prose-sm max-w-none text-muted-foreground [&_p]:leading-relaxed"
