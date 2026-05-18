@@ -11,7 +11,7 @@ import { CategorySection } from "../components/home/CategorySection";
 import { ShopByCategory, type CategorySectionData } from "../components/home/ShopByCategory";
 import { ShopByCuts } from "../components/home/ShopByCuts";
 import { ShopByOrigin, type OriginSectionData } from "../components/home/ShopByOrigin";
-import { ValueBoxesBanner } from "../components/home/ValueBoxesBanner";
+import { ValueBoxesBanner, type ValueBannerData } from "../components/home/ValueBoxesBanner";
 import { RecentlyViewed } from "../components/home/RecentlyViewed";
 import { ReelsCarousel } from "../components/home/ReelsCarousel";
 
@@ -118,6 +118,20 @@ const HOME_QUERY = `#graphql
       }
     }
     promoSideBySide: metaobjects(type: "promo_side_by_side", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage {
+              image { url altText }
+            }
+          }
+        }
+      }
+    }
+    valueBanner: metaobjects(type: "mls_value_banner", first: 1) {
       nodes {
         id
         fields {
@@ -351,6 +365,23 @@ function parseCategorySection(nodes: any[]): CategorySectionData | null {
   };
 }
 
+function parseValueBanner(nodes: any[]): ValueBannerData | null {
+  const node = nodes[0];
+  if (!node) return null;
+  const f = Object.fromEntries(node.fields.map((x: any) => [x.key, x]));
+  return {
+    eyebrow:   (f.eyebrow?.value   ?? "") as string,
+    heading:   (f.heading?.value   ?? "") as string,
+    body:      (f.body?.value      ?? "") as string,
+    btn1Label: (f.btn1_label?.value ?? "") as string,
+    btn1Link:  (f.btn1_link?.value  ?? "") as string,
+    btn2Label: (f.btn2_label?.value ?? "") as string,
+    btn2Link:  (f.btn2_link?.value  ?? "") as string,
+    imageUrl:  (f.image?.reference?.image?.url ?? null) as string | null,
+    imageAlt:  (f.image?.reference?.image?.altText ?? "") as string,
+  };
+}
+
 function parseOriginSection(nodes: any[]): OriginSectionData | null {
   const node = nodes[0];
   if (!node) return null;
@@ -424,6 +455,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const promo = parsePromoSideBySide(data?.promoSideBySide?.nodes ?? []);
   const categorySection = parseCategorySection(data?.categorySection?.nodes ?? []);
   const originSection = parseOriginSection(data?.originSection?.nodes ?? []);
+  const valueBanner = parseValueBanner(data?.valueBanner?.nodes ?? []);
   const reelsConfig = parseReelsSectionConfig(data?.reelsSection?.nodes ?? []);
 
   // Use reel_item entries from metaobject; fall back to tag:reel product query when none exist
@@ -452,11 +484,12 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     reels,
     categorySection,
     originSection,
+    valueBanner,
   };
 }
 
 export default function Home() {
-  const { heroSlides, trustBadges, featuredCollections, collectionCards, priceSection, priceTiles, promo, reelsLabel, reelsHeading, reels, categorySection, originSection } = useLoaderData<typeof loader>();
+  const { heroSlides, trustBadges, featuredCollections, collectionCards, priceSection, priceTiles, promo, reelsLabel, reelsHeading, reels, categorySection, originSection, valueBanner } = useLoaderData<typeof loader>();
   const t = useT();
   return (
     <>
@@ -482,7 +515,7 @@ export default function Home() {
       <ShopByCategory section={categorySection} />
       <ShopByCuts />
       <ShopByOrigin section={originSection} />
-      <ValueBoxesBanner />
+      <ValueBoxesBanner banner={valueBanner} />
       <RecentlyViewed />
     </>
   );
