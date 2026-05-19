@@ -99,16 +99,25 @@ export function CartDrawer() {
             <ul className="divide-y divide-border">
               {items.map((item) => {
                 const img = item.product.node.images.edges[0]?.node;
+                const pending = !!item.isPending;
                 return (
-                  <li key={item.variantId} className="flex gap-3 p-4">
+                  <li
+                    key={`${item.variantId}-${item.sellingPlanId ?? "none"}`}
+                    className={`flex gap-3 p-4 transition-opacity ${pending ? "opacity-60" : ""}`}
+                  >
                     {/* Product image */}
-                    <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+                    <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md bg-muted">
                       {img && (
                         <img
                           src={shopifyImageUrl(img.url, 200)}
                           alt={img.altText ?? item.product.node.title}
                           className="h-full w-full object-cover"
                         />
+                      )}
+                      {pending && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-background/40">
+                          <Loader2 className="h-5 w-5 animate-spin text-crimson" />
+                        </div>
                       )}
                     </div>
 
@@ -121,7 +130,7 @@ export function CartDrawer() {
                           item.variantTitle}
                       </div>
 
-                      {/* Subscription info — simple text line */}
+                      {/* Subscription info */}
                       {item.sellingPlanId && (() => {
                         const subPrice = parseFloat(item.price.amount);
                         const regPrice = item.compareAtPrice ? parseFloat(item.compareAtPrice.amount) : 0;
@@ -138,13 +147,14 @@ export function CartDrawer() {
                         );
                       })()}
 
-                      {/* Qty controls (price shown inside subscription card for sub items) */}
                       <div className="mt-auto flex items-center justify-between pt-1">
-                        <div className="flex items-center rounded border border-border">
+                        {/* Qty controls — disabled while pending */}
+                        <div className={`flex items-center rounded border border-border ${pending ? "pointer-events-none opacity-50" : ""}`}>
                           <button
                             type="button"
                             aria-label="Decrease"
-                            className="grid h-7 w-7 place-items-center hover:bg-muted"
+                            disabled={pending || isLoading}
+                            className="grid h-7 w-7 place-items-center hover:bg-muted disabled:cursor-not-allowed"
                             onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
                           >
                             <Minus className="h-3 w-3" />
@@ -153,14 +163,15 @@ export function CartDrawer() {
                           <button
                             type="button"
                             aria-label="Increase"
-                            className="grid h-7 w-7 place-items-center hover:bg-muted"
+                            disabled={pending || isLoading}
+                            className="grid h-7 w-7 place-items-center hover:bg-muted disabled:cursor-not-allowed"
                             onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
                           >
                             <Plus className="h-3 w-3" />
                           </button>
                         </div>
 
-                        {/* Price — always shown; strikethrough when compareAtPrice differs */}
+                        {/* Price */}
                         <div className="flex flex-col items-end gap-0">
                           {item.compareAtPrice && item.compareAtPrice.amount !== item.price.amount && (
                             <span className="text-xs text-muted-foreground line-through">
@@ -180,11 +191,13 @@ export function CartDrawer() {
                       </div>
                     </div>
 
+                    {/* Remove — disabled while pending */}
                     <button
                       type="button"
                       aria-label="Remove"
+                      disabled={pending}
                       onClick={() => removeItem(item.variantId)}
-                      className="self-start text-muted-foreground hover:text-crimson"
+                      className={`self-start text-muted-foreground hover:text-crimson ${pending ? "cursor-not-allowed opacity-30" : ""}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -205,7 +218,7 @@ export function CartDrawer() {
             </div>
             <Button
               onClick={handleCheckout}
-              disabled={isLoading || isSyncing}
+              disabled={isLoading || isSyncing || items.some((i) => i.isPending)}
               size="lg"
               className="w-full bg-crimson text-crimson-foreground hover:bg-rich-red"
             >
