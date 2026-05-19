@@ -276,7 +276,6 @@ function NavItem({
 
   return (
     <div
-      className="relative"
       onMouseEnter={handleOpen}
       onMouseLeave={handleClose}
     >
