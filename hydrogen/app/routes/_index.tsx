@@ -101,17 +101,10 @@ const HOME_QUERY = `#graphql
               handle
               priceRange { minVariantPrice { amount currencyCode } }
               featuredImage { url altText }
-              media(first: 5) {
-                edges {
-                  node {
-                    mediaContentType
-                    ... on Video {
-                      previewImage { url }
-                      sources { url mimeType }
-                    }
-                  }
-                }
-              }
+            }
+            ... on Video {
+              previewImage { url }
+              sources { url mimeType }
             }
           }
         }
@@ -273,20 +266,27 @@ function parseReelItems(nodes: any[]): ReelProduct[] {
   const reels: ReelProduct[] = [];
   for (const node of nodes) {
     const f = Object.fromEntries(node.fields.map((x: any) => [x.key, x]));
-    const p = f["product"]?.reference;
-    if (!p) continue;
-    const videoEdge = p.media?.edges?.find(
-      (e: any) => e.node.mediaContentType === "VIDEO"
-    );
-    if (!videoEdge) continue;
-    const mp4 = videoEdge.node.sources?.find((s: any) => s.mimeType === "video/mp4") ?? videoEdge.node.sources?.[0];
+    const product = f["product"]?.reference;
+    const video = f["video"]?.reference;
+    if (!product) continue;
+
+    // Prefer the reel's own video field; fall back to product featured image as poster
+    let videoUrl: string | null = null;
+    let poster: string | null = product.featuredImage?.url ?? null;
+
+    if (video?.sources) {
+      const mp4 = video.sources.find((s: any) => s.mimeType === "video/mp4") ?? video.sources[0];
+      videoUrl = mp4?.url ?? null;
+      poster = video.previewImage?.url ?? poster;
+    }
+
     reels.push({
-      id: p.id,
-      title: p.title,
-      handle: p.handle,
-      price: p.priceRange.minVariantPrice,
-      poster: videoEdge.node.previewImage?.url ?? p.featuredImage?.url ?? null,
-      videoUrl: mp4?.url ?? null,
+      id: node.id,
+      title: product.title,
+      handle: product.handle,
+      price: product.priceRange.minVariantPrice,
+      poster,
+      videoUrl,
       embedUrl: null,
     });
   }
