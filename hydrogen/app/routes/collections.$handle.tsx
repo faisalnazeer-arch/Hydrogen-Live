@@ -58,7 +58,6 @@ const SORT_OPTIONS = [
   { label: "Best Selling", key: "BEST_SELLING", reverse: false },
 ];
 
-const ORIGINS = ["AUS", "NZ", "JP", "ZA", "USA", "PAK", "ARG", "BRZ", "NL"];
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
   const lang = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
@@ -97,6 +96,7 @@ export default function Collection() {
 
   const navigate = useNavigate();
   const [selectedOrigins, setSelectedOrigins] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [grassFedOnly, setGrassFedOnly] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -107,20 +107,49 @@ export default function Collection() {
   const globalMax = Math.ceil(Math.max(...allPrices, 0));
   const priceMax = maxPrice ?? globalMax;
 
+  // Derive available filter options from actual products
+  const availableOrigins = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of products) {
+      const o = getOriginFromTags(p.node.tags);
+      if (o && o !== "GRASS-FED") set.add(o);
+    }
+    return Array.from(set).sort();
+  }, [products]);
+
+  const availableTypes = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of products) {
+      if (p.node.productType?.trim()) set.add(p.node.productType.trim());
+    }
+    return Array.from(set).sort();
+  }, [products]);
+
+  const hasGrassFed = useMemo(
+    () => products.some((p) => p.node.tags.some((t) => t.toLowerCase().includes("grass"))),
+    [products]
+  );
+
   const filtered = useMemo(() => {
     return products.filter((p) => {
       const price = parseFloat(p.node.priceRange.minVariantPrice.amount);
       if (price > priceMax) return false;
       const origin = getOriginFromTags(p.node.tags);
       if (selectedOrigins.length > 0 && (!origin || !selectedOrigins.includes(origin))) return false;
+      if (selectedTypes.length > 0 && !selectedTypes.includes(p.node.productType?.trim() ?? "")) return false;
       if (grassFedOnly && !p.node.tags.some((t) => t.toLowerCase().includes("grass"))) return false;
       return true;
     });
-  }, [products, priceMax, selectedOrigins, grassFedOnly]);
+  }, [products, priceMax, selectedOrigins, selectedTypes, grassFedOnly]);
 
   const toggleOrigin = (o: string) =>
     setSelectedOrigins((prev) =>
       prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o]
+    );
+
+  const toggleType = (t: string) =>
+    setSelectedTypes((prev) =>
+      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]
     );
 
   return (
@@ -139,8 +168,9 @@ export default function Collection() {
         <aside className="hidden w-64 flex-shrink-0 lg:block">
           <FilterPanel
             globalMax={globalMax} priceMax={priceMax} setMaxPrice={setMaxPrice}
-            selectedOrigins={selectedOrigins} toggleOrigin={toggleOrigin}
-            grassFedOnly={grassFedOnly} setGrassFedOnly={setGrassFedOnly}
+            origins={availableOrigins} selectedOrigins={selectedOrigins} toggleOrigin={toggleOrigin}
+            types={availableTypes} selectedTypes={selectedTypes} toggleType={toggleType}
+            hasGrassFed={hasGrassFed} grassFedOnly={grassFedOnly} setGrassFedOnly={setGrassFedOnly}
           />
         </aside>
 
@@ -188,8 +218,9 @@ export default function Collection() {
                 </div>
                 <FilterPanel
                   globalMax={globalMax} priceMax={priceMax} setMaxPrice={setMaxPrice}
-                  selectedOrigins={selectedOrigins} toggleOrigin={toggleOrigin}
-                  grassFedOnly={grassFedOnly} setGrassFedOnly={setGrassFedOnly}
+                  origins={availableOrigins} selectedOrigins={selectedOrigins} toggleOrigin={toggleOrigin}
+                  types={availableTypes} selectedTypes={selectedTypes} toggleType={toggleType}
+                  hasGrassFed={hasGrassFed} grassFedOnly={grassFedOnly} setGrassFedOnly={setGrassFedOnly}
                 />
               </div>
             </div>
@@ -200,7 +231,7 @@ export default function Collection() {
               <p className="text-lg font-medium">No products match your filters</p>
               <button
                 type="button"
-                onClick={() => { setSelectedOrigins([]); setMaxPrice(null); setGrassFedOnly(false); }}
+                onClick={() => { setSelectedOrigins([]); setSelectedTypes([]); setMaxPrice(null); setGrassFedOnly(false); }}
                 className="mt-3 text-sm text-crimson underline"
               >Clear filters</button>
             </div>
@@ -216,7 +247,22 @@ export default function Collection() {
 }
 
 /* ─── Filter Panel ─────────────────────────────────────────────────────────── */
-function FilterPanel({ globalMax, priceMax, setMaxPrice, selectedOrigins, toggleOrigin, grassFedOnly, setGrassFedOnly }: any) {
+interface FilterPanelProps {
+  globalMax: number;
+  priceMax: number;
+  setMaxPrice: (v: number | null) => void;
+  origins: string[];
+  selectedOrigins: string[];
+  toggleOrigin: (o: string) => void;
+  types: string[];
+  selectedTypes: string[];
+  toggleType: (t: string) => void;
+  hasGrassFed: boolean;
+  grassFedOnly: boolean;
+  setGrassFedOnly: (v: boolean) => void;
+}
+
+function FilterPanel({ globalMax, priceMax, setMaxPrice, origins, selectedOrigins, toggleOrigin, types, selectedTypes, toggleType, hasGrassFed, grassFedOnly, setGrassFedOnly }: FilterPanelProps) {
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -228,26 +274,47 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, selectedOrigins, toggle
           <span>AED 0</span><span>AED {priceMax}</span>
         </div>
       </div>
-      <div>
-        <p className="mb-3 text-xs font-bold uppercase tracking-widest">Origin</p>
-        <div className="flex flex-col gap-2">
-          {ORIGINS.map((o) => (
-            <label key={o} className="flex cursor-pointer items-center gap-2 text-sm">
-              <input type="checkbox" checked={selectedOrigins.includes(o)}
-                onChange={() => toggleOrigin(o)} className="h-4 w-4 accent-crimson" />
-              {o}
-            </label>
-          ))}
+
+      {types.length > 0 && (
+        <div>
+          <p className="mb-3 text-xs font-bold uppercase tracking-widest">Type</p>
+          <div className="flex flex-col gap-2">
+            {types.map((t) => (
+              <label key={t} className="flex cursor-pointer items-center gap-2 text-sm">
+                <input type="checkbox" checked={selectedTypes.includes(t)}
+                  onChange={() => toggleType(t)} className="h-4 w-4 accent-crimson" />
+                {t}
+              </label>
+            ))}
+          </div>
         </div>
-      </div>
-      <div>
-        <p className="mb-3 text-xs font-bold uppercase tracking-widest">Quality</p>
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <input type="checkbox" checked={grassFedOnly}
-            onChange={(e) => setGrassFedOnly(e.target.checked)} className="h-4 w-4 accent-crimson" />
-          Grass-fed only
-        </label>
-      </div>
+      )}
+
+      {origins.length > 0 && (
+        <div>
+          <p className="mb-3 text-xs font-bold uppercase tracking-widest">Origin</p>
+          <div className="flex flex-col gap-2">
+            {origins.map((o) => (
+              <label key={o} className="flex cursor-pointer items-center gap-2 text-sm">
+                <input type="checkbox" checked={selectedOrigins.includes(o)}
+                  onChange={() => toggleOrigin(o)} className="h-4 w-4 accent-crimson" />
+                {o}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {hasGrassFed && (
+        <div>
+          <p className="mb-3 text-xs font-bold uppercase tracking-widest">Quality</p>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input type="checkbox" checked={grassFedOnly}
+              onChange={(e) => setGrassFedOnly(e.target.checked)} className="h-4 w-4 accent-crimson" />
+            Grass-fed only
+          </label>
+        </div>
+      )}
     </div>
   );
 }

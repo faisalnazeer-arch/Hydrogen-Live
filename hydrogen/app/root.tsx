@@ -130,6 +130,13 @@ const LAYOUT_QUERY = `#graphql
         }
       }
     }
+
+    announcementBar: metaobjects(type: "mls_announcement_bar", first: 1) {
+      nodes {
+        id
+        fields { key value }
+      }
+    }
   }
 ` as const;
 
@@ -173,32 +180,20 @@ function parseNavEntries(nodes: any[]): NavEntry[] {
 }
 
 // ── Footer parsers ────────────────────────────────────────────────────────────
-const FOOTER_SETTINGS_FALLBACK: FooterSettings = {
-  brandText: "Premium fresh red meat — beef, lamb, mutton & specialty cuts — delivered across the UAE & Oman.",
-  instagramUrl: "",
-  facebookUrl: "",
-  contactHeading: "Get in Touch",
-  address: "Muscat, Oman & Dubai, UAE",
-  phone: "+968 0000 0000",
-  email: "hello@mls.com",
-  copyright: "Muscat Livestock Store. 100% Halal certified.",
-  bottomTagline: "Premium butcher cuts · Delivered fresh",
-};
-
-function parseFooterSettings(nodes: any[]): FooterSettings {
+function parseFooterSettings(nodes: any[]): FooterSettings | null {
   const node = nodes[0];
-  if (!node) return FOOTER_SETTINGS_FALLBACK;
+  if (!node) return null;
   const f = Object.fromEntries(node.fields.map((x: any) => [x.key, x]));
   return {
-    brandText:      f.brand_text?.value      ?? FOOTER_SETTINGS_FALLBACK.brandText,
+    brandText:      f.brand_text?.value      ?? "",
     instagramUrl:   f.instagram_url?.value   ?? "",
     facebookUrl:    f.facebook_url?.value    ?? "",
-    contactHeading: f.contact_heading?.value ?? FOOTER_SETTINGS_FALLBACK.contactHeading,
-    address:        f.address?.value         ?? FOOTER_SETTINGS_FALLBACK.address,
-    phone:          f.phone?.value           ?? FOOTER_SETTINGS_FALLBACK.phone,
-    email:          f.email?.value           ?? FOOTER_SETTINGS_FALLBACK.email,
-    copyright:      f.copyright?.value       ?? FOOTER_SETTINGS_FALLBACK.copyright,
-    bottomTagline:  f.bottom_tagline?.value  ?? FOOTER_SETTINGS_FALLBACK.bottomTagline,
+    contactHeading: f.contact_heading?.value ?? "",
+    address:        f.address?.value         ?? "",
+    phone:          f.phone?.value           ?? "",
+    email:          f.email?.value           ?? "",
+    copyright:      f.copyright?.value       ?? "",
+    bottomTagline:  f.bottom_tagline?.value  ?? "",
   };
 }
 
@@ -223,6 +218,16 @@ function parseFooterColumns(nodes: any[]): FooterColumn[] {
     .sort((a, b) => a.position - b.position);
 }
 
+function parseAnnouncementMessages(nodes: any[]): string[] {
+  const node = nodes[0];
+  if (!node) return [];
+  const f = Object.fromEntries(node.fields.map((x: any) => [x.key, x]));
+  return [
+    f.message_1?.value, f.message_2?.value, f.message_3?.value,
+    f.message_4?.value, f.message_5?.value,
+  ].filter((m): m is string => typeof m === "string" && m.trim().length > 0);
+}
+
 // ── Loader ────────────────────────────────────────────────────────────────────
 export async function loader({ context, request }: LoaderFunctionArgs) {
   const lang = request.headers
@@ -236,18 +241,21 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const all = parseNavEntries(data?.navEntries?.nodes ?? []);
     const footerSettings = parseFooterSettings(data?.footerSettings?.nodes ?? []);
     const footerColumns = parseFooterColumns(data?.footerColumns?.nodes ?? []);
+    const announcementMessages = parseAnnouncementMessages(data?.announcementBar?.nodes ?? []);
     return {
       mainMenu: all.filter((e) => e.menu === "main"),
       secondaryMenu: all.filter((e) => e.menu === "secondary"),
       footerSettings,
       footerColumns,
+      announcementMessages,
     };
   } catch {
     return {
       mainMenu: [] as NavEntry[],
       secondaryMenu: [] as NavEntry[],
-      footerSettings: FOOTER_SETTINGS_FALLBACK,
+      footerSettings: null as FooterSettings | null,
       footerColumns: [] as FooterColumn[],
+      announcementMessages: [] as string[],
     };
   }
 }
@@ -299,13 +307,13 @@ function LocaleSync() {
 }
 
 export default function App() {
-  const { mainMenu, secondaryMenu, footerSettings, footerColumns } = useLoaderData<typeof loader>();
+  const { mainMenu, secondaryMenu, footerSettings, footerColumns, announcementMessages } = useLoaderData<typeof loader>();
   return (
     <QueryClientProvider client={queryClient}>
       <LocaleSync />
       <CartSyncWrapper />
       <div className="flex min-h-screen flex-col">
-        <AnnouncementBar />
+        <AnnouncementBar messages={announcementMessages} />
         <Header mainMenu={mainMenu} secondaryMenu={secondaryMenu} />
         <main className="flex-1">
           <Outlet />

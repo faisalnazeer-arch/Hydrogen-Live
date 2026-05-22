@@ -2,24 +2,22 @@ import { useState } from "react";
 import { X, Globe } from "lucide-react";
 import { useLocaleStore } from "@/stores/localeStore";
 
-const MESSAGES = [
-  "Free same-day delivery in Muscat & Dubai over AED 150",
-  "100% Halal certified · Premium butcher cuts delivered fresh",
-  "New: Australian Wagyu MB 8/9 — limited stock",
-];
+interface AnnouncementBarProps {
+  messages?: string[];
+}
 
-export function AnnouncementBar() {
+export function AnnouncementBar({ messages = [] }: AnnouncementBarProps) {
   const [open, setOpen] = useState(true);
   const locale = useLocaleStore((s) => s.locale);
   const setLocale = useLocaleStore((s) => s.setLocale);
-  if (!open) return null;
+  if (!open || messages.length === 0) return null;
   return (
     <div className="bg-crimson text-crimson-foreground">
       <div className="container relative mx-auto flex items-center justify-between gap-3 px-4 py-2 text-xs sm:text-sm">
         <div className="hidden w-24 sm:block" aria-hidden />
         <div className="flex flex-1 items-center justify-center overflow-hidden">
           <div className="flex animate-[marquee_30s_linear_infinite] gap-12 whitespace-nowrap font-medium tracking-wide">
-            {[...MESSAGES, ...MESSAGES].map((m, i) => (
+            {[...messages, ...messages].map((m, i) => (
               <span key={i}>★ {m}</span>
             ))}
           </div>

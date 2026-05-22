@@ -114,7 +114,7 @@ export function Header({ mainMenu = [], secondaryMenu = [] }: HeaderProps) {
               </button>
             </div>
             <div className="mt-3">
-              <SearchAutosuggest variant="mobile" />
+              <SearchAutosuggest onNavigate={closeMobile} />
             </div>
             <nav className="mt-6 flex flex-col gap-1 text-sm">
               {mobileLinks.map(({ label, url, Icon }) => (
@@ -154,7 +154,7 @@ export function Header({ mainMenu = [], secondaryMenu = [] }: HeaderProps) {
 
         <div className="ms-4 hidden flex-1 lg:block">
           <div className="mx-auto max-w-xl">
-            <SearchAutosuggest variant="desktop" />
+            <SearchAutosuggest />
           </div>
         </div>
 
@@ -214,7 +214,7 @@ export function Header({ mainMenu = [], secondaryMenu = [] }: HeaderProps) {
 
       {/* Mobile search row */}
       <div className="border-t border-border bg-card px-4 py-2 lg:hidden">
-        <SearchAutosuggest variant="mobile" />
+        <SearchAutosuggest />
       </div>
 
       {/* Nav rows (desktop) */}

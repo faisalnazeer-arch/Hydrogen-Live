@@ -4,22 +4,19 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Minus, Plus, Trash2, ExternalLink, Loader2, ShoppingBag,
-  RefreshCw, Ticket, Gift, FileText, CheckCircle, XCircle, X,
+  RefreshCw, Ticket, FileText, CheckCircle, XCircle, X,
   Truck,
 } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { formatPrice, shopifyImageUrl } from "@/lib/shopify";
 import { useT } from "@/i18n/strings";
 import { useCartDrawerConfig } from "@/lib/cartDrawerConfig";
-
-const FREE_SHIPPING_THRESHOLD = 150;
 
 function parseBold(text: string): React.ReactNode {
   const parts = text.split(/\*\*(.*?)\*\*/g);
@@ -28,7 +25,7 @@ function parseBold(text: string): React.ReactNode {
   );
 }
 
-type Panel = "discount" | "giftcard" | "note";
+type Panel = "discount" | "delivery" | "note";
 
 export function CartDrawer() {
   const {
@@ -128,14 +125,10 @@ export function CartDrawer() {
   };
 
   const togglePanel = (p: Panel) => {
-    if (p === "note") {
-      setNoteOpen(true);
-      return;
-    }
+    if (p === "note") { setNoteOpen(true); return; }
+    if (p === "delivery") { setDeliveryOpen(true); return; }
     setActivePanel((cur) => (cur === p ? "discount" : p));
   };
-
-  const itemLabel = totalItems === 1 ? t("cart.item") : t("cart.items");
 
   const tabs: { id: Panel; icon: React.ReactNode; label: string; badge?: number }[] = [
     {
@@ -145,10 +138,9 @@ export function CartDrawer() {
       badge: discountCodes.filter((d) => d.applicable).length || undefined,
     },
     {
-      id: "giftcard",
-      icon: <Gift className="h-5 w-5" />,
-      label: "Gift card",
-      badge: appliedGiftCards.length || undefined,
+      id: "delivery",
+      icon: <Truck className="h-5 w-5" />,
+      label: "Delivery info",
     },
     {
       id: "note",
@@ -453,51 +445,6 @@ export function CartDrawer() {
                           {!dc.applicable && <span className="text-destructive">invalid</span>}
                         </span>
                         <button type="button" aria-label="Remove" onClick={() => removeDiscountCode(dc.code)} disabled={isApplyingCode} className="ml-1 text-muted-foreground hover:text-crimson disabled:opacity-40">
-                          <X className="h-3 w-3" />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-
-            {activePanel === "giftcard" && (
-              <div className="rounded-md border border-border bg-card px-2 py-1.5">
-                <div className="flex gap-1.5">
-                  <Input
-                    value={giftCardInput}
-                    onChange={(e) => { setGiftCardInput(e.target.value); setGiftCardError(null); }}
-                    onKeyDown={(e) => e.key === "Enter" && handleApplyGiftCard()}
-                    placeholder="Enter gift card code"
-                    className="h-8 text-xs"
-                    disabled={isApplyingCode}
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleApplyGiftCard}
-                    disabled={isApplyingCode || !giftCardInput.trim()}
-                    className="h-8 shrink-0 px-3 text-xs bg-crimson text-crimson-foreground hover:bg-rich-red border-crimson"
-                  >
-                    {isApplyingCode ? <Loader2 className="h-3 w-3 animate-spin" /> : "Apply"}
-                  </Button>
-                </div>
-                {giftCardError && (
-                  <p className="mt-1 flex items-center gap-1 text-[10px] text-destructive">
-                    <XCircle className="h-3 w-3 shrink-0" /> {giftCardError}
-                  </p>
-                )}
-                {appliedGiftCards.length > 0 && (
-                  <ul className="mt-1 space-y-0.5">
-                    {appliedGiftCards.map((gc) => (
-                      <li key={gc.id} className="flex items-center justify-between rounded bg-muted/50 px-2 py-0.5 text-[10px]">
-                        <span className="flex items-center gap-1">
-                          <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
-                          <span className="font-semibold">···· {gc.lastCharacters}</span>
-                          <span className="text-muted-foreground">-{formatPrice(gc.amountUsed.amount, gc.amountUsed.currencyCode)}</span>
-                        </span>
-                        <button type="button" aria-label="Remove" onClick={() => removeGiftCard(gc.id)} disabled={isApplyingCode} className="ml-1 text-muted-foreground hover:text-crimson disabled:opacity-40">
                           <X className="h-3 w-3" />
                         </button>
                       </li>

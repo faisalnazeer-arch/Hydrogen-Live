@@ -226,6 +226,23 @@ const HOME_QUERY = `#graphql
         }
       }
     }
+    cutsSection: metaobjects(type: "mls_cuts_section", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
+          references(first: 12) {
+            nodes {
+              ... on Metaobject {
+                id
+                fields { key value }
+              }
+            }
+          }
+        }
+      }
+    }
     featuredCollections: metaobjects(type: "featured_collection", first: 10) {
       nodes {
         id
@@ -494,6 +511,40 @@ function parseOriginSection(nodes: any[]): OriginSectionData | null {
   };
 }
 
+export interface CutItem {
+  id: string;
+  label: string;
+  emoji: string;
+  url: string;
+}
+
+export interface CutsSectionData {
+  eyebrow: string;
+  heading: string;
+  items: CutItem[];
+}
+
+function parseCutsSection(nodes: any[]): CutsSectionData | null {
+  const node = nodes[0];
+  if (!node) return null;
+  const fm = Object.fromEntries(node.fields.map((f: any) => [f.key, f]));
+  const items: CutItem[] = (fm.items?.references?.nodes ?? []).map((item: any) => {
+    const f = Object.fromEntries(item.fields.map((x: any) => [x.key, x]));
+    return {
+      id: item.id as string,
+      label: (f.label?.value ?? "") as string,
+      emoji: (f.emoji?.value ?? "🥩") as string,
+      url: (f.url?.value ?? "/") as string,
+    };
+  }).filter((c: CutItem) => c.label);
+  if (items.length === 0) return null;
+  return {
+    eyebrow: (fm.eyebrow?.value ?? "Butcher's picks") as string,
+    heading: (fm.heading?.value ?? "Shop by Cuts") as string,
+    items,
+  };
+}
+
 function parseCollectionSectionConfig(nodes: any[]): { heading: string; subHeading: string } | null {
   const node = nodes[0];
   if (!node) return null;
@@ -508,12 +559,6 @@ export const meta: MetaFunction = () => [
   { name: "description", content: "Premium Wagyu, Angus, lamb and more — delivered." },
 ];
 
-// Fallback sections shown when no metaobject entries exist (no products — CategorySection will client-fetch)
-const FALLBACK_COLLECTIONS: FeaturedCollectionEntry[] = [
-  { id: "f1", handle: "all-beef", title: "Premium Beef", subTitle: "The butcher's selection", products: [] },
-  { id: "f2", handle: "all-lamb", title: "Lamb & Mutton", subTitle: "Tender, fresh, halal", products: [] },
-  { id: "f3", handle: "australian-wagyu-beef-mb-4-5", title: "Australian Wagyu", subTitle: "Marbling MB 4/5", products: [] },
-];
 
 function pickReels(edges: any[]): ReelProduct[] {
   const reels: ReelProduct[] = [];
@@ -549,7 +594,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
   const parsed = parseFeaturedCollections(data?.featuredCollections?.nodes ?? []);
   const collectionSectionConfig = parseCollectionSectionConfig(data?.collectionSectionConfig?.nodes ?? []);
-  const rawSection = buildFeaturedSection(parsed.length > 0 ? parsed : FALLBACK_COLLECTIONS);
+  const rawSection = buildFeaturedSection(parsed);
   const featuredSection = rawSection && collectionSectionConfig
     ? { ...rawSection, title: collectionSectionConfig.heading, subTitle: collectionSectionConfig.subHeading || undefined }
     : rawSection;
@@ -560,6 +605,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const categorySection = parseCategorySection(data?.categorySection?.nodes ?? []);
   const originSection = parseOriginSection(data?.originSection?.nodes ?? []);
   const valueBanner = parseValueBanner(data?.valueBanner?.nodes ?? []);
+  const cutsSection = parseCutsSection(data?.cutsSection?.nodes ?? []);
   const reelsConfig = parseReelsSectionConfig(data?.reelsSection?.nodes ?? []);
 
   // Use reel_item entries from metaobject; fall back to tag:reel product query when none exist
@@ -589,11 +635,12 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     categorySection,
     originSection,
     valueBanner,
+    cutsSection,
   };
 }
 
 export default function Home() {
-  const { heroSlides, trustBadges, featuredSection, collectionCards, priceSection, priceTiles, promo, reelsLabel, reelsHeading, reels, categorySection, originSection, valueBanner } = useLoaderData<typeof loader>();
+  const { heroSlides, trustBadges, featuredSection, collectionCards, priceSection, priceTiles, promo, reelsLabel, reelsHeading, reels, categorySection, originSection, valueBanner, cutsSection } = useLoaderData<typeof loader>();
   const t = useT();
   return (
     <>
@@ -617,7 +664,7 @@ export default function Home() {
       )}
       <ReelsCarousel reels={reels} label={reelsLabel} heading={reelsHeading} />
       <ShopByCategory section={categorySection} />
-      <ShopByCuts />
+      <ShopByCuts section={cutsSection} />
       <ShopByOrigin section={originSection} />
       <ValueBoxesBanner banner={valueBanner} />
       <RecentlyViewed />

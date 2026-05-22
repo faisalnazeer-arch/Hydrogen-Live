@@ -4,7 +4,6 @@ import { Link } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import heroImg from "@/assets/hero-meat.jpg";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -76,17 +75,6 @@ function parseSlides(nodes: RawMetaobjectNode[]): HeroSlide[] {
     .filter((s): s is HeroSlide => s !== null);
 }
 
-// ── Fallback ───────────────────────────────────────────────────────────────
-
-const STATIC_SLIDE: HeroSlide = {
-  id: "static",
-  desktopImage: null,
-  mobileImage: null,
-  content: null,
-  buttonText: null,
-  buttonUrl: null,
-};
-
 // ── Main component ─────────────────────────────────────────────────────────
 
 interface HeroBannerProps {
@@ -97,7 +85,8 @@ const AUTOPLAY_MS = 5000;
 
 export function HeroBanner({ slides: rawSlides = [] }: HeroBannerProps) {
   const parsed = parseSlides(rawSlides);
-  const slides = parsed.length > 0 ? parsed : [STATIC_SLIDE];
+  if (parsed.length === 0) return null;
+  const slides = parsed;
   const count = slides.length;
   const isSingle = count === 1;
 
@@ -183,17 +172,14 @@ export function HeroBanner({ slides: rawSlides = [] }: HeroBannerProps) {
 // ── Slide ──────────────────────────────────────────────────────────────────
 
 function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
-  const isStatic = slide.id === "static";
-  const hasContent = !isStatic && (slide.content || slide.buttonText);
+  const hasContent = slide.content || slide.buttonText;
 
   return (
-    // shrink-0 + explicit width keeps each slide at exactly 100vw inside the flex track
     <div
       className="relative h-[420px] sm:h-[500px] md:h-[550px]"
       style={{ flexShrink: 0, width: "100%" }}
     >
-      {/* Desktop image */}
-      {slide.desktopImage ? (
+      {slide.desktopImage && (
         <img
           src={slide.desktopImage.url}
           alt={slide.desktopImage.altText ?? ""}
@@ -203,16 +189,7 @@ function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
             slide.mobileImage ? "hidden md:block" : "block",
           )}
         />
-      ) : isStatic ? (
-        <img
-          src={heroImg}
-          alt="Premium fresh cuts"
-          draggable={false}
-          className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover opacity-50"
-        />
-      ) : null}
-
-      {/* Mobile image */}
+      )}
       {slide.mobileImage && (
         <img
           src={slide.mobileImage.url}
@@ -224,70 +201,16 @@ function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
           )}
         />
       )}
-
-      {/* Gradient overlay — pointer-events-none so arrows/dots stay clickable */}
       <div
         className={cn(
           "pointer-events-none absolute inset-0 transition-opacity duration-500",
-          isStatic || hasContent
+          hasContent
             ? "bg-gradient-to-r from-charcoal/80 via-charcoal/40 to-transparent"
             : "bg-black/10",
         )}
       />
-
-      {/* Content — outer wrapper is pointer-events-none; re-enable only on CTAs */}
       <div className="pointer-events-none absolute inset-0">
-        {isStatic ? (
-          <StaticContent />
-        ) : hasContent ? (
-          <DynamicContent slide={slide} active={active} />
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-// ── Static fallback content ────────────────────────────────────────────────
-
-function StaticContent() {
-  return (
-    <div className="flex h-full items-center">
-      <div className="container mx-auto px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-          className="max-w-xl"
-        >
-          <span className="mb-4 inline-flex items-center rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-gold">
-            ★ Premium Butcher · Est. Muscat
-          </span>
-          <h1 className="font-display text-4xl font-extrabold leading-[1.05] text-off-white sm:text-5xl md:text-6xl">
-            Cuts worthy of a{" "}
-            <span className="italic text-gold">centerpiece</span>.
-          </h1>
-          <p className="mt-5 max-w-md text-base text-off-white/80 md:text-lg">
-            Hand-selected beef, lamb & specialty meats from the world's finest
-            farms — delivered fresh to your door across the UAE & Oman.
-          </p>
-          {/* pointer-events-auto restores clicks on these buttons */}
-          <div className="pointer-events-auto mt-8 flex flex-wrap gap-3">
-            <Link to="/collections/all-beef">
-              <Button size="lg" className="bg-crimson text-crimson-foreground hover:bg-rich-red">
-                Shop Beef
-              </Button>
-            </Link>
-            <Link to="/collections/australian-wagyu-beef-mb-4-5">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-gold bg-transparent text-gold hover:bg-gold hover:text-gold-foreground"
-              >
-                Discover Wagyu
-              </Button>
-            </Link>
-          </div>
-        </motion.div>
+        {hasContent ? <DynamicContent slide={slide} active={active} /> : null}
       </div>
     </div>
   );

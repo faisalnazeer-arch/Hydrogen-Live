@@ -10,11 +10,12 @@ import {
 import type { FooterSettings, FooterColumn, FooterLink } from "~/root";
 
 interface Props {
-  settings: FooterSettings;
+  settings: FooterSettings | null;
   columns: FooterColumn[];
 }
 
 export function Footer({ settings, columns }: Props) {
+  if (!settings) return null;
   const year = new Date().getFullYear();
 
   return (
