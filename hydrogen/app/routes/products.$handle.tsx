@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
-import { Heart, Minus, Plus, Truck, ShieldCheck, RefreshCw, Loader2 } from "lucide-react";
+import { Minus, Plus, Truck, ShieldCheck, RefreshCw, Loader2 } from "lucide-react";
 import { OriginBadge } from "~/components/product/OriginBadge";
 import { StockBadge } from "~/components/product/StockBadge";
-import { formatPrice, getOriginFromTags, parseRatingMetafields, shopifyImageUrl, type ShopifyProduct } from "~/lib/shopify";
+import { formatPrice, getOriginFromProduct, parseRatingMetafields, shopifyImageUrl, type ShopifyProduct } from "~/lib/shopify";
 import { useCartStore } from "~/stores/cartStore";
-import { useWishlistStore } from "~/stores/wishlistStore";
 import { toast } from "sonner";
 import { Link } from "react-router";
 import mlsLogo from "~/assets/mls-logo.png";
@@ -14,7 +13,42 @@ import { fetchJudgemeReviews, buildRatingSummary } from "~/lib/judgeme";
 import { JudgemeReviews } from "~/components/reviews/JudgemeReviews";
 import { StarRating } from "~/components/reviews/StarRating";
 import { SubscriptionSelector, parseSellingPlanGroups } from "~/components/product/SubscriptionSelector";
+import { ProductCard } from "~/components/product/ProductCard";
+import { HScroller } from "~/components/home/HScroller";
 import { useT } from "~/i18n/strings";
+
+const RECOMMENDATIONS_QUERY = `#graphql
+  query ProductRecommendations($productId: ID!, $country: CountryCode, $language: LanguageCode)
+  @inContext(country: $country, language: $language) {
+    productRecommendations(productId: $productId) {
+      id title handle vendor
+      availableForSale
+      tags
+      productType
+      priceRange {
+        minVariantPrice { amount currencyCode }
+        maxVariantPrice { amount currencyCode }
+      }
+      compareAtPriceRange { minVariantPrice { amount currencyCode } }
+      images(first: 4) { edges { node { url altText width height } } }
+      variants(first: 20) {
+        edges {
+          node {
+            id title availableForSale
+            price { amount currencyCode }
+            compareAtPrice { amount currencyCode }
+            selectedOptions { name value }
+          }
+        }
+      }
+      options { name values }
+      metafields(identifiers: [
+        {namespace: "reviews", key: "rating"}
+        {namespace: "reviews", key: "rating_count"}
+      ]) { key value }
+    }
+  }
+` as const;
 
 const PRODUCT_QUERY = `#graphql
   query Product($handle: String!, $language: LanguageCode, $country: CountryCode)
@@ -83,9 +117,12 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   // Extract numeric Shopify product ID from the GID (gid://shopify/Product/123…)
   const externalId = data.product.id.split("/").pop() ?? undefined;
 
-  const reviewsData = await fetchJudgemeReviews(
-    handle, shopDomain, judgemeToken, 1, 10, externalId
-  );
+  const [reviewsData, recsData] = await Promise.all([
+    fetchJudgemeReviews(handle, shopDomain, judgemeToken, 1, 10),
+    context.storefront.query(RECOMMENDATIONS_QUERY, {
+      variables: { productId: data.product.id, language, country: "AE" as const },
+    }),
+  ]);
 
   const rating = buildRatingSummary(reviewsData);
 
@@ -114,6 +151,10 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     }
   }
 
+  const recommendations: ShopifyProduct[] = (recsData?.productRecommendations ?? [])
+    .slice(0, 8)
+    .map((node: any) => ({ node }));
+
   return {
     product: data.product,
     sellingPlanGroupsRaw: data.product.sellingPlanGroups?.nodes ?? [],
@@ -121,6 +162,8 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     reviews: reviewsData.reviews,
     reviewsTotalCount: reviewsData.total_count,
     rating,
+    externalId: externalId ?? null,
+    recommendations,
   };
 }
 
@@ -130,10 +173,10 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export default function Product() {
   const t = useT();
-  const { product, sellingPlanGroupsRaw, discountMap, reviews, reviewsTotalCount, rating } = useLoaderData<typeof loader>();
+  const { product, sellingPlanGroupsRaw, discountMap, reviews, reviewsTotalCount, rating, externalId, recommendations } = useLoaderData<typeof loader>();
   const variants = product.variants.nodes;
   const images = product.images.nodes;
-  const origin = getOriginFromTags(product.tags);
+  const origin = getOriginFromProduct(product.tags, product.title);
 
   // Use the rating built from the reviews response (reliable).
   // Fall back to Shopify metafields (written by JudgMe sync) if the API returned 0.
@@ -153,8 +196,6 @@ export default function Product() {
 
   const addItem = useCartStore((s) => s.addItem);
   const isLoading = useCartStore((s) => s.isLoading);
-  const wishlisted = useWishlistStore((s) => s.has(product.id));
-  const toggleWishlist = useWishlistStore((s) => s.toggle);
 
   // Resolve variant from the full combination of selected options
   const variant =
@@ -462,14 +503,6 @@ export default function Product() {
               )}
             </button>
 
-            {/* Wishlist */}
-            <button
-              type="button"
-              onClick={() => toggleWishlist(product.id)}
-              className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-crimson hover:text-crimson"
-            >
-              <Heart className={`h-5 w-5 ${wishlisted ? "fill-crimson text-crimson" : ""}`} />
-            </button>
           </div>
 
           {/* Trust badges */}
@@ -508,8 +541,31 @@ export default function Product() {
           rating={rating}
           totalCount={reviewsTotalCount}
           handle={product.handle}
+          externalId={externalId ?? undefined}
+          metaAverage={displayRating.average}
+          metaCount={displayCount}
         />
       </div>
+
+      {/* Recommended products */}
+      {recommendations.length > 0 && (
+        <section className="container mx-auto px-4 pb-16">
+          <div className="mb-6 border-t border-border pt-10">
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">You may also like</p>
+            <h2 className="font-display text-2xl font-extrabold md:text-3xl">Recommended Products</h2>
+          </div>
+          <HScroller>
+            {recommendations.map((rec) => (
+              <div
+                key={rec.node.id}
+                className="w-[46%] flex-shrink-0 snap-start sm:w-[32%] lg:w-[23%] xl:w-[19%]"
+              >
+                <ProductCard product={rec} />
+              </div>
+            ))}
+          </HScroller>
+        </section>
+      )}
     </div>
   );
 }

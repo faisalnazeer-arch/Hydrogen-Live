@@ -19,8 +19,7 @@ export interface JudgemeReviewsResponse {
   reviews: JudgemeReview[];
   current_page: number;
   per_page: number;
-  total_count: number;
-  /** Average rating returned by JudgMe in the reviews response */
+  total_count?: number;
   rating?: number;
 }
 
@@ -34,12 +33,12 @@ export interface JudgemeRatingSummary {
 export async function fetchJudgemeReviews(
   handle: string,
   shopDomain: string,
-  apiToken: string,
+  apiToken: string | undefined,
   page = 1,
   perPage = 10,
-  /** Numeric Shopify product ID extracted from the GID — strengthens per-product filtering */
   externalId?: string,
 ): Promise<JudgemeReviewsResponse> {
+  if (!apiToken) return emptyResponse(page, perPage);
   let url =
     `${JUDGEME_BASE}/reviews?api_token=${encodeURIComponent(apiToken)}` +
     `&shop_domain=${encodeURIComponent(shopDomain)}` +
@@ -60,8 +59,9 @@ export async function fetchJudgemeReviews(
 export async function fetchJudgemeRating(
   shopifyProductGid: string,
   shopDomain: string,
-  apiToken: string,
+  apiToken: string | undefined,
 ): Promise<JudgemeRatingSummary> {
+  if (!apiToken) return emptySummary();
   // Judge.me uses the numeric Shopify product ID as external_id
   const externalId = shopifyProductGid.split("/").pop() ?? "";
   const url =
@@ -98,15 +98,14 @@ export function buildRatingSummary(
     const idx = Math.min(Math.max(Math.round(r.rating) - 1, 0), 4);
     histogram[idx]++;
   }
-  // Prefer the API-provided average; fall back to computing from loaded reviews
   const computedAvg =
     data.reviews.length > 0 ? ratingSum / data.reviews.length : 0;
   const average = data.rating != null && data.rating > 0 ? data.rating : computedAvg;
-  return { average, count: data.total_count, histogram };
+  return { average, count: data.total_count ?? 0, histogram };
 }
 
 function emptyResponse(page: number, perPage: number): JudgemeReviewsResponse {
-  return { reviews: [], current_page: page, per_page: perPage, total_count: 0 };
+  return { reviews: [], current_page: page, per_page: perPage, total_count: undefined };
 }
 
 function emptySummary(): JudgemeRatingSummary {

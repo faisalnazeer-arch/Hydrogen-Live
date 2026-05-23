@@ -7,6 +7,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 
   const url = new URL(request.url);
   const page = Number(url.searchParams.get("page") ?? "2");
+  const externalId = url.searchParams.get("eid") ?? undefined;
 
   const { env } = context;
   const data = await fetchJudgemeReviews(
@@ -15,7 +16,8 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     env.JUDGEME_API_TOKEN,
     page,
     10,
+    externalId,
   );
 
-  return Response.json({ reviews: data.reviews, totalCount: data.total_count });
+  return Response.json({ reviews: data.reviews, totalCount: data.total_count ?? 0 });
 }

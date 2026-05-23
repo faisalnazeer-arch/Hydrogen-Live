@@ -1,16 +1,40 @@
 import { useState, useMemo } from "react";
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
-import { useLoaderData, useNavigate, Link } from "react-router";
-import { Heart, SlidersHorizontal, X, ChevronDown, Loader2 } from "lucide-react";
-import { OriginBadge } from "~/components/product/OriginBadge";
-import { StockBadge } from "~/components/product/StockBadge";
-import { formatPrice, getOriginFromTags, parseRatingMetafields, shopifyImageUrl, type ShopifyProduct } from "~/lib/shopify";
-import { StarRating } from "~/components/reviews/StarRating";
-import { useQuickBuyStore } from "~/stores/quickBuyStore";
-import { useCartStore } from "~/stores/cartStore";
-import { useWishlistStore } from "~/stores/wishlistStore";
-import { toast } from "sonner";
-import mlsLogo from "~/assets/mls-logo.png";
+import { useLoaderData, useNavigate, useNavigation } from "react-router";
+import { SlidersHorizontal, X, ChevronDown, ChevronUp } from "lucide-react";
+import { getOriginFromProduct, ORIGIN_LABELS, type ShopifyProduct } from "~/lib/shopify";
+import { ProductCard } from "~/components/product/ProductCard";
+
+// ── Cut keywords — checked against product title + tags ───────────────────────
+const CUT_KEYWORDS: Array<{ key: string; label: string }> = [
+  { key: "mince",      label: "Mince"        },
+  { key: "mishkak",   label: "Mishkak"      },
+  { key: "cubes",     label: "Cubes"        },
+  { key: "chops",     label: "Chops"        },
+  { key: "steak",     label: "Steak"        },
+  { key: "ribs",      label: "Ribs"         },
+  { key: "shank",     label: "Shanks"       },
+  { key: "rack",      label: "Rack"         },
+  { key: "burger",    label: "Burgers"      },
+  { key: "leg",       label: "Leg"          },
+  { key: "shoulder",  label: "Shoulder"     },
+  { key: "fillet",    label: "Fillet"       },
+  { key: "biryani",   label: "Biryani Cut"  },
+  { key: "curry cut", label: "Curry Cut"    },
+  { key: "bone-in",   label: "Bone-in"      },
+  { key: "boneless",  label: "Boneless"     },
+  { key: "whole",     label: "Whole"        },
+  { key: "tenderloin",label: "Tenderloin"   },
+  { key: "slice",     label: "Sliced"       },
+  { key: "neck",      label: "Neck"         },
+  { key: "breast",    label: "Breast"       },
+  { key: "loin",      label: "Loin"         },
+];
+
+function getProductCuts(tags: string[], title: string): string[] {
+  const search = `${title} ${tags.join(" ")}`.toLowerCase();
+  return CUT_KEYWORDS.filter(({ key }) => search.includes(key)).map(({ label }) => label);
+}
 
 const COLLECTION_QUERY = `#graphql
   query Collection($handle: String!, $first: Int!, $sortKey: ProductCollectionSortKeys, $reverse: Boolean, $language: LanguageCode, $country: CountryCode)
@@ -80,6 +104,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     },
   });
   if (!data.collection) throw new Response("Not found", { status: 404 });
+
   return { collection: data.collection, sortIdx };
 }
 
@@ -95,10 +120,11 @@ export default function Collection() {
   const products: ShopifyProduct[] = collection.products.edges;
 
   const navigate = useNavigate();
+  const navigation = useNavigation();
+  const isLoading = navigation.state === "loading";
   const [selectedOrigins, setSelectedOrigins] = useState<string[]>([]);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedCuts, setSelectedCuts] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
-  const [grassFedOnly, setGrassFedOnly] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const allPrices = products.map((p) =>
@@ -107,50 +133,52 @@ export default function Collection() {
   const globalMax = Math.ceil(Math.max(...allPrices, 0));
   const priceMax = maxPrice ?? globalMax;
 
-  // Derive available filter options from actual products
-  const availableOrigins = useMemo(() => {
-    const set = new Set<string>();
+  // Build origin counts from actual products in this collection
+  const originCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
     for (const p of products) {
-      const o = getOriginFromTags(p.node.tags);
-      if (o && o !== "GRASS-FED") set.add(o);
+      const o = getOriginFromProduct(p.node.tags, p.node.title);
+      if (o && o !== "GRASS-FED") counts[o] = (counts[o] ?? 0) + 1;
     }
-    return Array.from(set).sort();
+    return counts;
   }, [products]);
 
-  const availableTypes = useMemo(() => {
-    const set = new Set<string>();
+  // Build cut counts from actual products in this collection
+  const cutCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
     for (const p of products) {
-      if (p.node.productType?.trim()) set.add(p.node.productType.trim());
+      for (const cut of getProductCuts(p.node.tags, p.node.title)) {
+        counts[cut] = (counts[cut] ?? 0) + 1;
+      }
     }
-    return Array.from(set).sort();
+    return counts;
   }, [products]);
-
-  const hasGrassFed = useMemo(
-    () => products.some((p) => p.node.tags.some((t) => t.toLowerCase().includes("grass"))),
-    [products]
-  );
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
       const price = parseFloat(p.node.priceRange.minVariantPrice.amount);
       if (price > priceMax) return false;
-      const origin = getOriginFromTags(p.node.tags);
+      const origin = getOriginFromProduct(p.node.tags, p.node.title);
       if (selectedOrigins.length > 0 && (!origin || !selectedOrigins.includes(origin))) return false;
-      if (selectedTypes.length > 0 && !selectedTypes.includes(p.node.productType?.trim() ?? "")) return false;
-      if (grassFedOnly && !p.node.tags.some((t) => t.toLowerCase().includes("grass"))) return false;
+      if (selectedCuts.length > 0) {
+        const productCuts = getProductCuts(p.node.tags, p.node.title);
+        if (!selectedCuts.some((c) => productCuts.includes(c))) return false;
+      }
       return true;
     });
-  }, [products, priceMax, selectedOrigins, selectedTypes, grassFedOnly]);
+  }, [products, priceMax, selectedOrigins, selectedCuts]);
 
   const toggleOrigin = (o: string) =>
     setSelectedOrigins((prev) =>
       prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o]
     );
 
-  const toggleType = (t: string) =>
-    setSelectedTypes((prev) =>
-      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]
+  const toggleCut = (c: string) =>
+    setSelectedCuts((prev) =>
+      prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
     );
+
+  const clearAll = () => { setSelectedOrigins([]); setSelectedCuts([]); setMaxPrice(null); };
 
   return (
     <div className="bg-background min-h-screen">
@@ -168,9 +196,9 @@ export default function Collection() {
         <aside className="hidden w-64 flex-shrink-0 lg:block">
           <FilterPanel
             globalMax={globalMax} priceMax={priceMax} setMaxPrice={setMaxPrice}
-            origins={availableOrigins} selectedOrigins={selectedOrigins} toggleOrigin={toggleOrigin}
-            types={availableTypes} selectedTypes={selectedTypes} toggleType={toggleType}
-            hasGrassFed={hasGrassFed} grassFedOnly={grassFedOnly} setGrassFedOnly={setGrassFedOnly}
+            originCounts={originCounts} selectedOrigins={selectedOrigins} toggleOrigin={toggleOrigin}
+            cutCounts={cutCounts} selectedCuts={selectedCuts} toggleCut={toggleCut}
+            onClearAll={clearAll}
           />
         </aside>
 
@@ -184,6 +212,11 @@ export default function Collection() {
                 className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium lg:hidden"
               >
                 <SlidersHorizontal className="h-4 w-4" /> Filters
+                {(selectedOrigins.length + selectedCuts.length) > 0 && (
+                  <span className="grid h-5 w-5 place-items-center rounded-full bg-crimson text-[10px] font-bold text-white">
+                    {selectedOrigins.length + selectedCuts.length}
+                  </span>
+                )}
               </button>
               <span className="text-sm text-muted-foreground">
                 {filtered.length} of {products.length} products
@@ -195,7 +228,7 @@ export default function Collection() {
                 onChange={(e) => {
                   const url = new URL(window.location.href);
                   url.searchParams.set("sort", e.target.value);
-                  navigate(url.pathname + url.search, { replace: true });
+                  navigate(url.pathname + url.search, { replace: true, preventScrollReset: true });
                 }}
                 className="appearance-none rounded-lg border border-border bg-card py-2 pl-3 pr-8 text-sm font-medium"
               >
@@ -218,26 +251,35 @@ export default function Collection() {
                 </div>
                 <FilterPanel
                   globalMax={globalMax} priceMax={priceMax} setMaxPrice={setMaxPrice}
-                  origins={availableOrigins} selectedOrigins={selectedOrigins} toggleOrigin={toggleOrigin}
-                  types={availableTypes} selectedTypes={selectedTypes} toggleType={toggleType}
-                  hasGrassFed={hasGrassFed} grassFedOnly={grassFedOnly} setGrassFedOnly={setGrassFedOnly}
+                  originCounts={originCounts} selectedOrigins={selectedOrigins} toggleOrigin={toggleOrigin}
+                  cutCounts={cutCounts} selectedCuts={selectedCuts} toggleCut={toggleCut}
+                  onClearAll={clearAll}
                 />
               </div>
             </div>
           )}
 
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
               <p className="text-lg font-medium">No products match your filters</p>
-              <button
-                type="button"
-                onClick={() => { setSelectedOrigins([]); setSelectedTypes([]); setMaxPrice(null); setGrassFedOnly(false); }}
-                className="mt-3 text-sm text-crimson underline"
-              >Clear filters</button>
+              <button type="button" onClick={clearAll} className="mt-3 text-sm text-crimson underline">
+                Clear filters
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
-              {filtered.map((p) => <ProductCard key={p.node.id} product={p} />)}
+              {filtered.map((p) => (
+                <ProductCard
+                  key={p.node.id}
+                  product={p}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -251,191 +293,118 @@ interface FilterPanelProps {
   globalMax: number;
   priceMax: number;
   setMaxPrice: (v: number | null) => void;
-  origins: string[];
+  originCounts: Record<string, number>;
   selectedOrigins: string[];
   toggleOrigin: (o: string) => void;
-  types: string[];
-  selectedTypes: string[];
-  toggleType: (t: string) => void;
-  hasGrassFed: boolean;
-  grassFedOnly: boolean;
-  setGrassFedOnly: (v: boolean) => void;
+  cutCounts: Record<string, number>;
+  selectedCuts: string[];
+  toggleCut: (c: string) => void;
+  onClearAll: () => void;
 }
 
-function FilterPanel({ globalMax, priceMax, setMaxPrice, origins, selectedOrigins, toggleOrigin, types, selectedTypes, toggleType, hasGrassFed, grassFedOnly, setGrassFedOnly }: FilterPanelProps) {
+function FilterSection({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <p className="mb-3 text-xs font-bold uppercase tracking-widest">Price (AED)</p>
-        <input type="range" min={0} max={globalMax} value={priceMax}
-          onChange={(e) => setMaxPrice(parseInt(e.target.value))}
-          className="w-full accent-crimson" />
-        <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-          <span>AED 0</span><span>AED {priceMax}</span>
-        </div>
+    <div className="border-b border-border pb-4">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between py-2 text-xs font-bold uppercase tracking-widest hover:text-crimson"
+      >
+        {title}
+        {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+      </button>
+      {open && <div className="mt-3">{children}</div>}
+    </div>
+  );
+}
+
+function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedOrigins, toggleOrigin, cutCounts, selectedCuts, toggleCut, onClearAll }: FilterPanelProps) {
+  const activeCount = selectedOrigins.length + selectedCuts.length + (priceMax < globalMax ? 1 : 0);
+  const sortedOrigins = Object.keys(originCounts).sort((a, b) =>
+    (ORIGIN_LABELS[a]?.label ?? a).localeCompare(ORIGIN_LABELS[b]?.label ?? b)
+  );
+  const sortedCuts = Object.keys(cutCounts).sort((a, b) => cutCounts[b] - cutCounts[a]);
+
+  return (
+    <div className="flex flex-col gap-0">
+      {/* Header */}
+      <div className="mb-4 flex items-center justify-between">
+        <p className="font-bold">Filters {activeCount > 0 && <span className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-crimson text-[10px] text-white">{activeCount}</span>}</p>
+        {activeCount > 0 && (
+          <button type="button" onClick={onClearAll} className="text-xs text-crimson hover:underline">
+            Clear all
+          </button>
+        )}
       </div>
 
-      {types.length > 0 && (
-        <div>
-          <p className="mb-3 text-xs font-bold uppercase tracking-widest">Type</p>
-          <div className="flex flex-col gap-2">
-            {types.map((t) => (
-              <label key={t} className="flex cursor-pointer items-center gap-2 text-sm">
-                <input type="checkbox" checked={selectedTypes.includes(t)}
-                  onChange={() => toggleType(t)} className="h-4 w-4 accent-crimson" />
-                {t}
-              </label>
-            ))}
-          </div>
+      {/* Price */}
+      <FilterSection title="Price (AED)">
+        <input
+          type="range" min={0} max={globalMax} value={priceMax}
+          onChange={(e) => setMaxPrice(parseInt(e.target.value) === globalMax ? null : parseInt(e.target.value))}
+          className="w-full accent-crimson"
+        />
+        <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+          <span>AED 0</span>
+          <span className="font-medium text-foreground">AED {priceMax}</span>
         </div>
+      </FilterSection>
+
+      {/* Shop by Origin */}
+      {sortedOrigins.length > 0 && (
+        <FilterSection title="Shop by Origin">
+          <div className="flex flex-col gap-1">
+            {sortedOrigins.map((code) => {
+              const info = ORIGIN_LABELS[code];
+              const label = info?.label ?? code;
+              const count = originCounts[code];
+              const checked = selectedOrigins.includes(code);
+              return (
+                <label key={code} className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted ${checked ? "bg-crimson/5 font-medium text-crimson" : ""}`}>
+                  <input type="checkbox" checked={checked} onChange={() => toggleOrigin(code)} className="h-4 w-4 accent-crimson flex-shrink-0" />
+                  <span className="flex-1">{label}</span>
+                  <span className="text-xs text-muted-foreground">({count})</span>
+                </label>
+              );
+            })}
+          </div>
+        </FilterSection>
       )}
 
-      {origins.length > 0 && (
-        <div>
-          <p className="mb-3 text-xs font-bold uppercase tracking-widest">Origin</p>
-          <div className="flex flex-col gap-2">
-            {origins.map((o) => (
-              <label key={o} className="flex cursor-pointer items-center gap-2 text-sm">
-                <input type="checkbox" checked={selectedOrigins.includes(o)}
-                  onChange={() => toggleOrigin(o)} className="h-4 w-4 accent-crimson" />
-                {o}
-              </label>
-            ))}
+      {/* Shop by Cuts */}
+      {sortedCuts.length > 0 && (
+        <FilterSection title="Shop by Cuts">
+          <div className="flex flex-col gap-1">
+            {sortedCuts.map((cut) => {
+              const count = cutCounts[cut];
+              const checked = selectedCuts.includes(cut);
+              return (
+                <label key={cut} className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted ${checked ? "bg-crimson/5 font-medium text-crimson" : ""}`}>
+                  <input type="checkbox" checked={checked} onChange={() => toggleCut(cut)} className="h-4 w-4 accent-crimson flex-shrink-0" />
+                  <span className="flex-1">{cut}</span>
+                  <span className="text-xs text-muted-foreground">({count})</span>
+                </label>
+              );
+            })}
           </div>
-        </div>
-      )}
-
-      {hasGrassFed && (
-        <div>
-          <p className="mb-3 text-xs font-bold uppercase tracking-widest">Quality</p>
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input type="checkbox" checked={grassFedOnly}
-              onChange={(e) => setGrassFedOnly(e.target.checked)} className="h-4 w-4 accent-crimson" />
-            Grass-fed only
-          </label>
-        </div>
+        </FilterSection>
       )}
     </div>
   );
 }
 
-/* ─── Product Card ─────────────────────────────────────────────────────────── */
-function ProductCard({ product }: { product: ShopifyProduct }) {
-  const node = product.node;
-  const variants = node.variants.edges.map((e) => e.node);
-  const firstAvailable = variants.find((v) => v.availableForSale) ?? variants[0];
-  const origin = getOriginFromTags(node.tags);
-  const currency = node.priceRange.minVariantPrice.currencyCode;
-  const minPrice = node.priceRange.minVariantPrice.amount;
-  const maxPrice = node.priceRange.maxVariantPrice.amount;
-  const showFrom = minPrice !== maxPrice;
-  const onSale = variants.some((v) => v.compareAtPrice);
-  const images = node.images.edges.map((e) => e.node);
-  const img1 = images[0];
-  const img2 = images[1] ?? null; // null if no second image (no hover swap)
-
-  const hasOptions =
-    variants.length > 1 ||
-    node.options.some((o) => o.values.length > 1 && o.values[0] !== "Default Title");
-
-  const { average: avgRating, count: reviewCount } = parseRatingMetafields(node.metafields);
-
-  const openQuickBuy = useQuickBuyStore((s) => s.open);
-  const addItem = useCartStore((s) => s.addItem);
-  const wishlisted = useWishlistStore((s) => s.has(node.id));
-  const toggleWishlist = useWishlistStore((s) => s.toggle);
-  const [isAdding, setIsAdding] = useState(false);
-
-  const handleAddToCart = async () => {
-    if (!firstAvailable) return;
-    setIsAdding(true);
-    try {
-      await addItem({
-        product,
-        variantId: firstAvailable.id,
-        variantTitle: firstAvailable.title,
-        price: firstAvailable.price,
-        quantity: 1,
-        selectedOptions: firstAvailable.selectedOptions,
-      });
-      toast.success("Added to cart", { description: node.title, position: "top-center" });
-    } finally {
-      setIsAdding(false);
-    }
-  };
-
+/* ─── Skeleton Card ────────────────────────────────────────────────────────── */
+function SkeletonCard() {
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
-      <Link to={`/products/${node.handle}`} className="relative block aspect-square overflow-hidden bg-muted">
-        {img1 && (
-          <img src={shopifyImageUrl(img1.url, 600)} alt={img1.altText ?? node.title}
-            loading="lazy"
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${img2 ? "group-hover:opacity-0" : ""}`} />
-        )}
-        {img2 && (
-          <img src={shopifyImageUrl(img2.url, 600)} alt={img2.altText ?? node.title}
-            loading="lazy"
-            className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-        )}
-        <img src={mlsLogo} alt="" aria-hidden className="absolute right-2 top-2 h-7 w-auto opacity-50" />
-        <div className="absolute left-2 top-2 flex flex-col gap-1">
-          <OriginBadge origin={origin} />
-          {onSale && (
-            <span className="inline-flex rounded-sm bg-crimson px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">Sale</span>
-          )}
-        </div>
-        <button
-          type="button"
-          aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
-          onClick={(e) => { e.preventDefault(); toggleWishlist(node.id); }}
-          className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-muted-foreground shadow-sm transition-colors hover:text-crimson"
-        >
-          <Heart className={`h-4 w-4 ${wishlisted ? "fill-crimson text-crimson" : ""}`} />
-        </button>
-      </Link>
-
-      <div className="flex flex-1 flex-col gap-2 p-3">
-        <StockBadge available={!!firstAvailable?.availableForSale} qty={firstAvailable?.quantityAvailable ?? null} />
-        <Link to={`/products/${node.handle}`} className="min-h-[1.8rem] text-sm font-medium leading-snug hover:text-crimson">
-          {node.title}
-        </Link>
-        <div className="mt-auto flex flex-col gap-1.5 pt-1">
-          <div className="flex flex-wrap items-baseline gap-x-1.5 leading-tight">
-            {showFrom && <span className="text-[10px] uppercase tracking-wider text-muted-foreground">From</span>}
-            <span className="font-display text-base font-bold text-crimson">{formatPrice(minPrice, currency)}</span>
-            {firstAvailable?.compareAtPrice && (
-              <span className="text-xs text-muted-foreground line-through">
-                {formatPrice(firstAvailable.compareAtPrice.amount, currency)}
-              </span>
-            )}
-          </div>
-          <div className="flex h-5 items-center gap-1">
-            {avgRating > 0 && (
-              <>
-                <StarRating rating={avgRating} size="sm" />
-                <span className="text-[11px] text-muted-foreground">({reviewCount})</span>
-              </>
-            )}
-          </div>
-          {hasOptions ? (
-            <button
-              type="button"
-              onClick={() => openQuickBuy(product)}
-              className="w-full rounded-lg bg-crimson px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-rich-red"
-            >
-              Quick Buy
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleAddToCart}
-              disabled={!firstAvailable?.availableForSale || isAdding}
-              className="w-full rounded-lg bg-crimson px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-rich-red disabled:opacity-50"
-            >
-              {isAdding ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Add to Cart"}
-            </button>
-          )}
-        </div>
+    <div className="flex flex-col overflow-hidden rounded-md border border-border bg-card shadow-sm">
+      <div className="aspect-square w-full animate-pulse bg-muted" />
+      <div className="flex flex-col gap-2 p-3">
+        <div className="h-3.5 w-3/4 animate-pulse rounded bg-muted" />
+        <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
+        <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+        <div className="mt-1 h-5 w-24 animate-pulse rounded bg-muted" />
+        <div className="h-8 w-full animate-pulse rounded bg-muted" />
       </div>
     </div>
   );

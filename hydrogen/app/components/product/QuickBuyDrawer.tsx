@@ -65,8 +65,8 @@ export function QuickBuyDrawer() {
     setFetchingPlans(true);
 
     fetch(`/api/selling-plans/${node.handle}`)
-      .then((res) => res.json())
-      .then((data: { groups: any[]; discountMap: Record<string, number>; variantAllocations: Record<string, Record<string, string>> }) => {
+      .then((res) => res.json() as Promise<{ groups: any[]; discountMap: Record<string, number>; variantAllocations: Record<string, Record<string, string>> }>)
+      .then((data) => {
         setSellingPlanGroups(parseSellingPlanGroups(data.groups ?? [], data.discountMap ?? {}));
         setVariantAllocations(data.variantAllocations ?? {});
       })
@@ -196,7 +196,7 @@ export function QuickBuyDrawer() {
                         type="button"
                         onClick={() => setSelected((s) => ({ ...s, [opt.name]: value }))}
                         className={cn(
-                          "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+                          "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
                           active
                             ? "border-crimson bg-crimson text-crimson-foreground"
                             : "border-border bg-background hover:border-crimson",

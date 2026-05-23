@@ -2,7 +2,6 @@ import { useState, useRef } from "react";
 import { Link } from "react-router";
 import {
   ShoppingBag,
-  Heart,
   User,
   Menu,
   ChevronDown,
@@ -19,7 +18,6 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
-import { useWishlistStore } from "@/stores/wishlistStore";
 import { Button } from "@/components/ui/button";
 import { MegaMenu } from "./MegaMenu";
 import { SearchAutosuggest } from "./SearchAutosuggest";
@@ -53,17 +51,11 @@ export function Header({ mainMenu = [], secondaryMenu = [] }: HeaderProps) {
     s.items.reduce((n, i) => n + i.quantity, 0)
   );
   const setCartOpen = useCartStore((s) => s.setOpen);
-  const wishlistCount = useWishlistStore((s) => s.ids.length);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const locale = useLocaleStore((s) => s.locale);
   const t = useT();
   const drawerSide = dirFor(locale) === "rtl" ? "right" : "left";
   const closeMobile = () => setMobileNavOpen(false);
-
-  const switchLocale = (l: typeof locale) => {
-    useLocaleStore.getState().setLocale(l);
-    window.location.reload();
-  };
 
   const mobileLinks: Array<{ label: string; url: string; Icon: LucideIcon }> =
     mainMenu.flatMap((entry) => {
@@ -94,25 +86,6 @@ export function Header({ mainMenu = [], secondaryMenu = [] }: HeaderProps) {
             <SheetHeader>
               <SheetTitle className="font-display text-crimson">{t("nav.menu")}</SheetTitle>
             </SheetHeader>
-            <div className="mt-3 inline-flex items-center gap-0.5 self-start rounded-full bg-muted p-0.5 text-[11px] font-semibold uppercase tracking-wider">
-              <button
-                type="button"
-                onClick={() => switchLocale("en")}
-                aria-pressed={locale === "en"}
-                className={`rounded-full px-3 py-1 transition-colors ${locale === "en" ? "bg-crimson text-crimson-foreground" : "text-muted-foreground"}`}
-              >
-                EN
-              </button>
-              <button
-                type="button"
-                onClick={() => switchLocale("ar")}
-                aria-pressed={locale === "ar"}
-                lang="ar"
-                className={`rounded-full px-3 py-1 transition-colors ${locale === "ar" ? "bg-crimson text-crimson-foreground" : "text-muted-foreground"}`}
-              >
-                العربية
-              </button>
-            </div>
             <div className="mt-3">
               <SearchAutosuggest onNavigate={closeMobile} />
             </div>
@@ -158,42 +131,11 @@ export function Header({ mainMenu = [], secondaryMenu = [] }: HeaderProps) {
           </div>
         </div>
 
-        {/* Desktop language toggle */}
-        <div className="hidden items-center gap-0.5 rounded-full bg-muted p-0.5 text-[11px] font-semibold uppercase tracking-wider lg:flex">
-          <button
-            type="button"
-            onClick={() => switchLocale("en")}
-            aria-pressed={locale === "en"}
-            className={`rounded-full px-3 py-1 transition-colors ${locale === "en" ? "bg-crimson text-crimson-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            EN
-          </button>
-          <button
-            type="button"
-            onClick={() => switchLocale("ar")}
-            aria-pressed={locale === "ar"}
-            lang="ar"
-            className={`rounded-full px-3 py-1 transition-colors ${locale === "ar" ? "bg-crimson text-crimson-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            ع
-          </button>
-        </div>
-
         <div className="ms-auto flex items-center gap-1">
           <Link to="/account/login" aria-label={t("nav.account")} className="hidden sm:inline-flex">
             <Button variant="ghost" size="icon">
               <User className="h-5 w-5" />
             </Button>
-          </Link>
-          <Link to="/account" aria-label={t("nav.wishlist")} className="relative">
-            <Button variant="ghost" size="icon">
-              <Heart className="h-5 w-5" />
-            </Button>
-            {wishlistCount > 0 && (
-              <span className="absolute -end-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-gold px-1 text-[10px] font-bold text-gold-foreground">
-                {wishlistCount}
-              </span>
-            )}
           </Link>
           <Button
             variant="ghost"

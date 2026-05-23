@@ -233,45 +233,67 @@ export function parseRatingMetafields(
   return { average, count };
 }
 
+const ORIGIN_MAP: Record<string, string> = {
+  aus: "AUS", australia: "AUS", australian: "AUS",
+  nz: "NZ", "new-zealand": "NZ", "new zealand": "NZ",
+  arg: "ARG", argentina: "ARG", argentinian: "ARG",
+  brz: "BRZ", brazil: "BRZ", brazilian: "BRZ",
+  rsa: "ZA", za: "ZA", "south-africa": "ZA", "south-african": "ZA", "south africa": "ZA",
+  pak: "PAK", pakistan: "PAK", pakistani: "PAK",
+  ind: "IND", india: "IND", indian: "IND",
+  som: "SOM", somalia: "SOM", somali: "SOM",
+  jp: "JP", japan: "JP", japanese: "JP",
+  us: "USA", usa: "USA", "united-states": "USA", "united states": "USA", american: "USA",
+  nl: "NL", netherlands: "NL", dutch: "NL",
+  lbn: "LBN", lebanon: "LBN", lebanese: "LBN",
+  uae: "UAE", emirati: "UAE", "united arab emirates": "UAE",
+  uk: "UK", gb: "UK", british: "UK", "united kingdom": "UK",
+  "grass-fed": "GRASS-FED", grassfed: "GRASS-FED",
+};
+
+export const ORIGIN_LABELS: Record<string, { label: string; flag: string }> = {
+  AUS: { label: "Australia",       flag: "🇦🇺" },
+  NZ:  { label: "New Zealand",     flag: "🇳🇿" },
+  ARG: { label: "Argentina",       flag: "🇦🇷" },
+  BRZ: { label: "Brazil",          flag: "🇧🇷" },
+  ZA:  { label: "South Africa",    flag: "🇿🇦" },
+  PAK: { label: "Pakistan",        flag: "🇵🇰" },
+  IND: { label: "India",           flag: "🇮🇳" },
+  SOM: { label: "Somalia",         flag: "🇸🇴" },
+  JP:  { label: "Japan",           flag: "🇯🇵" },
+  USA: { label: "United States",   flag: "🇺🇸" },
+  NL:  { label: "Netherlands",     flag: "🇳🇱" },
+  LBN: { label: "Lebanon",         flag: "🇱🇧" },
+  UAE: { label: "UAE",             flag: "🇦🇪" },
+  UK:  { label: "United Kingdom",  flag: "🇬🇧" },
+  "GRASS-FED": { label: "Grass-Fed", flag: "🌱" },
+};
+
+function matchOrigin(text: string): string | null {
+  const k = text.toLowerCase().trim().replace(/\s+/g, "-");
+  if (ORIGIN_MAP[k]) return ORIGIN_MAP[k];
+  for (const word of k.split(/[\s-]+/)) {
+    if (ORIGIN_MAP[word]) return ORIGIN_MAP[word];
+  }
+  return null;
+}
+
 export function getOriginFromTags(tags: string[] = []): string | null {
-  const origins: Record<string, string> = {
-    aus: "AUS",
-    australia: "AUS",
-    australian: "AUS",
-    nz: "NZ",
-    "new-zealand": "NZ",
-    arg: "ARG",
-    argentina: "ARG",
-    brazil: "BRZ",
-    brazilian: "BRZ",
-    brz: "BRZ",
-    rsa: "ZA",
-    za: "ZA",
-    "south-africa": "ZA",
-    "south-african": "ZA",
-    pak: "PAK",
-    pakistan: "PAK",
-    pakistani: "PAK",
-    jp: "JP",
-    japan: "JP",
-    japanese: "JP",
-    us: "USA",
-    usa: "USA",
-    "united-states": "USA",
-    american: "USA",
-    netherlands: "NL",
-    dutch: "NL",
-    nl: "NL",
-    "grass-fed": "GRASS-FED",
-    grassfed: "GRASS-FED",
-  };
   for (const t of tags) {
-    const k = t.toLowerCase().trim().replace(/\s+/g, "-");
-    if (origins[k]) return origins[k];
-    // also check each individual word (e.g. "Australian Wagyu" → "australian")
-    for (const word of t.toLowerCase().trim().split(/[\s-]+/)) {
-      if (origins[word]) return origins[word];
-    }
+    const hit = matchOrigin(t);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** Tries tags first, then falls back to scanning the product title. */
+export function getOriginFromProduct(tags: string[] = [], title = ""): string | null {
+  const fromTags = getOriginFromTags(tags);
+  if (fromTags) return fromTags;
+  // Scan each word in the title (handles "IND Mutton...", "Fresh Indian Mutton", etc.)
+  for (const word of title.split(/[\s-]+/)) {
+    const hit = matchOrigin(word);
+    if (hit) return hit;
   }
   return null;
 }

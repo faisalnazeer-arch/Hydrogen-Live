@@ -226,7 +226,7 @@ export function CartDrawer() {
               className="h-10 w-full text-white border-0 hover:opacity-90"
               style={{ background: "rgb(192 50 56)" }}
             >
-              Got it
+              Close
             </Button>
           </div>
         </div>

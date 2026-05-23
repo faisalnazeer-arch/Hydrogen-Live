@@ -10,6 +10,10 @@ interface JudgemeReviewsProps {
   rating: JudgemeRatingSummary;
   totalCount: number;
   handle: string;
+  externalId?: string;
+  /** Metafield fallbacks — shown when JudgMe API returns 0 results */
+  metaAverage?: number;
+  metaCount?: number;
 }
 
 function formatDate(iso: string) {
@@ -84,11 +88,19 @@ function ReviewCard({ review }: { review: JudgemeReview }) {
   );
 }
 
-export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, handle }: JudgemeReviewsProps) {
+export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, handle, externalId, metaAverage, metaCount }: JudgemeReviewsProps) {
   const [allReviews, setAllReviews] = useState<JudgemeReview[]>(initialReviews);
   const [page, setPage] = useState(1);
   const fetcher = useFetcher<{ reviews: JudgemeReview[]; totalCount: number }>();
-  const hasMore = allReviews.length < totalCount;
+
+  // Use metafield values when JudgMe API returned nothing
+  const effectiveTotal = totalCount > 0 ? totalCount : (metaCount ?? 0);
+  const effectiveAvg = rating.average > 0 ? rating.average : (metaAverage ?? 0);
+  const effectiveRating: JudgemeRatingSummary = rating.average > 0
+    ? rating
+    : { average: effectiveAvg, count: effectiveTotal, histogram: [0, 0, 0, 0, 0] };
+
+  const hasMore = allReviews.length < effectiveTotal;
 
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data?.reviews?.length) {
@@ -103,10 +115,11 @@ export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, ha
   const loadMore = () => {
     const nextPage = page + 1;
     setPage(nextPage);
-    fetcher.load(`/api/reviews/${handle}?page=${nextPage}`);
+    const eid = externalId ? `&eid=${encodeURIComponent(externalId)}` : "";
+    fetcher.load(`/api/reviews/${handle}?page=${nextPage}${eid}`);
   };
 
-  if (totalCount === 0) {
+  if (effectiveTotal === 0) {
     return (
       <section className="border-t border-border pt-8">
         <h2 className="mb-4 text-lg font-bold">Customer Reviews</h2>
@@ -128,25 +141,28 @@ export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, ha
         {/* Average score */}
         <div className="flex shrink-0 flex-col items-center gap-1 rounded-xl border border-border bg-muted/40 px-8 py-5">
           <span className="font-display text-5xl font-extrabold tabular-nums">
-            {rating.average > 0 ? rating.average.toFixed(1) : "—"}
+            {effectiveAvg > 0 ? effectiveAvg.toFixed(1) : "—"}
           </span>
-          <StarRating rating={rating.average} size="lg" />
+          <StarRating rating={effectiveAvg} size="lg" />
           <span className="text-xs text-muted-foreground">
-            {totalCount} {totalCount === 1 ? "review" : "reviews"}
+            {effectiveTotal} {effectiveTotal === 1 ? "review" : "reviews"}
           </span>
         </div>
 
-        {/* Star histogram */}
-        {rating.histogram.some((n) => n > 0) && (
+        {/* Star histogram — denominator is the loaded sample */}
+        {effectiveRating.histogram.some((n) => n > 0) && (
           <div className="flex flex-1 flex-col justify-center gap-2">
-            {[4, 3, 2, 1, 0].map((idx) => (
-              <RatingBar
-                key={idx}
-                label={starLabels[4 - idx]}
-                count={rating.histogram[idx]}
-                total={totalCount}
-              />
-            ))}
+            {(() => {
+              const histTotal = effectiveRating.histogram.reduce((s, n) => s + n, 0);
+              return [4, 3, 2, 1, 0].map((idx) => (
+                <RatingBar
+                  key={idx}
+                  label={starLabels[4 - idx]}
+                  count={effectiveRating.histogram[idx]}
+                  total={histTotal}
+                />
+              ));
+            })()}
           </div>
         )}
       </div>
@@ -159,7 +175,7 @@ export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, ha
       </div>
 
       {/* Load more */}
-      {hasMore && (
+      {hasMore && allReviews.length > 0 && (
         <div className="mt-6 flex justify-center">
           <button
             type="button"
@@ -170,7 +186,7 @@ export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, ha
               "hover:border-crimson hover:text-crimson disabled:opacity-50",
             )}
           >
-            {fetcher.state === "loading" ? "Loading…" : `Load more (${totalCount - allReviews.length} remaining)`}
+            {fetcher.state === "loading" ? "Loading…" : `Load more (${effectiveTotal - allReviews.length} remaining)`}
           </button>
         </div>
       )}

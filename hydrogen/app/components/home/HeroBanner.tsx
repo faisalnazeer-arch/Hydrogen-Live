@@ -176,31 +176,33 @@ function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
 
   return (
     <div
-      className="relative h-[420px] sm:h-[500px] md:h-[550px]"
-      style={{ flexShrink: 0, width: "100%" }}
+      className="relative w-full"
+      style={{ flexShrink: 0 }}
     >
-      {slide.desktopImage && (
-        <img
-          src={slide.desktopImage.url}
-          alt={slide.desktopImage.altText ?? ""}
-          draggable={false}
-          className={cn(
-            "pointer-events-none absolute inset-0 h-full w-full select-none object-cover",
-            slide.mobileImage ? "hidden md:block" : "block",
-          )}
-        />
-      )}
+      {/* Images flow naturally to drive container height — no fixed crop */}
       {slide.mobileImage && (
         <img
           src={slide.mobileImage.url}
           alt={slide.mobileImage.altText ?? ""}
           draggable={false}
           className={cn(
-            "pointer-events-none absolute inset-0 h-full w-full select-none object-cover",
-            slide.desktopImage ? "block md:hidden" : "block",
+            "pointer-events-none block w-full select-none",
+            slide.desktopImage ? "md:hidden" : "",
           )}
         />
       )}
+      {slide.desktopImage && (
+        <img
+          src={slide.desktopImage.url}
+          alt={slide.desktopImage.altText ?? ""}
+          draggable={false}
+          className={cn(
+            "pointer-events-none w-full select-none",
+            slide.mobileImage ? "hidden md:block" : "block",
+          )}
+        />
+      )}
+      {/* Overlay and content sit on top via absolute */}
       <div
         className={cn(
           "pointer-events-none absolute inset-0 transition-opacity duration-500",
