@@ -34,6 +34,7 @@ export interface ProductPageShellProps {
   externalId: string | null;
   recommendations: ShopifyProduct[];
   extraSections?: ReactNode;
+  productInfoExtra?: ReactNode;
 }
 
 export function ProductPageShell({
@@ -46,6 +47,7 @@ export function ProductPageShell({
   externalId,
   recommendations,
   extraSections,
+  productInfoExtra,
 }: ProductPageShellProps) {
   const t = useT();
   const variants = product.variants.nodes;
@@ -351,6 +353,9 @@ export function ProductPageShell({
               />
             </div>
           )}
+
+          {/* Template-specific content inside product info column */}
+          {productInfoExtra}
         </div>
       </div>
 

@@ -1,96 +1,64 @@
 import { ProductPageShell, type ProductPageShellProps } from "./ProductPageShell";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "~/components/ui/accordion";
 
 function getMeta(product: any, key: string): string | null {
   return product.metafields?.find((m: any) => m?.key === key)?.value ?? null;
 }
 
-interface RubsExtraSectionsProps {
+interface RubsAccordionProps {
   product: any;
   pairingHeading: string;
 }
 
-function RubsExtraSections({ product, pairingHeading }: RubsExtraSectionsProps) {
-  const beefRubs     = getMeta(product, "beef_rubs");
-  const mlsRub       = getMeta(product, "mls_rub");
-  const usageGuide   = getMeta(product, "usage_guide");
-  const pairing      = getMeta(product, "pairing_suggestions");
-  const flavorProfile = getMeta(product, "flavor_profile");
-  const ingredients  = getMeta(product, "ingredients");
+function RubsAccordion({ product, pairingHeading }: RubsAccordionProps) {
+  const items = [
+    { key: "beef_rubs",          label: "Beef Rubs",       value: getMeta(product, "beef_rubs") },
+    { key: "mls_rub",            label: "MLS Rub",         value: getMeta(product, "mls_rub") },
+    { key: "usage_guide",        label: "How to Apply",    value: getMeta(product, "usage_guide") },
+    { key: "pairing_suggestions",label: pairingHeading,    value: getMeta(product, "pairing_suggestions") },
+    { key: "flavor_profile",     label: "Flavor Profile",  value: getMeta(product, "flavor_profile") },
+    { key: "ingredients",        label: "Ingredients",     value: getMeta(product, "ingredients") },
+  ].filter((item) => !!item.value);
 
-  if (!beefRubs && !mlsRub && !usageGuide && !pairing && !flavorProfile && !ingredients) return null;
+  if (items.length === 0) return null;
 
   return (
-    <div className="container mx-auto px-4 pb-10">
-      <div className="grid gap-5 md:grid-cols-2">
-        {beefRubs && (
-          <div className="rounded-xl border border-border bg-card p-6">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Beef Rubs
-            </h3>
-            <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">{beefRubs}</p>
-          </div>
-        )}
-
-        {mlsRub && (
-          <div className="rounded-xl border border-border bg-card p-6">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              MLS Rub
-            </h3>
-            <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">{mlsRub}</p>
-          </div>
-        )}
-
-        {usageGuide && (
-          <div className="rounded-xl border border-border bg-card p-6">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              How to Apply
-            </h3>
-            <div
-              className="prose prose-sm max-w-none text-muted-foreground [&_p]:leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: usageGuide }}
-            />
-          </div>
-        )}
-
-        {pairing && (
-          <div className="rounded-xl border border-border bg-card p-6">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              {pairingHeading}
-            </h3>
-            <div
-              className="prose prose-sm max-w-none text-muted-foreground [&_p]:leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: pairing }}
-            />
-          </div>
-        )}
-
-        {flavorProfile && (
-          <div className="rounded-xl border border-border bg-card p-6">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Flavor Profile
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {flavorProfile.split(",").map((tag: string) => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-crimson/10 px-3 py-1 text-xs font-semibold text-crimson"
-                >
-                  {tag.trim()}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {ingredients && (
-          <div className="rounded-xl border border-border bg-card p-6">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Ingredients
-            </h3>
-            <p className="text-sm leading-relaxed text-muted-foreground">{ingredients}</p>
-          </div>
-        )}
-      </div>
+    <div className="border-t border-border pt-5">
+      <h3 className="mb-1 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        Understanding Rubs
+      </h3>
+      <Accordion type="multiple" className="w-full">
+        {items.map((item) => (
+          <AccordionItem key={item.key} value={item.key}>
+            <AccordionTrigger className="text-sm font-medium hover:no-underline">
+              {item.label}
+            </AccordionTrigger>
+            <AccordionContent>
+              {item.key === "flavor_profile" ? (
+                <div className="flex flex-wrap gap-2">
+                  {item.value!.split(",").map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-crimson/10 px-3 py-1 text-xs font-semibold text-crimson"
+                    >
+                      {tag.trim()}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+                  {item.value}
+                </p>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
     </div>
   );
 }
@@ -103,12 +71,13 @@ export function RubsTemplate({ pairingHeading = "Best Cuts for This Rub", ...pro
   return (
     <ProductPageShell
       {...props}
-      extraSections={<RubsExtraSections product={props.product} pairingHeading={pairingHeading} />}
+      productInfoExtra={
+        <RubsAccordion product={props.product} pairingHeading={pairingHeading} />
+      }
     />
   );
 }
 
-// Named convenience exports so existing tag-based routing stays readable
 export function BeefRubsTemplate(props: ProductPageShellProps) {
   return <RubsTemplate {...props} pairingHeading="Best Beef Cuts for This Rub" />;
 }
