@@ -133,16 +133,16 @@ export function QuickBuyDrawer() {
 
   return (
     <Sheet open={isOpen} onOpenChange={(o) => !o && close()}>
-      <SheetContent className="flex w-[88vw] max-w-[420px] flex-col p-0 sm:max-w-md">
-        <SheetHeader className="border-b border-border px-4 py-3 sm:px-6 sm:py-4">
-          <SheetTitle className="font-display text-base sm:text-xl">Quick Buy</SheetTitle>
-          <SheetDescription className="text-xs sm:text-sm">Choose options and add to cart</SheetDescription>
+      <SheetContent className="flex w-[96vw] max-w-[440px] flex-col p-0 sm:max-w-md">
+        <SheetHeader className="border-b border-border px-4 py-2 sm:px-6 sm:py-4">
+          <SheetTitle className="font-display text-sm sm:text-xl">Quick Buy</SheetTitle>
+          <SheetDescription className="text-[11px] sm:text-sm">Choose options and add to cart</SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="flex-1 overflow-y-auto px-4 py-3 sm:p-6">
           <div className="flex gap-3 sm:gap-4">
             {img && (
-              <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-md bg-muted sm:h-28 sm:w-28">
+              <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-muted sm:h-28 sm:w-28">
                 <img
                   src={shopifyImageUrl(img.url, 300)}
                   alt={img.altText ?? node.title}
@@ -152,32 +152,32 @@ export function QuickBuyDrawer() {
             )}
             <div className="flex flex-col justify-center">
               <div className="text-sm font-medium leading-tight sm:text-base">{node.title}</div>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="font-display text-lg font-bold text-crimson sm:text-2xl">
+              <div className="mt-0.5 flex items-baseline gap-1.5">
+                <span className="font-display text-base font-bold text-crimson sm:text-2xl">
                   {formatPrice(displayPrice.amount, displayPrice.currencyCode)}
                 </span>
                 {displayCompareAt && displayCompareAt.amount !== displayPrice.amount && (
-                  <span className="text-xs text-muted-foreground line-through sm:text-sm">
+                  <span className="text-[11px] text-muted-foreground line-through sm:text-sm">
                     {formatPrice(displayCompareAt.amount, displayCompareAt.currencyCode)}
                   </span>
                 )}
               </div>
               {matched && !matched.availableForSale && (
-                <div className="mt-1 text-xs font-semibold text-destructive">
+                <div className="mt-0.5 text-xs font-semibold text-destructive">
                   Out of stock
                 </div>
               )}
             </div>
           </div>
 
-          <div className="mt-4 space-y-4 sm:mt-6 sm:space-y-5">
+          <div className="mt-3 space-y-3 sm:mt-6 sm:space-y-5">
             {/* Variant options */}
             {options.map((opt: any) => (
               <div key={opt.name}>
-                <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:mb-2 sm:text-xs">
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:mb-2 sm:text-xs">
                   {opt.name}
                 </div>
-                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                <div className="flex flex-wrap gap-1 sm:gap-2">
                   {opt.values.map((value: string) => {
                     const candidate = variants.find(
                       (v: any) =>
@@ -196,6 +196,7 @@ export function QuickBuyDrawer() {
                         active={selected[opt.name] === value}
                         disabled={candidate ? !candidate.availableForSale : true}
                         onClick={() => setSelected((s) => ({ ...s, [opt.name]: value }))}
+                        className="px-2 py-1 text-xs sm:px-3 sm:py-1.5 sm:text-sm"
                       />
                     );
                   })}
@@ -211,7 +212,7 @@ export function QuickBuyDrawer() {
               </div>
             ) : sellingPlanGroups.length > 0 ? (
               <div>
-                <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:mb-2 sm:text-xs">
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:mb-2 sm:text-xs">
                   Purchase Type
                 </div>
                 <SubscriptionSelector
@@ -227,7 +228,7 @@ export function QuickBuyDrawer() {
 
             {/* Quantity */}
             <div>
-              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:mb-2 sm:text-xs">
+              <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:mb-2 sm:text-xs">
                 Quantity
               </div>
               <QuantitySelector size="md" value={qty} onChange={setQty} />
@@ -235,18 +236,18 @@ export function QuickBuyDrawer() {
           </div>
         </div>
 
-        <div className="border-t border-border p-3 sm:p-4">
+        <div className="border-t border-border px-4 py-2.5 sm:p-4">
           <Button
             onClick={handleAdd}
             disabled={!matched?.availableForSale || isLoading}
-            size="lg"
-            className="w-full bg-crimson text-crimson-foreground hover:bg-rich-red"
+            size="sm"
+            className="h-9 w-full bg-crimson text-xs text-crimson-foreground hover:bg-rich-red sm:h-11 sm:text-sm"
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
-                <ShoppingBag className="mr-2 h-4 w-4" />
+                <ShoppingBag className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />
                 {selectedPlanId ? "Subscribe & Add to Cart" : "Add to Cart"}
               </>
             )}
