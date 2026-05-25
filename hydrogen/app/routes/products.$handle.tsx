@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
 import { type ShopifyProduct } from "~/lib/shopify";
-import { fetchJudgemeReviews, buildRatingSummary } from "~/lib/judgeme";
+import { fetchJudgemeReviews, fetchJudgemeRating, buildRatingSummary } from "~/lib/judgeme";
 import { DefaultTemplate } from "~/components/product-templates/DefaultTemplate";
 import { BeefRubsTemplate, ChickenRubsTemplate } from "~/components/product-templates/RubsTemplate";
 
@@ -109,14 +109,18 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
   const externalId = data.product.id.split("/").pop() ?? undefined;
 
-  const [reviewsData, recsData] = await Promise.all([
+  const [reviewsData, judgemeRating, recsData] = await Promise.all([
     fetchJudgemeReviews(handle, shopDomain, judgemeToken, 1, 10, externalId),
+    fetchJudgemeRating(data.product.id, shopDomain, judgemeToken),
     context.storefront.query(RECOMMENDATIONS_QUERY, {
       variables: { productId: data.product.id, language, country: "AE" as const },
     }),
   ]);
 
-  const rating = buildRatingSummary(reviewsData);
+  // Use Judge.me's dedicated product endpoint for rating (most accurate).
+  // Fall back to buildRatingSummary (from reviews) then Shopify metafields in the shell.
+  const reviewsSummary = buildRatingSummary(reviewsData);
+  const rating = judgemeRating.average > 0 ? judgemeRating : reviewsSummary;
 
   const discountMap: Record<string, number> = {};
   for (const v of data.product.variants?.nodes ?? []) {
