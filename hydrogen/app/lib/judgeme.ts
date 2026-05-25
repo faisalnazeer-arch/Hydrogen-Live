@@ -50,7 +50,13 @@ export async function fetchJudgemeReviews(
   try {
     const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) return emptyResponse(page, perPage);
-    return (await res.json()) as JudgemeReviewsResponse;
+    const data = (await res.json()) as JudgemeReviewsResponse;
+    // JudgMe omits total_count when the product isn't indexed — that means the
+    // returned reviews are shop-wide, not product-specific. Discard them.
+    if (data.total_count === undefined || data.total_count === null) {
+      return emptyResponse(page, perPage);
+    }
+    return data;
   } catch {
     return emptyResponse(page, perPage);
   }
