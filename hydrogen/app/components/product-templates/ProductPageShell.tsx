@@ -390,6 +390,7 @@ export function ProductPageShell({
       {/* Reviews */}
       <div id="reviews" className="container mx-auto px-4 pb-16">
         <JudgemeReviews
+          key={product.handle}
           reviews={reviews}
           rating={rating}
           totalCount={reviewsTotalCount}

@@ -93,6 +93,12 @@ export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, ha
   const [page, setPage] = useState(1);
   const fetcher = useFetcher<{ reviews: JudgemeReview[]; totalCount: number }>();
 
+  // Reset when navigating to a different product
+  useEffect(() => {
+    setAllReviews(initialReviews);
+    setPage(1);
+  }, [handle]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Use metafield values when JudgMe API returned nothing
   const effectiveTotal = totalCount > 0 ? totalCount : (metaCount ?? 0);
   const effectiveAvg = rating.average > 0 ? rating.average : (metaAverage ?? 0);
