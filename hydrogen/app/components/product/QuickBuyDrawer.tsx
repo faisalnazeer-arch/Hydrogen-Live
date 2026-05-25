@@ -134,15 +134,15 @@ export function QuickBuyDrawer() {
   return (
     <Sheet open={isOpen} onOpenChange={(o) => !o && close()}>
       <SheetContent className="flex w-[88vw] max-w-[420px] flex-col p-0 sm:max-w-md">
-        <SheetHeader className="border-b border-border px-6 py-4">
-          <SheetTitle className="font-display text-xl">Quick Buy</SheetTitle>
-          <SheetDescription>Choose options and add to cart</SheetDescription>
+        <SheetHeader className="border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+          <SheetTitle className="font-display text-base sm:text-xl">Quick Buy</SheetTitle>
+          <SheetDescription className="text-xs sm:text-sm">Choose options and add to cart</SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="flex gap-4">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <div className="flex gap-3 sm:gap-4">
             {img && (
-              <div className="h-28 w-28 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+              <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-md bg-muted sm:h-28 sm:w-28">
                 <img
                   src={shopifyImageUrl(img.url, 300)}
                   alt={img.altText ?? node.title}
@@ -151,13 +151,13 @@ export function QuickBuyDrawer() {
               </div>
             )}
             <div className="flex flex-col justify-center">
-              <div className="font-medium leading-tight">{node.title}</div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="font-display text-2xl font-bold text-crimson">
+              <div className="text-sm font-medium leading-tight sm:text-base">{node.title}</div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="font-display text-lg font-bold text-crimson sm:text-2xl">
                   {formatPrice(displayPrice.amount, displayPrice.currencyCode)}
                 </span>
                 {displayCompareAt && displayCompareAt.amount !== displayPrice.amount && (
-                  <span className="text-sm text-muted-foreground line-through">
+                  <span className="text-xs text-muted-foreground line-through sm:text-sm">
                     {formatPrice(displayCompareAt.amount, displayCompareAt.currencyCode)}
                   </span>
                 )}
@@ -170,14 +170,14 @@ export function QuickBuyDrawer() {
             </div>
           </div>
 
-          <div className="mt-6 space-y-5">
+          <div className="mt-4 space-y-4 sm:mt-6 sm:space-y-5">
             {/* Variant options */}
             {options.map((opt: any) => (
               <div key={opt.name}>
-                <div className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:mb-2 sm:text-xs">
                   {opt.name}
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {opt.values.map((value: string) => {
                     const candidate = variants.find(
                       (v: any) =>
@@ -211,7 +211,7 @@ export function QuickBuyDrawer() {
               </div>
             ) : sellingPlanGroups.length > 0 ? (
               <div>
-                <div className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:mb-2 sm:text-xs">
                   Purchase Type
                 </div>
                 <SubscriptionSelector
@@ -227,7 +227,7 @@ export function QuickBuyDrawer() {
 
             {/* Quantity */}
             <div>
-              <div className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:mb-2 sm:text-xs">
                 Quantity
               </div>
               <QuantitySelector size="md" value={qty} onChange={setQty} />
@@ -235,7 +235,7 @@ export function QuickBuyDrawer() {
           </div>
         </div>
 
-        <div className="border-t border-border p-4">
+        <div className="border-t border-border p-3 sm:p-4">
           <Button
             onClick={handleAdd}
             disabled={!matched?.availableForSale || isLoading}
