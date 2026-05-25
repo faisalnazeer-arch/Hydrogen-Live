@@ -94,7 +94,7 @@ export function HScroller({ children, className, noFade }: HScrollerProps) {
         onClick={() => scrollBy(-1)}
         disabled={!canPrev}
         className={cn(
-          "absolute start-1 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/95 text-foreground shadow-sm backdrop-blur transition-all sm:grid",
+          "absolute start-1 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/95 text-foreground shadow-sm backdrop-blur transition-all sm:h-9 sm:w-9",
           "hover:bg-crimson hover:text-crimson-foreground",
           canPrev
             ? "sm:opacity-0 sm:group-hover/scroller:opacity-100"
@@ -110,7 +110,7 @@ export function HScroller({ children, className, noFade }: HScrollerProps) {
         onClick={() => scrollBy(1)}
         disabled={!canNext}
         className={cn(
-          "absolute end-1 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/95 text-foreground shadow-sm backdrop-blur transition-all sm:grid",
+          "absolute end-1 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/95 text-foreground shadow-sm backdrop-blur transition-all sm:h-9 sm:w-9",
           "hover:bg-crimson hover:text-crimson-foreground",
           canNext
             ? "sm:opacity-0 sm:group-hover/scroller:opacity-100"

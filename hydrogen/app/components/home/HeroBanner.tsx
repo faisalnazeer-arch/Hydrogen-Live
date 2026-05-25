@@ -131,24 +131,24 @@ export function HeroBanner({ slides: rawSlides = [] }: HeroBannerProps) {
             type="button"
             onClick={goPrev}
             aria-label="Previous slide"
-            className="absolute left-3 top-1/2 z-40 -translate-y-1/2 hidden sm:grid h-10 w-10 cursor-pointer place-items-center rounded-full bg-black/60 text-white transition-all hover:bg-black/80 hover:scale-110 active:scale-95"
+            className="absolute left-3 top-1/2 z-10 -translate-y-1/2 grid h-9 w-9 cursor-pointer place-items-center rounded-full bg-black/60 text-white transition-all hover:bg-black/80 hover:scale-110 active:scale-95 sm:h-10 sm:w-10"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
           <button
             type="button"
             onClick={goNext}
             aria-label="Next slide"
-            className="absolute right-3 top-1/2 z-40 -translate-y-1/2 hidden sm:grid h-10 w-10 cursor-pointer place-items-center rounded-full bg-black/60 text-white transition-all hover:bg-black/80 hover:scale-110 active:scale-95"
+            className="absolute right-3 top-1/2 z-10 -translate-y-1/2 grid h-9 w-9 cursor-pointer place-items-center rounded-full bg-black/60 text-white transition-all hover:bg-black/80 hover:scale-110 active:scale-95 sm:h-10 sm:w-10"
           >
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </>
       )}
 
       {/* ── Dot indicators ── */}
       {!isSingle && (
-        <div className="absolute bottom-5 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2">
+        <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2">
           {slides.map((_, i) => (
             <button
               key={i}
