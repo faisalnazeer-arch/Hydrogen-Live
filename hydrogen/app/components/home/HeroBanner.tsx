@@ -131,17 +131,17 @@ export function HeroBanner({ slides: rawSlides = [] }: HeroBannerProps) {
             type="button"
             onClick={goPrev}
             aria-label="Previous slide"
-            className="absolute left-4 top-1/2 z-40 -translate-y-1/2 cursor-pointer grid h-12 w-12 place-items-center rounded-full bg-black/60 text-white shadow-lg transition-all hover:bg-black/80 hover:scale-110 active:scale-95"
+            className="absolute left-3 top-1/2 z-40 -translate-y-1/2 hidden sm:grid h-10 w-10 cursor-pointer place-items-center rounded-full bg-black/60 text-white transition-all hover:bg-black/80 hover:scale-110 active:scale-95"
           >
-            <ChevronLeft className="h-6 w-6" />
+            <ChevronLeft className="h-5 w-5" />
           </button>
           <button
             type="button"
             onClick={goNext}
             aria-label="Next slide"
-            className="absolute right-4 top-1/2 z-40 -translate-y-1/2 cursor-pointer grid h-12 w-12 place-items-center rounded-full bg-black/60 text-white shadow-lg transition-all hover:bg-black/80 hover:scale-110 active:scale-95"
+            className="absolute right-3 top-1/2 z-40 -translate-y-1/2 hidden sm:grid h-10 w-10 cursor-pointer place-items-center rounded-full bg-black/60 text-white transition-all hover:bg-black/80 hover:scale-110 active:scale-95"
           >
-            <ChevronRight className="h-6 w-6" />
+            <ChevronRight className="h-5 w-5" />
           </button>
         </>
       )}

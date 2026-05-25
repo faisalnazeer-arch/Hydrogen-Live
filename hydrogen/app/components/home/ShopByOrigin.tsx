@@ -29,25 +29,25 @@ export function ShopByOrigin({ section }: Props) {
           <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">{section.eyebrow}</div>
           <h2 className="font-display text-2xl font-extrabold md:text-3xl">{section.heading}</h2>
         </div>
-        <div className="grid grid-cols-4 gap-3 md:grid-cols-7">
+        <div className="flex gap-3 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] md:grid md:grid-cols-7">
           {section.items.map((item) => (
             <Link
               key={item.id}
               to={item.link}
-              className="group flex flex-col items-center gap-2 rounded-lg border border-border bg-card p-4 transition-all hover:-translate-y-1 hover:border-crimson hover:shadow-[var(--shadow-card)]"
+              className="group flex w-[72px] flex-shrink-0 flex-col items-center gap-2 rounded-lg border border-border bg-card p-3 transition-all hover:-translate-y-1 hover:border-crimson hover:shadow-[var(--shadow-card)] md:w-auto md:p-4"
             >
               {item.imageUrl ? (
                 <img
                   src={item.imageUrl}
                   alt={item.imageAlt || item.heading}
-                  className="h-10 w-10 rounded-full object-cover transition-transform group-hover:scale-110"
+                  className="h-9 w-9 rounded-full object-cover transition-transform group-hover:scale-110 md:h-10 md:w-10"
                 />
               ) : (
-                <span className="text-2xl font-bold transition-transform group-hover:scale-110" aria-hidden>
+                <span className="text-lg font-bold transition-transform group-hover:scale-110 md:text-2xl" aria-hidden>
                   {item.code}
                 </span>
               )}
-              <span className="text-center text-[11px] font-bold uppercase tracking-wider">{item.heading}</span>
+              <span className="text-center text-[10px] font-bold uppercase leading-tight tracking-wider md:text-[11px]">{item.heading}</span>
             </Link>
           ))}
         </div>

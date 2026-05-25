@@ -48,8 +48,8 @@ export function CategorySection({
 
       {/* Collection tabs */}
       {hasTabs && (
-        <div className="mb-4 flex justify-center">
-          <div className="flex border-b border-border">
+        <div className="mb-4 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+          <div className="flex min-w-max border-b border-border mx-auto w-fit">
             {tabs.map((tab, idx) => (
               <TabButton
                 key={tab.handle}

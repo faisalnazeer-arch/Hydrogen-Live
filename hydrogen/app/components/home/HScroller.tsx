@@ -94,15 +94,15 @@ export function HScroller({ children, className, noFade }: HScrollerProps) {
         onClick={() => scrollBy(-1)}
         disabled={!canPrev}
         className={cn(
-          "absolute start-1 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/95 text-foreground shadow-md backdrop-blur transition-all",
+          "absolute start-1 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/95 text-foreground shadow-sm backdrop-blur transition-all sm:grid",
           "hover:bg-crimson hover:text-crimson-foreground",
           canPrev
-            ? "opacity-100 sm:opacity-0 sm:group-hover/scroller:opacity-100"
+            ? "sm:opacity-0 sm:group-hover/scroller:opacity-100"
             : "pointer-events-none opacity-0"
         )}
       >
-        <ChevronLeft className="h-5 w-5 rtl:hidden" />
-        <ChevronRight className="hidden h-5 w-5 rtl:block" />
+        <ChevronLeft className="h-4 w-4 rtl:hidden" />
+        <ChevronRight className="hidden h-4 w-4 rtl:block" />
       </button>
       <button
         type="button"
@@ -110,15 +110,15 @@ export function HScroller({ children, className, noFade }: HScrollerProps) {
         onClick={() => scrollBy(1)}
         disabled={!canNext}
         className={cn(
-          "absolute end-1 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/95 text-foreground shadow-md backdrop-blur transition-all",
+          "absolute end-1 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/95 text-foreground shadow-sm backdrop-blur transition-all sm:grid",
           "hover:bg-crimson hover:text-crimson-foreground",
           canNext
-            ? "opacity-100 sm:opacity-0 sm:group-hover/scroller:opacity-100"
+            ? "sm:opacity-0 sm:group-hover/scroller:opacity-100"
             : "pointer-events-none opacity-0"
         )}
       >
-        <ChevronRight className="h-5 w-5 rtl:hidden" />
-        <ChevronLeft className="hidden h-5 w-5 rtl:block" />
+        <ChevronRight className="h-4 w-4 rtl:hidden" />
+        <ChevronLeft className="hidden h-4 w-4 rtl:block" />
       </button>
     </div>
   );
