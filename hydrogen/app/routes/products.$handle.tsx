@@ -1,21 +1,10 @@
-import { useState, useEffect } from "react";
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
-import { Minus, Plus, Truck, ShieldCheck, RefreshCw, Loader2 } from "lucide-react";
-import { OriginBadge } from "~/components/product/OriginBadge";
-import { StockBadge } from "~/components/product/StockBadge";
-import { formatPrice, getOriginFromProduct, parseRatingMetafields, shopifyImageUrl, type ShopifyProduct } from "~/lib/shopify";
-import { useCartStore } from "~/stores/cartStore";
-import { toast } from "sonner";
-import { Link } from "react-router";
-import mlsLogo from "~/assets/mls-logo.png";
+import { type ShopifyProduct } from "~/lib/shopify";
 import { fetchJudgemeReviews, buildRatingSummary } from "~/lib/judgeme";
-import { JudgemeReviews } from "~/components/reviews/JudgemeReviews";
-import { StarRating } from "~/components/reviews/StarRating";
-import { SubscriptionSelector, parseSellingPlanGroups } from "~/components/product/SubscriptionSelector";
-import { ProductCard } from "~/components/product/ProductCard";
-import { HScroller } from "~/components/home/HScroller";
-import { useT } from "~/i18n/strings";
+import { DefaultTemplate } from "~/components/product-templates/DefaultTemplate";
+import { BeefRubsTemplate } from "~/components/product-templates/BeefRubsTemplate";
+import { ChickenRubsTemplate } from "~/components/product-templates/ChickenRubsTemplate";
 
 const RECOMMENDATIONS_QUERY = `#graphql
   query ProductRecommendations($productId: ID!, $country: CountryCode, $language: LanguageCode)
@@ -91,6 +80,10 @@ const PRODUCT_QUERY = `#graphql
       metafields(identifiers: [
         {namespace: "reviews", key: "rating"}
         {namespace: "reviews", key: "rating_count"}
+        {namespace: "custom", key: "usage_guide"}
+        {namespace: "custom", key: "ingredients"}
+        {namespace: "custom", key: "flavor_profile"}
+        {namespace: "custom", key: "pairing_suggestions"}
       ]) { key value }
     }
   }
@@ -104,21 +97,19 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const shopDomain = env.PUBLIC_STORE_DOMAIN;
   const judgemeToken = env.JUDGEME_API_TOKEN;
 
-  // Fetch product first so we have the numeric ID for JudgMe filtering
   const lang = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
   const language = (lang === "ar" ? "AR" : "EN") as "AR" | "EN";
-  console.log(`[DEBUG] Product page: lang cookie="${lang ?? 'none'}" → requesting language=${language} for handle=${handle}`);
 
   const data = await context.storefront.query(PRODUCT_QUERY, {
     variables: { handle, language, country: "AE" as const },
+    cache: context.storefront.CacheNone(),
   });
   if (!data.product) throw new Response("Not found", { status: 404 });
 
-  // Extract numeric Shopify product ID from the GID (gid://shopify/Product/123…)
   const externalId = data.product.id.split("/").pop() ?? undefined;
 
   const [reviewsData, recsData] = await Promise.all([
-    fetchJudgemeReviews(handle, shopDomain, judgemeToken, 1, 10),
+    fetchJudgemeReviews(handle, shopDomain, judgemeToken, 1, 10, externalId),
     context.storefront.query(RECOMMENDATIONS_QUERY, {
       variables: { productId: data.product.id, language, country: "AE" as const },
     }),
@@ -126,8 +117,6 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
   const rating = buildRatingSummary(reviewsData);
 
-  // Build discount map across all variants — use variant's regular price as baseline
-  // because compareAtPrice inside allocations is often null in Shopify's API
   const discountMap: Record<string, number> = {};
   for (const v of data.product.variants?.nodes ?? []) {
     const variantPrice = parseFloat((v as any).price?.amount ?? "0");
@@ -142,7 +131,6 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
       }
     }
   }
-  // Default to 10% for any selling plan not covered by Shopify allocation data
   for (const group of data.product.sellingPlanGroups?.nodes ?? []) {
     for (const plan of (group as any).sellingPlans?.nodes ?? []) {
       if (plan.id && discountMap[plan.id] === undefined) {
@@ -155,12 +143,17 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     .slice(0, 8)
     .map((node: any) => ({ node }));
 
+  // Detect template from product tags: e.g. "template:beef-rubs" → "beef-rubs"
+  const templateSuffix =
+    (data.product.tags?.find((t: string) => t.startsWith("template:"))?.replace("template:", "") ?? null) as string | null;
+
   return {
     product: data.product,
+    templateSuffix,
     sellingPlanGroupsRaw: data.product.sellingPlanGroups?.nodes ?? [],
     discountMap,
     reviews: reviewsData.reviews,
-    reviewsTotalCount: reviewsData.total_count,
+    reviewsTotalCount: reviewsData.total_count ?? 0,
     rating,
     externalId: externalId ?? null,
     recommendations,
@@ -172,400 +165,9 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 export default function Product() {
-  const t = useT();
-  const { product, sellingPlanGroupsRaw, discountMap, reviews, reviewsTotalCount, rating, externalId, recommendations } = useLoaderData<typeof loader>();
-  const variants = product.variants.nodes;
-  const images = product.images.nodes;
-  const origin = getOriginFromProduct(product.tags, product.title);
+  const { templateSuffix, ...templateProps } = useLoaderData<typeof loader>();
 
-  // Use the rating built from the reviews response (reliable).
-  // Fall back to Shopify metafields (written by JudgMe sync) if the API returned 0.
-  const metaRating = parseRatingMetafields((product as any).metafields);
-  const displayRating = rating.average > 0 ? rating : metaRating;
-  const displayCount = reviewsTotalCount > 0 ? reviewsTotalCount : metaRating.count;
-
-  // Track each option independently so multi-option selection works correctly
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() =>
-    Object.fromEntries((variants[0]?.selectedOptions ?? []).map((o: any) => [o.name, o.value]))
-  );
-  const [activeImage, setActiveImage] = useState(0);
-  const [qty, setQty] = useState(1);
-  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-
-  const sellingPlanGroups = parseSellingPlanGroups(sellingPlanGroupsRaw, discountMap);
-
-  const addItem = useCartStore((s) => s.addItem);
-  const isLoading = useCartStore((s) => s.isLoading);
-
-  // Resolve variant from the full combination of selected options
-  const variant =
-    variants.find((v: any) =>
-      v.selectedOptions.every((o: any) => selectedOptions[o.name] === o.value)
-    ) ?? variants[0];
-
-  const handleOptionSelect = (optionName: string, value: string) => {
-    setSelectedOptions((prev) => ({ ...prev, [optionName]: value }));
-  };
-  const currency = variant?.price.currencyCode ?? "AED";
-
-  // Find the subscription price for the selected plan + variant
-  const selectedAllocation = selectedPlanId
-    ? (variant as any)?.sellingPlanAllocations?.nodes?.find(
-        (a: any) => a.sellingPlan?.id === selectedPlanId
-      )
-    : null;
-
-  const allocPrice = selectedAllocation?.priceAdjustments?.[0]?.price;
-  const regularAmt = parseFloat(variant?.price?.amount ?? "0");
-  const allocAmt = allocPrice ? parseFloat(allocPrice.amount) : regularAmt;
-
-  // If subscription selected but Shopify has no actual price reduction, apply 10% default
-  const activePlanDiscount = selectedPlanId ? (discountMap[selectedPlanId] ?? 10) : 0;
-  const effectiveSubAmt = selectedPlanId
-    ? (allocAmt < regularAmt ? allocAmt : regularAmt * (1 - activePlanDiscount / 100))
-    : regularAmt;
-
-  const displayPrice = selectedPlanId
-    ? { amount: effectiveSubAmt.toFixed(2), currencyCode: variant?.price?.currencyCode ?? "AED" }
-    : variant?.price;
-
-  const displayCompareAt = selectedPlanId
-    ? variant?.price  // show regular price as strikethrough when subscription active
-    : variant?.compareAtPrice;
-
-  // Jump to variant's image when selection changes
-  useEffect(() => {
-    if (!variant?.image?.url) return;
-    const idx = images.findIndex((img: any) => img.url === variant.image!.url);
-    if (idx !== -1) setActiveImage(idx);
-  }, [variant?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const hasOptions =
-    product.options.length > 1 ||
-    product.options.some((o: any) => o.values.length > 1 && o.values[0] !== "Default Title");
-
-  // Build ShopifyProduct shape so CartDrawer can display it
-  const shopifyProduct: ShopifyProduct = {
-    node: {
-      id: product.id,
-      title: product.title,
-      handle: product.handle,
-      description: "",
-      descriptionHtml: product.descriptionHtml ?? "",
-      tags: product.tags,
-      vendor: product.vendor ?? "",
-      productType: "",
-      availableForSale: variants.some((v: any) => v.availableForSale),
-      priceRange: product.priceRange,
-      images: { edges: images.map((img: any) => ({ node: img })) },
-      variants: {
-        edges: variants.map((v: any) => ({
-          node: {
-            id: v.id,
-            title: v.title,
-            availableForSale: v.availableForSale,
-            quantityAvailable: v.quantityAvailable ?? null,
-            price: v.price,
-            compareAtPrice: v.compareAtPrice ?? null,
-            selectedOptions: v.selectedOptions,
-          },
-        })),
-      },
-      options: product.options,
-    },
-  };
-
-  const allPlans = sellingPlanGroups.flatMap((g) => g.plans);
-  const activePlanName = selectedPlanId
-    ? (allPlans.find((p) => p.id === selectedPlanId)?.name ?? null)
-    : null;
-
-  // Debug: log selling plan data whenever variant or selectedPlanId changes
-  useEffect(() => {
-    if (allPlans.length > 0) {
-      console.log('[DEBUG] sellingPlanGroups allPlans:', allPlans);
-      console.log('[DEBUG] variant allocations:', (variant as any)?.sellingPlanAllocations?.nodes);
-      console.log('[DEBUG] selectedPlanId:', selectedPlanId, '→ activePlanName:', activePlanName);
-    }
-  }, [variant?.id, selectedPlanId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleAddToCart = async () => {
-    if (!variant) return;
-    console.log('[DEBUG] addToCart → selectedPlanId:', selectedPlanId, 'activePlanName:', activePlanName, 'allPlans:', allPlans);
-    // When subscription is selected, pass the regular variant price as compareAtPrice
-    // so the cart drawer can show the strikethrough + save %
-    const cartCompareAtPrice = selectedPlanId ? variant.price : (variant.compareAtPrice ?? null);
-    await addItem({
-      product: shopifyProduct,
-      variantId: variant.id,
-      variantTitle: variant.title,
-      price: displayPrice,
-      compareAtPrice: cartCompareAtPrice,
-      quantity: qty,
-      selectedOptions: variant.selectedOptions,
-      sellingPlanId: selectedPlanId ?? undefined,
-      sellingPlanName: activePlanName,
-    });
-    toast.success(t("product.added"), {
-      description: `${product.title}${variant.title !== "Default Title" ? ` · ${variant.title}` : ""}`,
-      position: "top-center",
-    });
-  };
-
-  return (
-    <div className="bg-background min-h-screen">
-      {/* Breadcrumb */}
-      <div className="container mx-auto px-4 py-3">
-        <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
-          <span>/</span>
-          <Link to="/collections/all" className="hover:text-foreground transition-colors">
-            {product.vendor || "Products"}
-          </Link>
-          <span>/</span>
-          <span className="text-foreground font-medium truncate max-w-[220px]">{product.title}</span>
-        </nav>
-      </div>
-
-      <div className="container mx-auto grid gap-8 px-4 pb-8 md:grid-cols-2 md:gap-12">
-        {/* Image gallery */}
-        <div className="flex flex-col gap-3">
-          <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
-            {images[activeImage] && (
-              <img
-                src={shopifyImageUrl(images[activeImage].url, 800)}
-                alt={images[activeImage].altText ?? product.title}
-                className="h-full w-full object-cover transition-opacity duration-300"
-                key={activeImage}
-              />
-            )}
-            <img src={mlsLogo} alt="" aria-hidden className="absolute right-4 top-4 h-10 w-auto opacity-60" />
-            <div className="absolute left-4 top-4 flex flex-col gap-1.5">
-              <OriginBadge origin={origin} />
-              {variant?.compareAtPrice && (
-                <span className="inline-flex rounded-sm bg-crimson px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-crimson-foreground">
-                  Sale
-                </span>
-              )}
-            </div>
-          </div>
-
-          {images.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {images.map((img: any, i: any) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setActiveImage(i)}
-                  className={`relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-colors ${
-                    i === activeImage ? "border-crimson" : "border-transparent hover:border-muted-foreground"
-                  }`}
-                >
-                  <img src={shopifyImageUrl(img.url, 160)} alt={img.altText ?? product.title} className="h-full w-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Product info */}
-        <div className="flex flex-col gap-5">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              {product.vendor || "MLS UAE"}
-            </p>
-            <h1 className="font-display mt-1 text-2xl font-extrabold leading-tight sm:text-3xl">
-              {product.title}
-            </h1>
-            {displayRating.average > 0 && (
-              <button
-                type="button"
-                onClick={() =>
-                  document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth" })
-                }
-                className="mt-2 flex items-center gap-2 hover:opacity-80 transition-opacity"
-              >
-                <StarRating rating={displayRating.average} size="sm" />
-                <span className="text-xs text-muted-foreground underline-offset-2 hover:underline">
-                  {displayRating.average.toFixed(1)} · {displayCount} {displayCount === 1 ? "review" : "reviews"}
-                </span>
-              </button>
-            )}
-          </div>
-
-          {/* Price */}
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="font-display text-2xl font-bold text-crimson">
-              {formatPrice(displayPrice?.amount ?? "0", currency)}
-            </span>
-            {displayCompareAt && (
-              <span className="text-base text-muted-foreground line-through">
-                {formatPrice(displayCompareAt.amount, currency)}
-              </span>
-            )}
-            <StockBadge available={variant?.availableForSale ?? false} qty={variant?.quantityAvailable ?? null} />
-          </div>
-
-          {/* Variant selector */}
-          {hasOptions && (
-            <div className="flex flex-col gap-3">
-              {product.options.map((option: any) => {
-                if (option.values.length === 1 && option.values[0] === "Default Title") return null;
-                return (
-                  <div key={option.name}>
-                    <p className="mb-2 text-sm font-semibold">{option.name}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {option.values.map((value: any) => {
-                        // Check if this value is available given the other currently-selected options
-                        const hypothetical = { ...selectedOptions, [option.name]: value };
-                        const matchingVariant = variants.find((v: any) =>
-                          v.selectedOptions.every((o: any) => hypothetical[o.name] === o.value)
-                        );
-                        const active = selectedOptions[option.name] === value;
-                        return (
-                          <button
-                            key={value}
-                            type="button"
-                            onClick={() => handleOptionSelect(option.name, value)}
-                            disabled={!matchingVariant?.availableForSale}
-                            className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
-                              active ? "border-crimson bg-crimson text-crimson-foreground" : "border-border bg-card hover:border-crimson"
-                            } disabled:opacity-40`}
-                          >
-                            {value}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Subscription selector */}
-          {sellingPlanGroups.length > 0 && (
-            <SubscriptionSelector
-              groups={sellingPlanGroups}
-              selectedPlanId={selectedPlanId}
-              onSelect={setSelectedPlanId}
-              regularPrice={variant?.price.amount ?? "0"}
-              currency={currency}
-              planPrices={Object.fromEntries(
-                ((variant as any)?.sellingPlanAllocations?.nodes ?? []).map((a: any) => [
-                  a.sellingPlan?.id,
-                  a.priceAdjustments?.[0]?.price?.amount,
-                ]).filter(([id, price]: [string, string]) => {
-                  if (!id || !price) return false;
-                  // Only pass actual discounted prices; skip same-as-regular so SubscriptionSelector
-                  // falls back to calculating the percentage discount from discountMap
-                  const regularAmt = parseFloat(variant?.price?.amount ?? "0");
-                  return parseFloat(price) < regularAmt;
-                })
-              )}
-            />
-          )}
-
-          {/* Quantity + Add to Cart */}
-          <div className="flex items-center gap-3">
-            {/* Qty selector */}
-            <div className="flex items-center rounded-lg border border-border">
-              <button
-                type="button"
-                onClick={() => setQty((q) => Math.max(1, q - 1))}
-                className="grid h-11 w-11 place-items-center text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <Minus className="h-4 w-4" />
-              </button>
-              <span className="w-8 text-center text-sm font-semibold">{qty}</span>
-              <button
-                type="button"
-                onClick={() => setQty((q) => q + 1)}
-                className="grid h-11 w-11 place-items-center text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Add to Cart */}
-            <button
-              type="button"
-              onClick={handleAddToCart}
-              disabled={!variant?.availableForSale || isLoading}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-crimson px-6 py-3 text-sm font-bold uppercase tracking-wide text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-50"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : variant?.availableForSale ? (
-                t("product.add")
-              ) : (
-                t("product.out_of_stock")
-              )}
-            </button>
-
-          </div>
-
-          {/* Trust badges */}
-          <div className="grid grid-cols-3 gap-3 rounded-xl border border-border bg-muted/40 p-4">
-            {[
-              { icon: Truck, label: t("product.trust_delivery") },
-              { icon: ShieldCheck, label: t("product.trust_halal") },
-              { icon: RefreshCw, label: t("product.trust_quality") },
-            ].map(({ icon: Icon, label }) => (
-              <div key={label} className="flex flex-col items-center gap-1.5 text-center">
-                <Icon className="h-6 w-6 text-crimson" />
-                <span className="text-xs font-medium text-muted-foreground">{label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Description */}
-          {product.descriptionHtml && (
-            <div className="border-t border-border pt-5">
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                {t("product.details")}
-              </h3>
-              <div
-                className="prose prose-sm max-w-none text-muted-foreground [&_p]:leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: product.descriptionHtml }}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Reviews */}
-      <div id="reviews" className="container mx-auto px-4 pb-16">
-        <JudgemeReviews
-          reviews={reviews}
-          rating={rating}
-          totalCount={reviewsTotalCount}
-          handle={product.handle}
-          externalId={externalId ?? undefined}
-          metaAverage={displayRating.average}
-          metaCount={displayCount}
-        />
-      </div>
-
-      {/* Recommended products */}
-      {recommendations.length > 0 && (
-        <section className="container mx-auto px-4 pb-16">
-          <div className="mb-6 border-t border-border pt-10">
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">You may also like</p>
-            <h2 className="font-display text-2xl font-extrabold md:text-3xl">Recommended Products</h2>
-          </div>
-          <HScroller>
-            {recommendations.map((rec) => (
-              <div
-                key={rec.node.id}
-                className="w-[46%] flex-shrink-0 snap-start sm:w-[32%] lg:w-[23%] xl:w-[19%]"
-              >
-                <ProductCard product={rec} />
-              </div>
-            ))}
-          </HScroller>
-        </section>
-      )}
-    </div>
-  );
+  if (templateSuffix === "beef-rubs") return <BeefRubsTemplate {...templateProps} />;
+  if (templateSuffix === "chicken-rubs") return <ChickenRubsTemplate {...templateProps} />;
+  return <DefaultTemplate {...templateProps} />;
 }
