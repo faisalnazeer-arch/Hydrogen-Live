@@ -6,15 +6,13 @@ interface HScrollerProps {
   children: ReactNode;
   className?: string;
   itemClassName?: string;
-  /** Hide the soft edge fades (use when section bg already provides contrast) */
-  noFade?: boolean;
 }
 
 /**
  * Modern horizontal scroller: snap, hidden scrollbar, floating arrows,
  * edge gradient fades. RTL-aware via document direction.
  */
-export function HScroller({ children, className, noFade }: HScrollerProps) {
+export function HScroller({ children, className }: HScrollerProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
@@ -61,32 +59,6 @@ export function HScroller({ children, className, noFade }: HScrollerProps) {
         {children}
       </div>
 
-      {!noFade && (
-        <>
-          <div
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute inset-y-0 start-0 w-10 bg-gradient-to-e from-background to-transparent transition-opacity",
-              canPrev ? "opacity-100" : "opacity-0"
-            )}
-            style={{
-              backgroundImage:
-                "linear-gradient(to var(--tw-gradient-direction, right), var(--color-background), transparent)",
-            }}
-          />
-          <div
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute inset-y-0 end-0 w-10 transition-opacity",
-              canNext ? "opacity-100" : "opacity-0"
-            )}
-            style={{
-              backgroundImage:
-                "linear-gradient(to var(--tw-gradient-direction, left), var(--color-background), transparent)",
-            }}
-          />
-        </>
-      )}
 
       <button
         type="button"
