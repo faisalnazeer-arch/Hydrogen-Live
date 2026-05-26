@@ -60,12 +60,12 @@ export function SectionHeader({
   actionLabel?: string;
 }) {
   return (
-    <div className="mb-6 flex items-end justify-between gap-4">
+    <div className="mb-3 flex items-end justify-between gap-4 md:mb-6">
       <div>
         {subtitle && (
-          <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">{subtitle}</div>
+          <div className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-crimson md:mb-1 md:text-[11px]">{subtitle}</div>
         )}
-        <h2 className="font-display text-2xl font-extrabold tracking-tight md:text-3xl">{title}</h2>
+        <h2 className="font-display text-lg font-extrabold tracking-tight md:text-3xl">{title}</h2>
       </div>
       {actionHref && (
         <a href={actionHref} className="hidden text-sm font-semibold text-crimson hover:underline sm:inline">

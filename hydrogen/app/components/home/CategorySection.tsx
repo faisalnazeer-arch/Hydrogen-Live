@@ -35,20 +35,20 @@ export function CategorySection({
   return (
     <section className="container mx-auto px-4 py-6 md:py-12">
       {/* Header */}
-      <div className="mb-4 text-center">
+      <div className="mb-3 text-center">
         {subtitle && (
-          <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">
+          <div className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-crimson md:mb-1 md:text-[11px]">
             {subtitle}
           </div>
         )}
-        <h2 className="font-display text-2xl font-extrabold tracking-tight md:text-3xl">
+        <h2 className="font-display text-lg font-extrabold tracking-tight md:text-3xl">
           {title}
         </h2>
       </div>
 
       {/* Collection tabs */}
       {hasTabs && (
-        <div className="mb-4 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+        <div className="mb-3 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
           <div className="flex min-w-max border-b border-border mx-auto w-fit">
             {tabs.map((tab, idx) => (
               <TabButton
@@ -65,10 +65,10 @@ export function CategorySection({
       )}
 
       {/* View all */}
-      <div className="mb-6 text-center">
+      <div className="mb-3 text-center">
         <Link
           to={`/collections/${viewAllHandle}`}
-          className="text-sm font-semibold text-crimson underline-offset-2 hover:underline"
+          className="text-xs font-semibold text-crimson underline-offset-2 hover:underline md:text-sm"
         >
           View all
         </Link>

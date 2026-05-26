@@ -25,9 +25,9 @@ export function ShopByOrigin({ section }: Props) {
   return (
     <section className="bg-bone py-6 md:py-12">
       <div className="container mx-auto px-4">
-        <div className="mb-4 text-center md:mb-6">
-          <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">{section.eyebrow}</div>
-          <h2 className="font-display text-2xl font-extrabold md:text-3xl">{section.heading}</h2>
+        <div className="mb-3 text-center md:mb-6">
+          <div className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-crimson md:mb-1 md:text-[11px]">{section.eyebrow}</div>
+          <h2 className="font-display text-lg font-extrabold md:text-3xl">{section.heading}</h2>
         </div>
         <div className="flex gap-3 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] md:grid md:grid-cols-7">
           {section.items.map((item) => (

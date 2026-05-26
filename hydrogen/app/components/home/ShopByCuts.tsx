@@ -10,9 +10,9 @@ export function ShopByCuts({ section }: Props) {
 
   return (
     <section className="container mx-auto px-4 py-6 md:py-12">
-      <div className="mb-4 text-center md:mb-6">
-        <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">{section.eyebrow}</div>
-        <h2 className="font-display text-2xl font-extrabold md:text-3xl">{section.heading}</h2>
+      <div className="mb-3 text-center md:mb-6">
+        <div className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-crimson md:mb-1 md:text-[11px]">{section.eyebrow}</div>
+        <h2 className="font-display text-lg font-extrabold md:text-3xl">{section.heading}</h2>
       </div>
       <div className="grid grid-cols-4 gap-3 md:grid-cols-8">
         {section.items.map((c) => (
