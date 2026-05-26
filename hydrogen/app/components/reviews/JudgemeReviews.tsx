@@ -128,7 +128,7 @@ export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, ha
   if (effectiveTotal === 0) {
     return (
       <section className="border-t border-border pt-8">
-        <h2 className="mb-4 text-lg font-bold">Customer Reviews</h2>
+        <h2 className="mb-4 text-center text-lg font-bold">Customer Reviews</h2>
         <p className="text-sm text-muted-foreground">
           No reviews yet. Be the first to review this product!
         </p>
@@ -140,10 +140,10 @@ export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, ha
 
   return (
     <section className="border-t border-border pt-8">
-      <h2 className="mb-6 text-lg font-bold">Customer Reviews</h2>
+      <h2 className="mb-6 text-center text-lg font-bold">Customer Reviews</h2>
 
       {/* Summary */}
-      <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-start">
+      <div className="mb-8 flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:justify-center">
         {/* Average score */}
         <div className="flex shrink-0 flex-col items-center gap-1 rounded-xl border border-border bg-muted/40 px-8 py-5">
           <span className="font-display text-5xl font-extrabold tabular-nums">
