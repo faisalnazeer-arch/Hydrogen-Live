@@ -1,11 +1,5 @@
-import { useState, useEffect, type ReactNode } from "react";
-import { Truck, ShieldCheck, RefreshCw, Loader2 } from "lucide-react";
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from "~/components/ui/accordion";
+import { useState, useEffect, type ReactNode, useRef } from "react";
+import { Heart, Minus, Plus, Truck, ShieldCheck, RefreshCw, Loader2, ChevronDown } from "lucide-react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import mlsLogo from "~/assets/mls-logo.png";
@@ -13,28 +7,16 @@ import { OriginBadge } from "~/components/product/OriginBadge";
 import { StockBadge } from "~/components/product/StockBadge";
 import {
   formatPrice,
-  getOriginFromProduct,
+  getOriginFromTags,
   parseRatingMetafields,
   shopifyImageUrl,
   type ShopifyProduct,
 } from "~/lib/shopify";
 import { useCartStore } from "~/stores/cartStore";
+import { useWishlistStore } from "~/stores/wishlistStore";
 import { JudgemeReviews } from "~/components/reviews/JudgemeReviews";
 import { StarRating } from "~/components/reviews/StarRating";
 import { SubscriptionSelector, parseSellingPlanGroups } from "~/components/product/SubscriptionSelector";
-import { ProductCard } from "~/components/product/ProductCard";
-import { HScroller } from "~/components/home/HScroller";
-import { useT } from "~/i18n/strings";
-import { Button } from "~/components/ui/button";
-import { QuantitySelector } from "~/components/shared/QuantitySelector";
-import { OptionButton } from "~/components/shared/OptionButton";
-import type { JudgemeRatingSummary } from "~/lib/judgeme";
-
-export interface AccordionSection {
-  value: string;
-  label: string;
-  content: ReactNode;
-}
 
 export interface ProductPageShellProps {
   product: any;
@@ -42,11 +24,74 @@ export interface ProductPageShellProps {
   discountMap: Record<string, number>;
   reviews: any[];
   reviewsTotalCount: number;
-  rating: JudgemeRatingSummary;
-  externalId: string | null;
-  recommendations: ShopifyProduct[];
+  rating: any;
+  templateSuffix?: string | null;
   extraSections?: ReactNode;
-  accordionSections?: AccordionSection[];
+}
+
+const DESC_CLAMP_PX = 120;
+
+function DescriptionWithToggle({ html }: { html: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [overflow, setOverflow] = useState(false);
+
+  useEffect(() => {
+    if (innerRef.current) {
+      setOverflow(innerRef.current.scrollHeight > DESC_CLAMP_PX + 10);
+    }
+  }, [html]);
+
+  return (
+    <div>
+      <div
+        className="overflow-hidden transition-[max-height] duration-500 ease-in-out"
+        style={{ maxHeight: expanded ? "none" : DESC_CLAMP_PX }}
+      >
+        <div
+          ref={innerRef}
+          className="prose prose-sm max-w-none [&_p]:leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      </div>
+      {overflow && (
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          className="mt-2 text-xs font-semibold text-crimson hover:underline"
+        >
+          {expanded ? "View less ↑" : "View more ↓"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function AccordionItem({ title, children, defaultOpen = false }: { title: string; children: ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div className="border-b border-border last:border-b-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between py-4 text-left text-sm font-semibold transition-colors hover:text-crimson"
+      >
+        {title}
+        <ChevronDown className={`h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      <div
+        ref={contentRef}
+        className="overflow-hidden transition-[max-height] duration-300 ease-in-out"
+        style={{ maxHeight: open ? "none" : 0 }}
+      >
+        <div className="pb-4 text-sm text-muted-foreground leading-relaxed">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function ProductPageShell({
@@ -56,40 +101,30 @@ export function ProductPageShell({
   reviews,
   reviewsTotalCount,
   rating,
-  externalId,
-  recommendations,
+  templateSuffix,
   extraSections,
-  accordionSections = [],
 }: ProductPageShellProps) {
-  const t = useT();
   const variants = product.variants.nodes;
   const images = product.images.nodes;
-  const origin = getOriginFromProduct(product.tags, product.title);
+  const origin = getOriginFromTags(product.tags);
 
   const metaRating = parseRatingMetafields((product as any).metafields);
   const displayRating = rating.average > 0 ? rating : metaRating;
   const displayCount = reviewsTotalCount > 0 ? reviewsTotalCount : metaRating.count;
 
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() =>
-    Object.fromEntries((variants[0]?.selectedOptions ?? []).map((o: any) => [o.name, o.value]))
-  );
+  const [selectedVariantId, setSelectedVariantId] = useState(variants[0]?.id ?? "");
   const [activeImage, setActiveImage] = useState(0);
   const [qty, setQty] = useState(1);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
 
   const sellingPlanGroups = parseSellingPlanGroups(sellingPlanGroupsRaw, discountMap);
+
   const addItem = useCartStore((s) => s.addItem);
   const isLoading = useCartStore((s) => s.isLoading);
+  const wishlisted = useWishlistStore((s) => s.has(product.id));
+  const toggleWishlist = useWishlistStore((s) => s.toggle);
 
-  const variant =
-    variants.find((v: any) =>
-      v.selectedOptions.every((o: any) => selectedOptions[o.name] === o.value)
-    ) ?? variants[0];
-
-  const handleOptionSelect = (optionName: string, value: string) => {
-    setSelectedOptions((prev) => ({ ...prev, [optionName]: value }));
-  };
-
+  const variant = variants.find((v: any) => v.id === selectedVariantId) ?? variants[0];
   const currency = variant?.price.currencyCode ?? "AED";
 
   const selectedAllocation = selectedPlanId
@@ -97,26 +132,16 @@ export function ProductPageShell({
         (a: any) => a.sellingPlan?.id === selectedPlanId
       )
     : null;
-
-  const allocPrice = selectedAllocation?.priceAdjustments?.[0]?.price;
-  const regularAmt = parseFloat(variant?.price?.amount ?? "0");
-  const allocAmt = allocPrice ? parseFloat(allocPrice.amount) : regularAmt;
-  const activePlanDiscount = selectedPlanId ? (discountMap[selectedPlanId] ?? 10) : 0;
-  const effectiveSubAmt = selectedPlanId
-    ? (allocAmt < regularAmt ? allocAmt : regularAmt * (1 - activePlanDiscount / 100))
-    : regularAmt;
-
-  const displayPrice = selectedPlanId
-    ? { amount: effectiveSubAmt.toFixed(2), currencyCode: variant?.price?.currencyCode ?? "AED" }
-    : variant?.price;
-
-  const displayCompareAt = selectedPlanId ? variant?.price : variant?.compareAtPrice;
+  const displayPrice = selectedAllocation?.priceAdjustments?.[0]?.price ?? variant?.price;
+  const displayCompareAt = selectedAllocation
+    ? selectedAllocation.priceAdjustments?.[0]?.compareAtPrice ?? variant?.compareAtPrice
+    : variant?.compareAtPrice;
 
   useEffect(() => {
     if (!variant?.image?.url) return;
     const idx = images.findIndex((img: any) => img.url === variant.image!.url);
     if (idx !== -1) setActiveImage(idx);
-  }, [variant?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedVariantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasOptions =
     product.options.length > 1 ||
@@ -152,26 +177,18 @@ export function ProductPageShell({
     },
   };
 
-  const allPlans = sellingPlanGroups.flatMap((g) => g.plans);
-  const activePlanName = selectedPlanId
-    ? (allPlans.find((p) => p.id === selectedPlanId)?.name ?? null)
-    : null;
-
   const handleAddToCart = async () => {
     if (!variant) return;
-    const cartCompareAtPrice = selectedPlanId ? variant.price : (variant.compareAtPrice ?? null);
     await addItem({
       product: shopifyProduct,
       variantId: variant.id,
       variantTitle: variant.title,
       price: displayPrice,
-      compareAtPrice: cartCompareAtPrice,
       quantity: qty,
       selectedOptions: variant.selectedOptions,
       sellingPlanId: selectedPlanId ?? undefined,
-      sellingPlanName: activePlanName,
     });
-    toast.success(t("product.added"), {
+    toast.success("Added to cart", {
       description: `${product.title}${variant.title !== "Default Title" ? ` · ${variant.title}` : ""}`,
       position: "top-center",
     });
@@ -279,18 +296,26 @@ export function ProductPageShell({
                     <p className="mb-2 text-sm font-semibold">{option.name}</p>
                     <div className="flex flex-wrap gap-2">
                       {option.values.map((value: any) => {
-                        const hypothetical: Record<string, string> = { ...selectedOptions, [option.name]: value };
                         const matchingVariant = variants.find((v: any) =>
-                          v.selectedOptions.every((o: any) => hypothetical[o.name] === o.value)
+                          v.selectedOptions.some((o: any) => o.name === option.name && o.value === value)
+                        );
+                        const active = variant?.selectedOptions.some(
+                          (o: any) => o.name === option.name && o.value === value
                         );
                         return (
-                          <OptionButton
+                          <button
                             key={value}
-                            label={value}
-                            active={selectedOptions[option.name] === value}
+                            type="button"
+                            onClick={() => matchingVariant && setSelectedVariantId(matchingVariant.id)}
                             disabled={!matchingVariant?.availableForSale}
-                            onClick={() => handleOptionSelect(option.name, value)}
-                          />
+                            className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+                              active
+                                ? "border-crimson bg-crimson text-crimson-foreground"
+                                : "border-border bg-card hover:border-crimson"
+                            } disabled:opacity-40`}
+                          >
+                            {value}
+                          </button>
                         );
                       })}
                     </div>
@@ -308,43 +333,59 @@ export function ProductPageShell({
               onSelect={setSelectedPlanId}
               regularPrice={variant?.price.amount ?? "0"}
               currency={currency}
-              planPrices={Object.fromEntries(
-                ((variant as any)?.sellingPlanAllocations?.nodes ?? [])
-                  .map((a: any) => [a.sellingPlan?.id, a.priceAdjustments?.[0]?.price?.amount])
-                  .filter(([id, price]: [string, string]) => {
-                    if (!id || !price) return false;
-                    return parseFloat(price) < parseFloat(variant?.price?.amount ?? "0");
-                  })
-              )}
             />
           )}
 
           {/* Quantity + Add to Cart */}
           <div className="flex items-center gap-3">
-            <QuantitySelector size="lg" value={qty} onChange={setQty} />
-            <Button
-              variant="primary"
-              size="lg"
+            <div className="flex items-center rounded-lg border border-border">
+              <button
+                type="button"
+                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                className="grid h-11 w-11 place-items-center text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Minus className="h-4 w-4" />
+              </button>
+              <span className="w-8 text-center text-sm font-semibold">{qty}</span>
+              <button
+                type="button"
+                onClick={() => setQty((q) => q + 1)}
+                className="grid h-11 w-11 place-items-center text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+
+            <button
+              type="button"
               onClick={handleAddToCart}
               disabled={!variant?.availableForSale || isLoading}
-              className="flex-1"
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-crimson px-6 py-3 text-sm font-bold uppercase tracking-wide text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-50"
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : variant?.availableForSale ? (
-                t("product.add")
+                "Add to Cart"
               ) : (
-                t("product.out_of_stock")
+                "Out of Stock"
               )}
-            </Button>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => toggleWishlist(product.id)}
+              className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-crimson hover:text-crimson"
+            >
+              <Heart className={`h-5 w-5 ${wishlisted ? "fill-crimson text-crimson" : ""}`} />
+            </button>
           </div>
 
           {/* Trust badges */}
           <div className="grid grid-cols-3 gap-3 rounded-xl border border-border bg-muted/40 p-4">
             {[
-              { icon: Truck, label: t("product.trust_delivery") },
-              { icon: ShieldCheck, label: t("product.trust_halal") },
-              { icon: RefreshCw, label: t("product.trust_quality") },
+              { icon: Truck, label: "Same-day delivery" },
+              { icon: ShieldCheck, label: "100% Halal certified" },
+              { icon: RefreshCw, label: "Quality guarantee" },
             ].map(({ icon: Icon, label }) => (
               <div key={label} className="flex flex-col items-center gap-1.5 text-center">
                 <Icon className="h-6 w-6 text-crimson" />
@@ -353,73 +394,62 @@ export function ProductPageShell({
             ))}
           </div>
 
-          {/* Description + template accordion sections */}
-          {(product.descriptionHtml || accordionSections.length > 0) && (
-            <div className="border-t border-border pt-2">
-              <Accordion type="multiple" defaultValue={["description"]}>
-                {product.descriptionHtml && (
-                  <AccordionItem value="description">
-                    <AccordionTrigger className="text-sm font-semibold uppercase tracking-wider text-foreground hover:no-underline">
-                      {t("product.details")}
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div
-                        className="prose prose-sm max-w-none text-muted-foreground [&_p]:leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: product.descriptionHtml }}
-                      />
-                    </AccordionContent>
-                  </AccordionItem>
-                )}
-                {accordionSections.map((section) => (
-                  <AccordionItem key={section.value} value={section.value}>
-                    <AccordionTrigger className="text-sm font-semibold uppercase tracking-wider text-foreground hover:no-underline">
-                      {section.label}
-                    </AccordionTrigger>
-                    <AccordionContent>{section.content}</AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            </div>
-          )}
+          {/* Collapsible tabs */}
+          <div className="border-t border-border pt-2">
+            <AccordionItem title="Description" defaultOpen={true}>
+              {product.descriptionHtml ? (
+                <DescriptionWithToggle html={product.descriptionHtml} />
+              ) : (
+                <p>No description available.</p>
+              )}
+            </AccordionItem>
+
+            <AccordionItem title="Delivery Info">
+              <ul className="space-y-2">
+                <li>🚚 Same-day delivery available for orders placed before 2 PM.</li>
+                <li>📦 Orders are packed in insulated boxes to maintain freshness.</li>
+                <li>🌡️ All products are delivered chilled (0–4°C).</li>
+                <li>📍 Delivery available across Muscat and major cities in Oman.</li>
+              </ul>
+            </AccordionItem>
+
+            <AccordionItem title="Customer Support">
+              <ul className="space-y-2">
+                <li>📞 Call us: <span className="font-medium text-foreground">+968 XXXX XXXX</span></li>
+                <li>💬 WhatsApp support available 9 AM – 9 PM daily.</li>
+                <li>📧 Email: <span className="font-medium text-foreground">support@mls.om</span></li>
+                <li>🔄 Not happy? We offer hassle-free returns within 24 hours of delivery.</li>
+              </ul>
+            </AccordionItem>
+
+            {extraSections && product.metafields?.some((m: any) => m?.key?.toLowerCase().includes("rub")) && (
+              <AccordionItem title="Understanding Rubs">
+                {extraSections}
+              </AccordionItem>
+            )}
+            {extraSections && templateSuffix === "whole-cuts" && !product.metafields?.some((m: any) => m?.key?.toLowerCase().includes("rub")) && (
+              <AccordionItem title="About This Cut">
+                {extraSections}
+              </AccordionItem>
+            )}
+            {extraSections && templateSuffix === "box-collections" && !product.metafields?.some((m: any) => m?.key?.toLowerCase().includes("rub")) && (
+              <AccordionItem title="About This Box">
+                {extraSections}
+              </AccordionItem>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Template-specific extra sections (between product info and reviews) */}
-      {extraSections}
 
       {/* Reviews */}
       <div id="reviews" className="container mx-auto px-4 pb-16">
         <JudgemeReviews
-          key={product.handle}
           reviews={reviews}
           rating={rating}
           totalCount={reviewsTotalCount}
           handle={product.handle}
-          externalId={externalId ?? undefined}
-          metaAverage={displayRating.average}
-          metaCount={displayCount}
         />
       </div>
-
-      {/* Recommended products */}
-      {recommendations.length > 0 && (
-        <section className="container mx-auto px-4 pb-16">
-          <div className="mb-6 border-t border-border pt-10">
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">You may also like</p>
-            <h2 className="font-display text-2xl font-extrabold md:text-3xl">Recommended Products</h2>
-          </div>
-          <HScroller>
-            {recommendations.map((rec) => (
-              <div
-                key={rec.node.id}
-                className="w-[46%] flex-shrink-0 snap-start sm:w-[32%] lg:w-[23%] xl:w-[19%]"
-              >
-                <ProductCard product={rec} />
-              </div>
-            ))}
-          </HScroller>
-        </section>
-      )}
     </div>
   );
 }
