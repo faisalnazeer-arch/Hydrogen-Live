@@ -150,7 +150,7 @@ export function QuickBuyDrawer() {
                 />
               </div>
             )}
-            <div className="flex flex-col justify-center">
+            <div className="flex flex-col justify-start">
               <div className="text-sm font-medium leading-tight sm:text-base">{node.title}</div>
               <div className="mt-0.5 flex items-baseline gap-1.5">
                 <span className="font-display text-base font-bold text-crimson sm:text-2xl">
