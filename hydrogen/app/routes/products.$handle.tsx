@@ -3,7 +3,11 @@ import { useLoaderData } from "react-router";
 import { type ShopifyProduct } from "~/lib/shopify";
 import { fetchJudgemeReviews, fetchJudgemeRating, buildRatingSummary } from "~/lib/judgeme";
 import { DefaultTemplate } from "~/components/product-templates/DefaultTemplate";
-import { BeefRubsTemplate, ChickenRubsTemplate } from "~/components/product-templates/RubsTemplate";
+import { BeefRubsTemplate } from "~/components/product-templates/BeefRubsTemplate";
+import { ChickenRubsTemplate } from "~/components/product-templates/ChickenRubsTemplate";
+import { LambRubsTemplate } from "~/components/product-templates/LambRubsTemplate";
+import { WholeCutsTemplate } from "~/components/product-templates/WholeCutsTemplate";
+import { BoxCollectionsTemplate } from "~/components/product-templates/BoxCollectionsTemplate";
 
 const RECOMMENDATIONS_QUERY = `#graphql
   query ProductRecommendations($productId: ID!, $country: CountryCode, $language: LanguageCode)
@@ -174,5 +178,8 @@ export default function Product() {
 
   if (templateSuffix === "beef-rubs") return <BeefRubsTemplate {...templateProps} />;
   if (templateSuffix === "chicken-rubs") return <ChickenRubsTemplate {...templateProps} />;
+  if (templateSuffix === "lamb-rubs") return <LambRubsTemplate {...templateProps} />;
+  if (templateSuffix === "whole-cuts") return <WholeCutsTemplate {...templateProps} />;
+  if (templateSuffix === "box-collections") return <BoxCollectionsTemplate {...templateProps} />;
   return <DefaultTemplate {...templateProps} />;
 }

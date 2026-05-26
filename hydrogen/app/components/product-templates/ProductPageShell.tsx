@@ -17,6 +17,8 @@ import { useWishlistStore } from "~/stores/wishlistStore";
 import { JudgemeReviews } from "~/components/reviews/JudgemeReviews";
 import { StarRating } from "~/components/reviews/StarRating";
 import { SubscriptionSelector, parseSellingPlanGroups } from "~/components/product/SubscriptionSelector";
+import { ProductCard } from "~/components/product/ProductCard";
+import { HScroller } from "~/components/home/HScroller";
 
 export interface ProductPageShellProps {
   product: any;
@@ -27,6 +29,7 @@ export interface ProductPageShellProps {
   rating: any;
   templateSuffix?: string | null;
   extraSections?: ReactNode;
+  recommendations?: ShopifyProduct[];
 }
 
 const DESC_CLAMP_PX = 120;
@@ -103,6 +106,7 @@ export function ProductPageShell({
   rating,
   templateSuffix,
   extraSections,
+  recommendations = [],
 }: ProductPageShellProps) {
   const variants = product.variants.nodes;
   const images = product.images.nodes;
@@ -442,7 +446,7 @@ export function ProductPageShell({
       </div>
 
       {/* Reviews */}
-      <div id="reviews" className="container mx-auto px-4 pb-16">
+      <div id="reviews" className="container mx-auto px-4 pb-8">
         <JudgemeReviews
           reviews={reviews}
           rating={rating}
@@ -450,6 +454,23 @@ export function ProductPageShell({
           handle={product.handle}
         />
       </div>
+
+      {/* Recommended Products */}
+      {recommendations.length > 0 && (
+        <div className="container mx-auto px-4 pb-16">
+          <div className="mb-3 md:mb-6">
+            <p className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-crimson md:mb-1 md:text-[11px]">You might also like</p>
+            <h2 className="font-display text-lg font-extrabold md:text-2xl">Recommended for You</h2>
+          </div>
+          <HScroller>
+            {recommendations.map((p) => (
+              <div key={p.node.id} className="w-[44%] flex-shrink-0 snap-start sm:w-[32%] lg:w-[23%] xl:w-[19%]">
+                <ProductCard product={p} />
+              </div>
+            ))}
+          </HScroller>
+        </div>
+      )}
     </div>
   );
 }
