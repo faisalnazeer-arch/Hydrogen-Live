@@ -77,7 +77,7 @@ function PriceTileCard({ tile }: { tile: PriceTile }) {
   return (
     <Link
       to={tile.linkUrl}
-      className="group relative flex aspect-square w-[28vw] flex-shrink-0 flex-col items-center justify-center overflow-hidden rounded-md border border-border text-crimson-foreground transition-transform hover:-translate-y-1 hover:shadow-[var(--shadow-elegant)] md:w-auto"
+      className="group relative flex aspect-square w-[40vw] flex-shrink-0 flex-col items-center justify-center overflow-hidden rounded-md border border-border text-crimson-foreground transition-transform hover:-translate-y-1 hover:shadow-[var(--shadow-elegant)] md:w-auto"
     >
       {/* Background: image if set, else default gradient */}
       {tile.backgroundImageUrl ? (
