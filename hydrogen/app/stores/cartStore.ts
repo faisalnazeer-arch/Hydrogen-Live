@@ -17,6 +17,7 @@ export interface CartItem {
   selectedOptions: Array<{ name: string; value: string }>;
   sellingPlanId?: string | null;
   sellingPlanName?: string | null;
+  attributes?: Array<{ key: string; value: string }>;
   isPending?: boolean;
 }
 
@@ -173,6 +174,7 @@ function isCartNotFoundError(
 async function createShopifyCart(item: CartItem) {
   const line: Record<string, any> = { quantity: item.quantity, merchandiseId: item.variantId };
   if (item.sellingPlanId) line.sellingPlanId = item.sellingPlanId;
+  if (item.attributes?.length) line.attributes = item.attributes;
   const data = await storefrontApiRequest<any>(CART_CREATE_MUTATION, {
     input: { lines: [line] },
   });
@@ -192,6 +194,7 @@ async function createShopifyCart(item: CartItem) {
 async function addLineToShopifyCart(cartId: string, item: CartItem) {
   const line: Record<string, any> = { quantity: item.quantity, merchandiseId: item.variantId };
   if (item.sellingPlanId) line.sellingPlanId = item.sellingPlanId;
+  if (item.attributes?.length) line.attributes = item.attributes;
   const data = await storefrontApiRequest<any>(CART_LINES_ADD_MUTATION, {
     cartId,
     lines: [line],

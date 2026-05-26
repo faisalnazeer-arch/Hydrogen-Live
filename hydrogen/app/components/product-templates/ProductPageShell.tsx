@@ -38,6 +38,8 @@ export interface ProductPageShellProps {
   extraSections?: ReactNode;
   recommendations?: ShopifyProduct[];
   pageSettings?: PageSettings;
+  globoOptions?: ReactNode;
+  globoAttributes?: Array<{ key: string; value: string }>;
 }
 
 const DESC_CLAMP_PX = 120;
@@ -116,6 +118,8 @@ export function ProductPageShell({
   extraSections,
   recommendations = [],
   pageSettings,
+  globoOptions,
+  globoAttributes = [],
 }: ProductPageShellProps) {
   const variants = product.variants.nodes;
   const images = product.images.nodes;
@@ -200,6 +204,7 @@ export function ProductPageShell({
       quantity: qty,
       selectedOptions: variant.selectedOptions,
       sellingPlanId: selectedPlanId ?? undefined,
+      attributes: globoAttributes.length ? globoAttributes : undefined,
     });
     toast.success("Added to cart", {
       description: `${product.title}${variant.title !== "Default Title" ? ` · ${variant.title}` : ""}`,
@@ -335,6 +340,13 @@ export function ProductPageShell({
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Globo Product Options */}
+          {globoOptions && (
+            <div className="border-t border-border pt-4">
+              {globoOptions}
             </div>
           )}
 
