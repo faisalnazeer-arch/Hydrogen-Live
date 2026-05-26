@@ -81,7 +81,7 @@ export function ProductCard({ product, onQuickView, ratingOverride }: ProductCar
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="group relative flex h-full flex-col overflow-hidden rounded-md border border-border bg-card shadow-sm transition-shadow hover:shadow-[var(--shadow-card)]"
+      className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card transition-shadow hover:shadow-[var(--shadow-card)]"
     >
       {/* ── Image ── */}
       <Link
@@ -137,36 +137,35 @@ export function ProductCard({ product, onQuickView, ratingOverride }: ProductCar
       </Link>
 
       {/* ── Card body ── */}
-      <div className="flex flex-1 flex-col p-3">
-        {/* Title + rating — no gap between them */}
+      <div className="flex flex-1 flex-col p-2 sm:p-3">
         <Link
           to={`/products/${node.handle}`}
-          className="text-balance text-sm font-medium leading-snug text-foreground transition-colors hover:text-crimson"
+          className="text-balance text-xs font-medium leading-snug text-foreground transition-colors hover:text-crimson sm:text-sm"
           title={node.title}
         >
           {node.title}
         </Link>
 
         {avgRating > 0 && (
-          <div className="mt-0.5 flex items-center gap-1">
+          <div className="mt-0.5 flex items-center gap-0.5">
             <StarRating rating={avgRating} size="sm" />
-            <span className="text-[11px] text-muted-foreground">({reviewCount})</span>
+            <span className="text-[10px] text-muted-foreground">({reviewCount})</span>
           </div>
         )}
 
         {/* Price + button pushed to bottom */}
-        <div className="mt-auto flex flex-col gap-1.5 pt-2">
-          <div className="flex flex-wrap items-baseline gap-x-2 leading-tight">
+        <div className="mt-auto flex flex-col gap-1 pt-1.5">
+          <div className="flex flex-wrap items-baseline gap-x-1.5 leading-tight">
             {showFrom && (
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
                 {t("product.from")}
               </span>
             )}
-            <span className="font-display text-base font-bold text-crimson sm:text-lg">
+            <span className="font-display text-sm font-bold text-crimson sm:text-base">
               {formatPrice(minPrice, currency)}
             </span>
             {firstAvailable?.compareAtPrice && (
-              <span className="text-xs text-muted-foreground line-through">
+              <span className="text-[10px] text-muted-foreground line-through">
                 {formatPrice(firstAvailable.compareAtPrice.amount, currency)}
               </span>
             )}
@@ -176,7 +175,7 @@ export function ProductCard({ product, onQuickView, ratingOverride }: ProductCar
             size="sm"
             onClick={handleClick}
             disabled={!isAvailable || isAdding}
-            className="w-full"
+            className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
           >
             {isAdding ? (
               <Loader2 className="h-4 w-4 animate-spin" />
