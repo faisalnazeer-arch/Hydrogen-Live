@@ -92,17 +92,17 @@ function ReelCard({ reel: r, onOpen }: { reel: ReelProduct; onOpen: () => void }
           className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-charcoal/85 via-charcoal/10 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-b from-charcoal/70 via-charcoal/10 to-transparent" />
+      <div className="absolute inset-x-2 top-2 text-left">
+        <div className="line-clamp-2 text-[11px] font-semibold leading-tight text-off-white">{r.title}</div>
+        <div className="mt-0.5 text-[10px] font-bold text-crimson-foreground">
+          {formatPrice(r.price.amount, r.price.currencyCode)}
+        </div>
+      </div>
       <div className="absolute inset-0 grid place-items-center">
         <span className="grid h-12 w-12 place-items-center rounded-full bg-off-white/90 text-charcoal shadow-md transition-all duration-300 group-hover:scale-110 group-hover:opacity-0">
           <Play className="ml-0.5 h-5 w-5 fill-current" />
         </span>
-      </div>
-      <div className="absolute inset-x-2 bottom-2 text-left">
-        <div className="line-clamp-2 text-xs font-semibold text-off-white">{r.title}</div>
-        <div className="mt-0.5 text-[11px] font-bold text-crimson-foreground">
-          {formatPrice(r.price.amount, r.price.currencyCode)}
-        </div>
       </div>
     </button>
   );
