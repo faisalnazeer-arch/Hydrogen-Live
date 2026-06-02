@@ -1,12 +1,55 @@
+import { useState } from "react";
 import { Link } from "react-router";
+import { HScroller } from "./HScroller";
+
+function OriginFlag({
+  imageUrl,
+  imageAlt,
+  countryCode,
+}: {
+  imageUrl: string | null;
+  imageAlt: string;
+  countryCode: string;
+}) {
+  const flagSrc = countryCode
+    ? `https://hatscripts.github.io/circle-flags/flags/${countryCode.toLowerCase()}.svg`
+    : null;
+
+  const src = imageUrl ?? flagSrc;
+
+  if (src) {
+    return (
+      <div className="relative h-16 w-16 transition-transform group-hover:scale-105">
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-crimson/20 to-crimson/5 ring-2 ring-crimson/30 shadow-md" />
+        <img
+          src={src}
+          alt={imageAlt}
+          className="h-full w-full rounded-full object-cover relative z-10"
+          loading="lazy"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-16 w-16 rounded-full ring-2 ring-crimson/30 bg-gradient-to-br from-crimson/10 to-bone flex items-center justify-center shadow-md transition-transform group-hover:scale-105">
+      <svg viewBox="0 0 64 64" className="h-8 w-8 text-crimson/60" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="32" cy="32" r="18" />
+        <path d="M32 14 C20 20 20 44 32 50 C44 44 44 20 32 14Z" />
+        <line x1="14" y1="32" x2="50" y2="32" />
+      </svg>
+    </div>
+  );
+}
 
 export interface OriginItem {
   id: string;
   heading: string;
-  code: string;
   link: string;
   imageUrl: string | null;
   imageAlt: string;
+  category: string;
+  countryCode: string;
 }
 
 export interface OriginSectionData {
@@ -20,37 +63,71 @@ interface Props {
 }
 
 export function ShopByOrigin({ section }: Props) {
+  const categories = Array.from(
+    new Set((section?.items ?? []).map((i) => i.category).filter(Boolean))
+  );
+
+  const [activeTab, setActiveTab] = useState(categories[0] ?? "");
+
   if (!section || section.items.length === 0) return null;
 
+  const activeItems =
+    categories.length > 0
+      ? section.items.filter((i) => i.category === activeTab)
+      : section.items;
+
   return (
-    <section className="bg-bone py-6 md:py-12">
+    <section className="bg-bone py-10 md:py-16">
       <div className="container mx-auto px-4">
-        <div className="mb-3 text-center md:mb-6">
-          <div className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-crimson md:mb-1 md:text-[11px]">{section.eyebrow}</div>
-          <h2 className="font-display text-lg font-extrabold md:text-3xl">{section.heading}</h2>
+        {/* Header */}
+        <div className="mb-6 text-center">
+          <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">
+            {section.eyebrow}
+          </div>
+          <h2 className="font-display text-2xl font-extrabold md:text-3xl">
+            {section.heading}
+          </h2>
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] md:grid md:grid-cols-7">
-          {section.items.map((item) => (
+
+        {/* Category tabs */}
+        {categories.length > 1 && (
+          <div className="mb-8 flex flex-wrap justify-center gap-2">
+            {categories.map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`rounded-full border-2 px-6 py-2 text-sm font-bold uppercase tracking-wider transition-colors ${
+                  activeTab === tab
+                    ? "border-crimson bg-crimson text-white"
+                    : "border-crimson text-crimson hover:bg-crimson/10"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Carousel — keyed by tab so it resets scroll position on tab change */}
+        <HScroller key={activeTab}>
+          {activeItems.map((item) => (
             <Link
               key={item.id}
               to={item.link}
-              className="group flex w-[72px] flex-shrink-0 flex-col items-center gap-2 rounded-lg border border-border bg-card p-3 transition-all hover:-translate-y-1 hover:border-crimson hover:shadow-[var(--shadow-card)] md:w-auto md:p-4"
+              className="group flex min-w-[140px] shrink-0 snap-start flex-col items-center gap-3 rounded-xl border border-border bg-card p-5 transition-all hover:-translate-y-1 hover:border-crimson hover:shadow-md"
             >
-              {item.imageUrl ? (
-                <img
-                  src={item.imageUrl}
-                  alt={item.imageAlt || item.heading}
-                  className="h-9 w-9 rounded-full object-cover transition-transform group-hover:scale-110 md:h-10 md:w-10"
-                />
-              ) : (
-                <span className="text-lg font-bold transition-transform group-hover:scale-110 md:text-2xl" aria-hidden>
-                  {item.code}
-                </span>
-              )}
-              <span className="text-center text-[10px] font-bold uppercase leading-tight tracking-wider md:text-[11px]">{item.heading}</span>
+              <OriginFlag
+                imageUrl={item.imageUrl}
+                imageAlt={item.imageAlt || item.heading}
+                countryCode={item.countryCode}
+              />
+              <span className="text-center text-[12px] font-semibold leading-tight">
+                {item.heading}
+              </span>
             </Link>
           ))}
-        </div>
+        </HScroller>
       </div>
     </section>
   );

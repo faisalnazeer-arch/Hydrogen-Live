@@ -15,6 +15,7 @@ import {
   Boxes,
   Info,
   Compass,
+  Globe,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
@@ -53,6 +54,7 @@ export function Header({ mainMenu = [], secondaryMenu = [] }: HeaderProps) {
   const setCartOpen = useCartStore((s) => s.setOpen);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const locale = useLocaleStore((s) => s.locale);
+  const setLocale = useLocaleStore((s) => s.setLocale);
   const t = useT();
   const drawerSide = dirFor(locale) === "rtl" ? "right" : "left";
   const closeMobile = () => setMobileNavOpen(false);
@@ -132,6 +134,30 @@ export function Header({ mainMenu = [], secondaryMenu = [] }: HeaderProps) {
         </div>
 
         <div className="ms-auto flex items-center gap-1">
+          <div className="hidden sm:flex items-center gap-0.5 rounded-full border border-border px-1 py-0.5 text-[11px] font-semibold uppercase tracking-wider">
+            <Globe className="ms-1 h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+            <button
+              type="button"
+              onClick={() => setLocale("en")}
+              aria-pressed={locale === "en"}
+              className={`rounded-full px-2 py-0.5 transition-colors ${
+                locale === "en" ? "bg-crimson text-crimson-foreground" : "hover:text-crimson"
+              }`}
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              onClick={() => setLocale("ar")}
+              aria-pressed={locale === "ar"}
+              lang="ar"
+              className={`rounded-full px-2 py-0.5 transition-colors ${
+                locale === "ar" ? "bg-crimson text-crimson-foreground" : "hover:text-crimson"
+              }`}
+            >
+              العربية
+            </button>
+          </div>
           <Link to="/account/login" aria-label={t("nav.account")} className="hidden sm:inline-flex">
             <Button variant="ghost" size="icon">
               <User className="h-5 w-5" />
@@ -161,7 +187,7 @@ export function Header({ mainMenu = [], secondaryMenu = [] }: HeaderProps) {
 
       {/* Nav rows (desktop) */}
       <nav className="hidden border-t border-border bg-card lg:block">
-        <div className="container relative mx-auto flex items-center justify-center gap-7 px-4 py-2.5 text-[13px] font-semibold uppercase tracking-wider">
+        <div className="container relative mx-auto flex items-center justify-center gap-6 px-4 py-2">
           {mainMenu.map((entry) =>
             entry.columns.length > 0 ? (
               <NavItem
@@ -180,15 +206,24 @@ export function Header({ mainMenu = [], secondaryMenu = [] }: HeaderProps) {
             )
           )}
         </div>
-        <div className="container mx-auto flex items-center justify-center gap-7 border-t border-border px-4 py-2 text-[12px] tracking-wide text-muted-foreground">
-          {secondaryMenu.map((entry) => (
-            <NavLink
-              key={entry.id}
-              to={entry.url ?? "/"}
-              label={entry.label}
-              Icon={pickIcon(entry.label, entry.url ?? "")}
-            />
-          ))}
+        <div className="container relative mx-auto flex items-center justify-center gap-6 border-t border-border/60 px-4 py-1.5">
+          {secondaryMenu.map((entry) =>
+            entry.columns.length > 0 ? (
+              <SecondaryNavItem
+                key={entry.id}
+                label={entry.label}
+                Icon={pickIcon(entry.label, entry.url ?? "")}
+                mega={entry.columns}
+              />
+            ) : (
+              <SecondaryNavLink
+                key={entry.id}
+                to={entry.url ?? "/"}
+                label={entry.label}
+                Icon={pickIcon(entry.label, entry.url ?? "")}
+              />
+            )
+          )}
         </div>
       </nav>
     </header>
@@ -213,16 +248,17 @@ function NavItem({
   };
 
   const handleClose = () => {
-    timer.current = setTimeout(() => setOpen(false), 200);
+    timer.current = setTimeout(() => setOpen(false), 150);
   };
 
+  const isMega = mega.length > 1 || (mega.length === 1 && !!mega[0].title);
+
   return (
-    <div
-      onMouseEnter={handleOpen}
-      onMouseLeave={handleClose}
-    >
-      <button className="flex items-center gap-1.5 py-1 transition-colors hover:text-crimson">
-        {Icon && <Icon className="h-4 w-4" />}
+    <div className={isMega ? undefined : "relative"} onMouseEnter={handleOpen} onMouseLeave={handleClose}>
+      <button
+        className={`flex items-center gap-1 py-1 text-[13px] font-semibold uppercase tracking-wider transition-colors hover:text-crimson ${open ? "text-crimson" : ""}`}
+      >
+        {Icon && <Icon className="h-3.5 w-3.5" />}
         {label}
         <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
@@ -249,9 +285,59 @@ function NavLink({
   return (
     <Link
       to={to}
-      className="flex items-center gap-1.5 transition-colors hover:text-crimson"
+      className="flex items-center gap-1 text-[13px] font-semibold uppercase tracking-wider transition-colors hover:text-crimson"
     >
-      {Icon && <Icon className="h-4 w-4" />}
+      {Icon && <Icon className="h-3.5 w-3.5" />}
+      <span>{label}</span>
+    </Link>
+  );
+}
+
+function SecondaryNavItem({
+  label,
+  mega,
+  Icon,
+}: {
+  label: string;
+  mega: any[];
+  Icon?: LucideIcon;
+}) {
+  const [open, setOpen] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMega = mega.length > 1 || (mega.length === 1 && !!mega[0].title);
+
+  const handleOpen = () => { if (timer.current) clearTimeout(timer.current); setOpen(true); };
+  const handleClose = () => { timer.current = setTimeout(() => setOpen(false), 150); };
+
+  return (
+    <div className={isMega ? undefined : "relative"} onMouseEnter={handleOpen} onMouseLeave={handleClose}>
+      <button className={`flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider transition-colors hover:text-crimson ${open ? "text-crimson" : "text-muted-foreground"}`}>
+        {Icon && <Icon className="h-3 w-3" />}
+        {label}
+        <ChevronDown className={`h-2.5 w-2.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <MegaMenu columns={mega} onMouseEnter={handleOpen} onMouseLeave={handleClose} />
+      )}
+    </div>
+  );
+}
+
+function SecondaryNavLink({
+  to,
+  label,
+  Icon,
+}: {
+  to: string;
+  label: string;
+  Icon?: LucideIcon;
+}) {
+  return (
+    <Link
+      to={to}
+      className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:text-crimson"
+    >
+      {Icon && <Icon className="h-3 w-3" />}
       <span>{label}</span>
     </Link>
   );

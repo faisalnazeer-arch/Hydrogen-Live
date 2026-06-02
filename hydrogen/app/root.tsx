@@ -71,39 +71,24 @@ export interface FooterSettings {
 
 // ── GraphQL ───────────────────────────────────────────────────────────────────
 const LAYOUT_QUERY = `#graphql
+  fragment MenuFields on MenuItem {
+    id title url type
+    items {
+      id title url type
+      items {
+        id title url type
+      }
+    }
+  }
   query LayoutData($language: LanguageCode, $country: CountryCode)
   @inContext(language: $language, country: $country) {
 
-    navEntries: metaobjects(type: "mls_nav_entry", first: 50) {
-      nodes {
-        id
-        handle
-        fields {
-          key
-          value
-          references(first: 20) {
-            nodes {
-              ... on Metaobject {
-                id
-                handle
-                fields {
-                  key
-                  value
-                  references(first: 20) {
-                    nodes {
-                      ... on Metaobject {
-                        id
-                        handle
-                        fields { key value }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+    mainMenu: menu(handle: "main-menu") {
+      items { ...MenuFields }
+    }
+
+    secondaryMenu: menu(handle: "secondary-menu") {
+      items { ...MenuFields }
     }
 
     footerSettings: metaobjects(type: "mls_footer_settings", first: 1) {
@@ -142,41 +127,32 @@ const LAYOUT_QUERY = `#graphql
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function toPath(u: string): string {
-  try { return new URL(u).pathname || "/"; } catch { return u; }
+  try { return new URL(u).pathname || "/"; } catch { return u || "/"; }
 }
 
-function resolveUrl(urlField: string | undefined, handle: string | undefined): string | null {
-  if (urlField) return toPath(urlField);
-  if (handle) return `/collections/${handle}`;
-  return null;
-}
-
-// ── Nav parser ────────────────────────────────────────────────────────────────
-function parseNavEntries(nodes: any[]): NavEntry[] {
-  return nodes
-    .map((node) => {
-      const fm = Object.fromEntries(node.fields.map((f: any) => [f.key, f]));
-      const columns: NavColumn[] = (fm.columns?.references?.nodes ?? []).map((col: any) => {
-        const cf = Object.fromEntries(col.fields.map((f: any) => [f.key, f]));
-        const links: NavLink[] = (cf.links?.references?.nodes ?? []).map((lk: any) => {
-          const lf = Object.fromEntries(lk.fields.map((f: any) => [f.key, f]));
-          return {
-            label: lf.label?.value ?? "",
-            url: resolveUrl(lf.url?.value, lk.handle) ?? "/",
-          };
-        });
-        return { title: cf.title?.value ?? "", links };
-      });
-      return {
-        id: node.id,
-        label: fm.label?.value ?? "",
-        url: resolveUrl(fm.url?.value, node.handle),
-        menu: fm.menu?.value ?? "main",
-        position: parseInt(fm.position?.value ?? "0", 10),
-        columns,
-      };
-    })
-    .sort((a, b) => a.position - b.position);
+// ── Nav parser — native Shopify Menu API ──────────────────────────────────────
+// Level 1 → NavEntry  (top nav item, url, columns)
+// Level 2 → NavColumn (mega-menu column header, links)  if it has children
+//         → flat link added to a single unnamed column   if no children
+// Level 3 → NavLink   (link inside column)
+function parseShopifyMenu(menu: any, menuName = "main"): NavEntry[] {
+  if (!menu?.items?.length) return [];
+  return (menu.items as any[]).map((item: any, idx: number): NavEntry => {
+    const hasColumns = item.items?.some((c: any) => c.items?.length > 0);
+    let columns: NavColumn[] = [];
+    if (hasColumns) {
+      columns = item.items.map((col: any) => ({
+        title: col.title,
+        links: (col.items ?? []).map((lk: any): NavLink => ({
+          label: lk.title,
+          url: toPath(lk.url),
+        })),
+      }));
+    } else if (item.items?.length > 0) {
+      columns = [{ title: "", links: item.items.map((lk: any): NavLink => ({ label: lk.title, url: toPath(lk.url) })) }];
+    }
+    return { id: item.id, label: item.title, url: toPath(item.url), menu: menuName, position: idx, columns };
+  });
 }
 
 // ── Footer parsers ────────────────────────────────────────────────────────────
@@ -238,17 +214,12 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const data = await context.storefront.query(LAYOUT_QUERY, {
       variables: { language, country: "AE" as const },
     });
-    const all = parseNavEntries(data?.navEntries?.nodes ?? []);
+    const mainMenu      = parseShopifyMenu(data?.mainMenu,      "main");
+    const secondaryMenu = parseShopifyMenu(data?.secondaryMenu, "secondary");
     const footerSettings = parseFooterSettings(data?.footerSettings?.nodes ?? []);
-    const footerColumns = parseFooterColumns(data?.footerColumns?.nodes ?? []);
+    const footerColumns  = parseFooterColumns(data?.footerColumns?.nodes ?? []);
     const announcementMessages = parseAnnouncementMessages(data?.announcementBar?.nodes ?? []);
-    return {
-      mainMenu: all.filter((e) => e.menu === "main"),
-      secondaryMenu: all.filter((e) => e.menu === "secondary"),
-      footerSettings,
-      footerColumns,
-      announcementMessages,
-    };
+    return { mainMenu, secondaryMenu, footerSettings, footerColumns, announcementMessages };
   } catch {
     return {
       mainMenu: [] as NavEntry[],

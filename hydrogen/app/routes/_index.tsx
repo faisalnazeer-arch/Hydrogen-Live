@@ -180,6 +180,7 @@ const HOME_QUERY = `#graphql
             nodes {
               ... on Metaobject {
                 id
+                handle
                 fields {
                   key
                   value
@@ -498,10 +499,11 @@ function parseOriginSection(nodes: any[]): OriginSectionData | null {
     return {
       id: item.id as string,
       heading: (f.heading?.value ?? "") as string,
-      code: (f.code?.value ?? "") as string,
       link: (f.link?.value ?? "/") as string,
       imageUrl: (f.image?.reference?.image?.url ?? null) as string | null,
       imageAlt: (f.image?.reference?.image?.altText ?? "") as string,
+      category: (f.category?.value ?? "") as string,
+      countryCode: (f.country_code?.value ?? "") as string,
     };
   });
   return {

@@ -12,36 +12,68 @@ interface MegaMenuProps {
 }
 
 export function MegaMenu({ columns, onMouseEnter, onMouseLeave }: MegaMenuProps) {
+  const isSimple = columns.length === 1 && !columns[0].title;
+
+  if (isSimple) {
+    return (
+      <div
+        className="absolute left-0 top-full z-50 min-w-[180px]"
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      >
+        <div className="h-1.5" />
+        <div className="rounded-md border border-border bg-card shadow-lg overflow-hidden">
+          <ul className="py-1.5">
+            {columns[0].links.map((l) => (
+              <li key={l.url + l.label}>
+                <Link
+                  to={l.url}
+                  className="block px-4 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-crimson"
+                >
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className="absolute left-4 right-4 top-full z-50"
+      className="absolute left-0 right-0 top-full z-50"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      {/* invisible bridge fills the gap between button and panel so the mouse
-          never leaves the hover zone while moving downward */}
-      <div className="h-2 w-full" />
-      <div className="rounded-md border border-border bg-card p-6 shadow-[var(--shadow-card)]">
-        <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-          {columns.map((col) => (
-            <div key={col.title}>
-              <h4 className="mb-3 font-display text-sm font-bold uppercase tracking-wider text-crimson">
-                {col.title}
-              </h4>
-              <ul className="space-y-2">
-                {col.links.map((l) => (
-                  <li key={l.url + l.label}>
-                    <Link
-                      to={l.url}
-                      className="block py-0.5 text-sm text-foreground transition-colors hover:text-crimson"
-                    >
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+      <div className="border-t border-border bg-card shadow-lg">
+        <div className="container mx-auto px-6 py-5">
+          <div
+            className="grid gap-x-8 gap-y-1"
+            style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}
+          >
+            {columns.map((col) => (
+              <div key={col.title}>
+                {col.title && (
+                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-crimson">
+                    {col.title}
+                  </p>
+                )}
+                <ul className="space-y-1">
+                  {col.links.map((l) => (
+                    <li key={l.url + l.label}>
+                      <Link
+                        to={l.url}
+                        className="block py-[3px] text-[13px] text-foreground/75 transition-colors hover:text-crimson"
+                      >
+                        {l.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
