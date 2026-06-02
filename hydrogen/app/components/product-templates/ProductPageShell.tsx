@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, type ReactNode, useRef } from "react";
-import { Heart, Minus, Plus, Truck, ShieldCheck, RefreshCw, Loader2, ChevronDown } from "lucide-react";
+import { Minus, Plus, Truck, ShieldCheck, RefreshCw, Loader2, ChevronDown } from "lucide-react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import mlsLogo from "~/assets/mls-logo.png";
@@ -142,8 +142,6 @@ export function ProductPageShell({
 
   const addItem = useCartStore((s) => s.addItem);
   const isLoading = useCartStore((s) => s.isLoading);
-  const wishlisted = useWishlistStore((s) => s.has(product.id));
-  const toggleWishlist = useWishlistStore((s) => s.toggle);
 
   const variant = variants.find((v: any) => v.id === selectedVariantId) ?? variants[0];
   const currency = variant?.price.currencyCode ?? "AED";
@@ -275,10 +273,7 @@ export function ProductPageShell({
         {/* Product info */}
         <div className="flex flex-col gap-5">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              {product.vendor || "MLS UAE"}
-            </p>
-            <h1 className="font-display mt-1 text-2xl font-extrabold leading-tight sm:text-3xl">
+            <h1 className="font-display text-2xl font-extrabold leading-tight sm:text-3xl">
               {product.title}
             </h1>
             {displayRating.average > 0 && (
@@ -403,19 +398,12 @@ export function ProductPageShell({
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => toggleWishlist(product.id)}
-              className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-crimson hover:text-crimson"
-            >
-              <Heart className={`h-5 w-5 ${wishlisted ? "fill-crimson text-crimson" : ""}`} />
-            </button>
           </div>
 
           {/* Trust badges */}
           <div className="grid grid-cols-3 gap-3 rounded-xl border border-border bg-muted/40 p-4">
             {[
-              { icon: Truck, label: "Same-day delivery" },
+              { icon: Truck, label: "2-hour delivery" },
               { icon: ShieldCheck, label: "100% Halal certified" },
               { icon: RefreshCw, label: "Quality guarantee" },
             ].map(({ icon: Icon, label }) => (
@@ -445,7 +433,7 @@ export function ProductPageShell({
                 </ul>
               ) : (
                 <ul className="space-y-2">
-                  <li>Same-day delivery available for orders placed before 2 PM.</li>
+                  <li>2-hour delivery available for orders placed before 8 PM.</li>
                   <li>Orders are packed in insulated boxes to maintain freshness.</li>
                   <li>All products are delivered chilled (0–4°C).</li>
                   <li>Delivery available across UAE and major cities.</li>
@@ -462,8 +450,15 @@ export function ProductPageShell({
                 </ul>
               ) : (
                 <ul className="space-y-2">
-                  <li>WhatsApp support available 9 AM – 9 PM daily.</li>
-                  <li>Email: <span className="font-medium text-foreground">support@mls.om</span></li>
+                  <li>
+                    Call or WhatsApp:{" "}
+                    <a href="tel:+971504516403" className="font-medium text-crimson hover:underline">+971 50 451 6403</a>
+                  </li>
+                  <li>Support available 9 AM – 9 PM daily.</li>
+                  <li>
+                    Email:{" "}
+                    <a href="mailto:contactus@mlsuae.ae" className="font-medium text-crimson hover:underline">contactus@mlsuae.ae</a>
+                  </li>
                   <li>Hassle-free returns within 24 hours of delivery.</li>
                 </ul>
               )}
