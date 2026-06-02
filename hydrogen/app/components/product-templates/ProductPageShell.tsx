@@ -13,7 +13,6 @@ import {
   type ShopifyProduct,
 } from "~/lib/shopify";
 import { useCartStore } from "~/stores/cartStore";
-import { useWishlistStore } from "~/stores/wishlistStore";
 import { JudgemeReviews } from "~/components/reviews/JudgemeReviews";
 import { StarRating } from "~/components/reviews/StarRating";
 import { SubscriptionSelector, parseSellingPlanGroups } from "~/components/product/SubscriptionSelector";
@@ -105,6 +104,24 @@ function AccordionItem({ title, children, defaultOpen = false }: { title: string
         </div>
       </div>
     </div>
+  );
+}
+
+function LinkifyLine({ text }: { text: string }) {
+  // Split on phone numbers (+digits) and email addresses, wrap each in a link
+  const parts = text.split(/(\+[\d\s]{7,}|[\w.+-]+@[\w-]+\.[a-z]{2,})/gi);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (/^\+[\d\s]{7,}$/.test(part)) {
+          return <a key={i} href={`tel:${part.replace(/\s/g, "")}`} className="font-medium text-crimson hover:underline">{part}</a>;
+        }
+        if (/^[\w.+-]+@[\w-]+\.[a-z]{2,}$/i.test(part)) {
+          return <a key={i} href={`mailto:${part}`} className="font-medium text-crimson hover:underline">{part}</a>;
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
   );
 }
 
@@ -442,26 +459,19 @@ export function ProductPageShell({
             </AccordionItem>
 
             <AccordionItem title={pageSettings?.supportTitle ?? "Customer Support"}>
-              {pageSettings?.supportContent ? (
-                <ul className="space-y-2">
-                  {pageSettings.supportContent.split("\n").filter(Boolean).map((line, i) => (
-                    <li key={i}>{line}</li>
-                  ))}
-                </ul>
-              ) : (
-                <ul className="space-y-2">
-                  <li>
-                    Call or WhatsApp:{" "}
-                    <a href="tel:+971504516403" className="font-medium text-crimson hover:underline">+971 50 451 6403</a>
-                  </li>
-                  <li>Support available 9 AM – 9 PM daily.</li>
-                  <li>
-                    Email:{" "}
-                    <a href="mailto:contactus@mlsuae.ae" className="font-medium text-crimson hover:underline">contactus@mlsuae.ae</a>
-                  </li>
-                  <li>Hassle-free returns within 24 hours of delivery.</li>
-                </ul>
-              )}
+              <ul className="space-y-2">
+                {(pageSettings?.supportContent
+                  ? pageSettings.supportContent.split("\n").filter(Boolean)
+                  : [
+                      "Call or WhatsApp: +971504516403",
+                      "Support available 9 AM – 9 PM daily.",
+                      "Email: contactus@mlsuae.ae",
+                      "Hassle-free returns within 24 hours of delivery.",
+                    ]
+                ).map((line, i) => (
+                  <li key={i}><LinkifyLine text={line} /></li>
+                ))}
+              </ul>
             </AccordionItem>
 
             {extraSections && product.metafields?.some((m: any) => m?.key?.toLowerCase().includes("rub")) && (
