@@ -192,18 +192,31 @@ export default function ContactPage() {
 
       {/* ── Map strip ─────────────────────────────────────────────────── */}
       <div className="container mx-auto px-4 pb-12">
-        <div className="overflow-hidden rounded-2xl border border-border">
-          <iframe
-            title="MLS UAE Location"
-            src="https://maps.google.com/maps?q=Dubai+Silicon+Oasis,+Dubai,+United+Arab+Emirates&t=&z=15&ie=UTF8&iwloc=&output=embed"
-            width="100%"
-            height="280"
-            style={{ border: 0, display: "block" }}
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
-        </div>
+        <a
+          href="https://maps.google.com/?q=E-09+Light+Industrial+Unit+6+Dubai+Silicon+Oasis+Dubai+UAE"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group relative flex h-56 w-full items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted transition-all hover:border-crimson hover:shadow-md"
+          style={{
+            backgroundImage: `url("https://maps.googleapis.com/maps/api/staticmap?center=Dubai+Silicon+Oasis,Dubai&zoom=14&size=1200x300&maptype=roadmap&markers=color:red%7CDubai+Silicon+Oasis,Dubai&style=feature:poi|visibility:off&key=")`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        >
+          <div className="absolute inset-0 bg-[#1a0a0a]/60" />
+          <div className="relative flex flex-col items-center gap-3 text-center text-white">
+            <div className="grid h-12 w-12 place-items-center rounded-full bg-crimson shadow-lg">
+              <MapPin className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="font-bold">E-09, Light Industrial Unit 6</p>
+              <p className="text-sm text-white/70">Dubai Silicon Oasis · Dubai · UAE</p>
+            </div>
+            <span className="mt-1 flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold backdrop-blur transition-colors group-hover:bg-crimson">
+              <ArrowRight className="h-3 w-3" /> Open in Google Maps
+            </span>
+          </div>
+        </a>
       </div>
     </div>
   );
