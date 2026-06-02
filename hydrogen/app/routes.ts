@@ -9,6 +9,8 @@ export default hydrogenRoutes([
   route('products/:handle', 'routes/products.$handle.tsx'),
   route('api/reviews/:handle', 'routes/api.reviews.$handle.tsx'),
   route('api/selling-plans/:handle', 'routes/api.selling-plans.$handle.tsx'),
+  route('api/globo-options/:productId', 'routes/api.globo-options.$productId.tsx'),
+  route('pages/contact', 'routes/pages.contact.tsx'),
   route('account', 'routes/account.tsx', [
     index('routes/account._index.tsx'),
     route('authorize', 'routes/account_.authorize.tsx'),
