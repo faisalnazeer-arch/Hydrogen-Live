@@ -50,13 +50,6 @@ export interface FooterLink {
   url: string;
 }
 
-export interface FooterColumn {
-  id: string;
-  heading: string;
-  position: number;
-  links: FooterLink[];
-}
-
 export interface FooterSettings {
   brandText: string;
   instagramUrl: string;
@@ -92,35 +85,17 @@ const LAYOUT_QUERY = `#graphql
     }
 
     footerShop: menu(handle: "footer-shop") {
-      items { id title url }
+      id title items { id title url }
     }
 
     footerHelp: menu(handle: "footer-help") {
-      items { id title url }
+      id title items { id title url }
     }
 
     footerSettings: metaobjects(type: "mls_footer_settings", first: 1) {
       nodes {
         id
         fields { key value }
-      }
-    }
-
-    footerColumns: metaobjects(type: "mls_footer_column", first: 10) {
-      nodes {
-        id
-        fields {
-          key
-          value
-          references(first: 20) {
-            nodes {
-              ... on Metaobject {
-                id
-                fields { key value }
-              }
-            }
-          }
-        }
       }
     }
 
@@ -181,27 +156,6 @@ function parseFooterSettings(nodes: any[]): FooterSettings | null {
   };
 }
 
-function parseFooterColumns(nodes: any[]): FooterColumn[] {
-  return nodes
-    .map((node) => {
-      const fm = Object.fromEntries(node.fields.map((f: any) => [f.key, f]));
-      const links: FooterLink[] = (fm.links?.references?.nodes ?? []).map((lk: any) => {
-        const lf = Object.fromEntries(lk.fields.map((x: any) => [x.key, x]));
-        return {
-          label: lf.label?.value ?? "",
-          url: lf.url?.value ?? "/",
-        };
-      });
-      return {
-        id: node.id as string,
-        heading: fm.heading?.value ?? "",
-        position: parseInt(fm.position?.value ?? "0", 10),
-        links,
-      };
-    })
-    .sort((a, b) => a.position - b.position);
-}
-
 function parseAnnouncementMessages(nodes: any[]): string[] {
   const node = nodes[0];
   if (!node) return [];
@@ -222,30 +176,32 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const data = await context.storefront.query(LAYOUT_QUERY, {
       variables: { language, country: "AE" as const },
     });
-    const mainMenu      = parseShopifyMenu(data?.mainMenu,      "main");
-    const secondaryMenu = parseShopifyMenu(data?.secondaryMenu, "secondary");
+    const mainMenu       = parseShopifyMenu(data?.mainMenu,      "main");
+    const secondaryMenu  = parseShopifyMenu(data?.secondaryMenu, "secondary");
     const footerSettings = parseFooterSettings(data?.footerSettings?.nodes ?? []);
-    const footerColumns  = parseFooterColumns(data?.footerColumns?.nodes ?? []);
     const announcementMessages = parseAnnouncementMessages(data?.announcementBar?.nodes ?? []);
 
-    const footerShop: FooterLink[] = (data?.footerShop?.items ?? []).map((item: any) => ({
-      label: item.title,
-      url: toPath(item.url),
-    }));
-    const footerHelp: FooterLink[] = (data?.footerHelp?.items ?? []).map((item: any) => ({
-      label: item.title,
-      url: toPath(item.url),
-    }));
+    function menuToCol(menu: any): { heading: string; links: FooterLink[] } | null {
+      if (!menu?.items?.length) return null;
+      const heading = (menu.title as string).replace(/^footer\s+/i, "").trim();
+      return {
+        heading,
+        links: menu.items.map((item: any) => ({ label: item.title, url: toPath(item.url) })),
+      };
+    }
 
-    return { mainMenu, secondaryMenu, footerSettings, footerColumns, footerShop, footerHelp, announcementMessages };
+    const footerMenuCols = [
+      menuToCol(data?.footerShop),
+      menuToCol(data?.footerHelp),
+    ].filter((c): c is { heading: string; links: FooterLink[] } => c !== null);
+
+    return { mainMenu, secondaryMenu, footerSettings, footerMenuCols, announcementMessages };
   } catch {
     return {
       mainMenu: [] as NavEntry[],
       secondaryMenu: [] as NavEntry[],
       footerSettings: null as FooterSettings | null,
-      footerColumns: [] as FooterColumn[],
-      footerShop: [] as FooterLink[],
-      footerHelp: [] as FooterLink[],
+      footerMenuCols: [] as { heading: string; links: FooterLink[] }[],
       announcementMessages: [] as string[],
     };
   }
@@ -298,7 +254,7 @@ function LocaleSync() {
 }
 
 export default function App() {
-  const { mainMenu, secondaryMenu, footerSettings, footerColumns, footerShop, footerHelp, announcementMessages } = useLoaderData<typeof loader>();
+  const { mainMenu, secondaryMenu, footerSettings, footerMenuCols, announcementMessages } = useLoaderData<typeof loader>();
   return (
     <QueryClientProvider client={queryClient}>
       <LocaleSync />
@@ -309,7 +265,7 @@ export default function App() {
         <main className="flex-1">
           <Outlet />
         </main>
-        <Footer settings={footerSettings} columns={footerColumns} shopLinks={footerShop ?? []} helpLinks={footerHelp ?? []} />
+        <Footer settings={footerSettings} menuCols={footerMenuCols} />
       </div>
       <CartDrawer />
       <QuickBuyDrawer />

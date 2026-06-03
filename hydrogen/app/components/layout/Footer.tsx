@@ -7,27 +7,16 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import type { FooterSettings, FooterColumn, FooterLink } from "~/root";
+import type { FooterSettings, FooterLink } from "~/root";
 
 interface Props {
   settings: FooterSettings | null;
-  columns: FooterColumn[];
-  shopLinks?: FooterLink[];
-  helpLinks?: FooterLink[];
+  menuCols: Array<{ heading: string; links: FooterLink[] }>;
 }
 
-export function Footer({ settings, columns, shopLinks = [], helpLinks = [] }: Props) {
+export function Footer({ settings, menuCols }: Props) {
   if (!settings) return null;
   const year = new Date().getFullYear();
-
-  // Use native Shopify menu links if available, otherwise fall back to metaobject columns
-  const useNativeMenus = shopLinks.length > 0 || helpLinks.length > 0;
-  const navCols: Array<{ id: string; heading: string; links: FooterLink[] }> = useNativeMenus
-    ? [
-        ...(shopLinks.length > 0 ? [{ id: "shop", heading: "Shop", links: shopLinks }] : []),
-        ...(helpLinks.length > 0 ? [{ id: "help", heading: "Help", links: helpLinks }] : []),
-      ]
-    : columns.map((c) => ({ id: c.id, heading: c.heading, links: c.links }));
 
   return (
     <footer className="mt-16 bg-charcoal text-charcoal-foreground">
@@ -36,8 +25,8 @@ export function Footer({ settings, columns, shopLinks = [], helpLinks = [] }: Pr
         {/* ── Desktop ─────────────────────────────────────────────── */}
         <div className="hidden gap-10 md:flex md:flex-wrap">
           <BrandCol settings={settings} />
-          {navCols.map((col) => (
-            <NavCol key={col.id} heading={col.heading} links={col.links} />
+          {menuCols.map((col) => (
+            <NavCol key={col.heading} heading={col.heading} links={col.links} />
           ))}
           <ContactCol settings={settings} />
         </div>
@@ -46,8 +35,8 @@ export function Footer({ settings, columns, shopLinks = [], helpLinks = [] }: Pr
         <div className="md:hidden">
           <BrandCol settings={settings} />
           <Accordion type="single" collapsible className="mt-6">
-            {navCols.map((col) => (
-              <AccordionItem key={col.id} value={col.id} className="border-off-white/10">
+            {menuCols.map((col) => (
+              <AccordionItem key={col.heading} value={col.heading} className="border-off-white/10">
                 <AccordionTrigger className="font-display text-sm font-bold uppercase tracking-wider text-gold hover:no-underline">
                   {col.heading}
                 </AccordionTrigger>

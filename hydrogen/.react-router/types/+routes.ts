@@ -40,6 +40,19 @@ type Pages = {
       "handle": string;
     };
   };
+  "/api/globo-options/:productId": {
+    params: {
+      "productId": string;
+    };
+  };
+  "/pages/contact": {
+    params: {};
+  };
+  "/pages/:handle": {
+    params: {
+      "handle": string;
+    };
+  };
   "/account": {
     params: {};
   };
@@ -63,7 +76,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/cart" | "/search" | "/collections/:handle" | "/products/:handle" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
+    page: "/" | "/cart" | "/search" | "/collections/:handle" | "/products/:handle" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/api/globo-options/:productId" | "/pages/contact" | "/pages/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
   };
   "routes/_index.tsx": {
     id: "routes/_index";
@@ -92,6 +105,18 @@ type RouteFiles = {
   "routes/api.selling-plans.$handle.tsx": {
     id: "routes/api.selling-plans.$handle";
     page: "/api/selling-plans/:handle";
+  };
+  "routes/api.globo-options.$productId.tsx": {
+    id: "routes/api.globo-options.$productId";
+    page: "/api/globo-options/:productId";
+  };
+  "routes/pages.contact.tsx": {
+    id: "routes/pages.contact";
+    page: "/pages/contact";
+  };
+  "routes/pages.$handle.tsx": {
+    id: "routes/pages.$handle";
+    page: "/pages/:handle";
   };
   "routes/account.tsx": {
     id: "routes/account";
@@ -140,6 +165,9 @@ type RouteModules = {
   "routes/products.$handle": typeof import("./app/routes/products.$handle.tsx");
   "routes/api.reviews.$handle": typeof import("./app/routes/api.reviews.$handle.tsx");
   "routes/api.selling-plans.$handle": typeof import("./app/routes/api.selling-plans.$handle.tsx");
+  "routes/api.globo-options.$productId": typeof import("./app/routes/api.globo-options.$productId.tsx");
+  "routes/pages.contact": typeof import("./app/routes/pages.contact.tsx");
+  "routes/pages.$handle": typeof import("./app/routes/pages.$handle.tsx");
   "routes/account": typeof import("./app/routes/account.tsx");
   "routes/account._index": typeof import("./app/routes/account._index.tsx");
   "routes/account_.authorize": typeof import("./app/routes/account_.authorize.tsx");
