@@ -47,10 +47,10 @@ export default function ContactPage() {
       <div className="container mx-auto grid gap-8 px-4 py-12 lg:grid-cols-5 lg:gap-12">
 
         {/* Contact cards — left 2 cols */}
-        <div className="flex flex-col gap-5 lg:col-span-2">
+        <div className="flex flex-col gap-3 lg:col-span-2">
           <div>
             <h2 className="font-display text-xl font-bold">Contact Information</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Multiple ways to reach us — pick what's easiest.</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">Multiple ways to reach us — pick what's easiest.</p>
           </div>
 
           {/* Cards */}
@@ -88,29 +88,29 @@ export default function ContactPage() {
               color: "var(--color-crimson,#8b0000)",
             },
           ].map(({ icon: Icon, label, value, sub, href, color }) => (
-            <div key={label} className="group flex items-start gap-4 rounded-2xl border border-border bg-card p-4 transition-all hover:border-crimson/40 hover:shadow-sm">
+            <div key={label} className="group flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 transition-all hover:border-crimson/40">
               <div
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-white"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-white"
                 style={{ backgroundColor: color }}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="h-4 w-4" />
               </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
                 {href ? (
                   <a
                     href={href}
                     target={href.startsWith("http") ? "_blank" : undefined}
                     rel="noopener noreferrer"
-                    className="mt-0.5 flex items-center gap-1 text-sm font-semibold text-foreground transition-colors hover:text-crimson"
+                    className="flex items-center gap-1 text-sm font-semibold text-foreground transition-colors hover:text-crimson"
                   >
                     {value}
                     <ArrowRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
                   </a>
                 ) : (
-                  <p className="mt-0.5 text-sm font-semibold text-foreground">{value}</p>
+                  <p className="text-sm font-semibold text-foreground">{value}</p>
                 )}
-                <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>
+                <p className="text-[10px] text-muted-foreground">{sub}</p>
               </div>
             </div>
           ))}
@@ -190,34 +190,6 @@ export default function ContactPage() {
         </div>
       </div>
 
-      {/* ── Map strip ─────────────────────────────────────────────────── */}
-      <div className="container mx-auto px-4 pb-12">
-        <a
-          href="https://maps.google.com/?q=E-09+Light+Industrial+Unit+6+Dubai+Silicon+Oasis+Dubai+UAE"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group relative flex h-56 w-full items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted transition-all hover:border-crimson hover:shadow-md"
-          style={{
-            backgroundImage: `url("https://maps.googleapis.com/maps/api/staticmap?center=Dubai+Silicon+Oasis,Dubai&zoom=14&size=1200x300&maptype=roadmap&markers=color:red%7CDubai+Silicon+Oasis,Dubai&style=feature:poi|visibility:off&key=")`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        >
-          <div className="absolute inset-0 bg-[#1a0a0a]/60" />
-          <div className="relative flex flex-col items-center gap-3 text-center text-white">
-            <div className="grid h-12 w-12 place-items-center rounded-full bg-crimson shadow-lg">
-              <MapPin className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="font-bold">E-09, Light Industrial Unit 6</p>
-              <p className="text-sm text-white/70">Dubai Silicon Oasis · Dubai · UAE</p>
-            </div>
-            <span className="mt-1 flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold backdrop-blur transition-colors group-hover:bg-crimson">
-              <ArrowRight className="h-3 w-3" /> Open in Google Maps
-            </span>
-          </div>
-        </a>
-      </div>
     </div>
   );
 }
