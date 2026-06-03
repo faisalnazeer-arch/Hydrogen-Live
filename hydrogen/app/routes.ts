@@ -11,6 +11,7 @@ export default hydrogenRoutes([
   route('api/selling-plans/:handle', 'routes/api.selling-plans.$handle.tsx'),
   route('api/globo-options/:productId', 'routes/api.globo-options.$productId.tsx'),
   route('pages/contact', 'routes/pages.contact.tsx'),
+  route('pages/:handle', 'routes/pages.$handle.tsx'),
   route('account', 'routes/account.tsx', [
     index('routes/account._index.tsx'),
     route('authorize', 'routes/account_.authorize.tsx'),
