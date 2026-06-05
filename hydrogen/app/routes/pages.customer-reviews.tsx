@@ -1,7 +1,8 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
-import { ShieldCheck, Star, PenLine, User } from "lucide-react";
+import { ShieldCheck, PenLine, User } from "lucide-react";
 import { cn } from "~/lib/utils";
+import { StarRating } from "~/components/reviews/StarRating";
 
 export const meta: MetaFunction = () => [
   { title: "Customer Reviews — MLS UAE" },
@@ -63,6 +64,7 @@ const METAFIELD_QUERY = `{
     reviews1: metafield(namespace: "judgeme", key: "all_reviews_1")      { value }
     count:    metafield(namespace: "judgeme", key: "all_reviews_count")  { value }
     rating:   metafield(namespace: "judgeme", key: "all_reviews_rating") { value }
+    medals:   metafield(namespace: "judgeme", key: "medals")             { value }
   }
 }`;
 
@@ -75,14 +77,16 @@ export async function loader({ context }: LoaderFunctionArgs) {
   const reviews1  = shop.reviews1?.value ?? "";
   const count     = Number(shop.count?.value ?? 0);
   const rating    = Number(shop.rating?.value ?? 0);
+  const medals    = shop.medals?.value ?? "";
   const histogram = parseHistogram(header);
   const reviews   = parseReviews(reviews0 + reviews1);
 
-  return { reviews, count, rating, histogram };
+  return { reviews, count, rating, histogram, medals };
 }
 
 export default function CustomerReviewsPage() {
-  const { reviews, count, rating, histogram } = useLoaderData<typeof loader>();
+  const { reviews, count, rating, histogram, medals } = useLoaderData<typeof loader>();
+  const allPhotos = reviews.flatMap(r => r.pictures);
 
   const starLabels = ["1 star", "2 stars", "3 stars", "4 stars", "5 stars"];
   const histTotal = histogram.reduce((s, n) => s + n, 0);
@@ -118,7 +122,7 @@ export default function CustomerReviewsPage() {
             {/* Score */}
             <div className="flex shrink-0 flex-col items-center gap-2 text-center">
               <span className="font-display text-6xl font-extrabold tabular-nums text-foreground">{rating.toFixed(2)}</span>
-              <StarRow rating={rating} size="lg" />
+              <StarRating rating={rating} size="lg" />
               <span className="text-sm text-muted-foreground">Based on {count.toLocaleString()} reviews</span>
             </div>
 
@@ -140,7 +144,7 @@ export default function CustomerReviewsPage() {
               })}
             </div>
 
-            {/* CTA */}
+            {/* CTA + medals */}
             <div className="flex shrink-0 flex-col items-center gap-3">
               <a
                 href="https://judge.me/stores/mls-uae.myshopify.com/reviews/new"
@@ -155,6 +159,32 @@ export default function CustomerReviewsPage() {
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Verified by Judge.me
               </span>
+              {medals && (
+                <div
+                  className="mt-2 [&_.jdgm-medals-wrapper]:flex [&_.jdgm-medals-wrapper]:flex-wrap [&_.jdgm-medals-wrapper]:gap-2 [&_.jdgm-medal]:w-16"
+                  dangerouslySetInnerHTML={{ __html: medals }}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Customer photos strip */}
+        {allPhotos.length > 0 && (
+          <div className="mb-10">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Customer photos &amp; videos
+            </h2>
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {allPhotos.map((pic, i) => (
+                <a key={i} href={pic.original} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                  <img
+                    src={pic.small}
+                    alt={`Customer photo ${i + 1}`}
+                    className="h-24 w-24 rounded-xl object-cover ring-1 ring-border transition hover:ring-crimson"
+                  />
+                </a>
+              ))}
             </div>
           </div>
         )}
@@ -196,7 +226,7 @@ function ReviewCard({ review }: { review: ParsedReview }) {
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <StarRow rating={review.rating} size="sm" />
+          <StarRating rating={review.rating} size="sm" />
           {review.verified && (
             <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600">
               <ShieldCheck className="h-3 w-3" />
@@ -235,18 +265,3 @@ function ReviewCard({ review }: { review: ParsedReview }) {
   );
 }
 
-// ── Star Row ──────────────────────────────────────────────────────────────────
-
-function StarRow({ rating, size = "sm" }: { rating: number; size?: "sm" | "lg" }) {
-  const sz = size === "lg" ? "h-5 w-5" : "h-3.5 w-3.5";
-  return (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          className={cn(sz, i <= Math.round(rating) ? "fill-amber-400 text-amber-400" : "fill-muted text-muted")}
-        />
-      ))}
-    </div>
-  );
-}
