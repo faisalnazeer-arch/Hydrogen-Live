@@ -45,7 +45,16 @@ type Pages = {
       "productId": string;
     };
   };
-  "/pages/contact": {
+  "/pages/contact-us": {
+    params: {};
+  };
+  "/pages/refund-exchange": {
+    params: {};
+  };
+  "/pages/rewards": {
+    params: {};
+  };
+  "/pages/faqs": {
     params: {};
   };
   "/pages/:handle": {
@@ -76,7 +85,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/cart" | "/search" | "/collections/:handle" | "/products/:handle" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/api/globo-options/:productId" | "/pages/contact" | "/pages/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
+    page: "/" | "/cart" | "/search" | "/collections/:handle" | "/products/:handle" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/api/globo-options/:productId" | "/pages/contact-us" | "/pages/refund-exchange" | "/pages/rewards" | "/pages/faqs" | "/pages/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
   };
   "routes/_index.tsx": {
     id: "routes/_index";
@@ -112,7 +121,19 @@ type RouteFiles = {
   };
   "routes/pages.contact.tsx": {
     id: "routes/pages.contact";
-    page: "/pages/contact";
+    page: "/pages/contact-us";
+  };
+  "routes/pages.refund-exchange.tsx": {
+    id: "routes/pages.refund-exchange";
+    page: "/pages/refund-exchange";
+  };
+  "routes/pages.rewards.tsx": {
+    id: "routes/pages.rewards";
+    page: "/pages/rewards";
+  };
+  "routes/pages.faqs.tsx": {
+    id: "routes/pages.faqs";
+    page: "/pages/faqs";
   };
   "routes/pages.$handle.tsx": {
     id: "routes/pages.$handle";
@@ -167,6 +188,9 @@ type RouteModules = {
   "routes/api.selling-plans.$handle": typeof import("./app/routes/api.selling-plans.$handle.tsx");
   "routes/api.globo-options.$productId": typeof import("./app/routes/api.globo-options.$productId.tsx");
   "routes/pages.contact": typeof import("./app/routes/pages.contact.tsx");
+  "routes/pages.refund-exchange": typeof import("./app/routes/pages.refund-exchange.tsx");
+  "routes/pages.rewards": typeof import("./app/routes/pages.rewards.tsx");
+  "routes/pages.faqs": typeof import("./app/routes/pages.faqs.tsx");
   "routes/pages.$handle": typeof import("./app/routes/pages.$handle.tsx");
   "routes/account": typeof import("./app/routes/account.tsx");
   "routes/account._index": typeof import("./app/routes/account._index.tsx");
