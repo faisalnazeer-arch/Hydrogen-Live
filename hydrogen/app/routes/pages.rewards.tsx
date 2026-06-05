@@ -93,7 +93,7 @@ export default function RewardsPage() {
       <div className="container mx-auto max-w-4xl px-4 py-12">
         <div
           className="yotpo-widget-instance"
-          data-yotpo-instance-id="0"
+          data-yotpo-instance-id="567647"
         />
       </div>
 
