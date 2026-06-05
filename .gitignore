@@ -31,3 +31,7 @@ dist-ssr
 *.sln
 *.sw?
 *.zip
+
+# Local worktrees and clones
+Hydrogen-Lovable/
+Hydrogen-Lovable.worktrees/
