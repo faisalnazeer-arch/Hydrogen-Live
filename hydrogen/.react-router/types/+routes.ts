@@ -17,6 +17,12 @@ type Pages = {
   "/cart": {
     params: {};
   };
+  "/cart.js": {
+    params: {};
+  };
+  "/apps/loggedincustomer": {
+    params: {};
+  };
   "/search": {
     params: {};
   };
@@ -57,6 +63,9 @@ type Pages = {
   "/pages/faqs": {
     params: {};
   };
+  "/pages/mls-gourmet": {
+    params: {};
+  };
   "/pages/:handle": {
     params: {
       "handle": string;
@@ -85,7 +94,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/cart" | "/search" | "/collections/:handle" | "/products/:handle" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/api/globo-options/:productId" | "/pages/contact-us" | "/pages/refund-exchange" | "/pages/rewards" | "/pages/faqs" | "/pages/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
+    page: "/" | "/cart" | "/cart.js" | "/apps/loggedincustomer" | "/search" | "/collections/:handle" | "/products/:handle" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/api/globo-options/:productId" | "/pages/contact-us" | "/pages/refund-exchange" | "/pages/rewards" | "/pages/faqs" | "/pages/mls-gourmet" | "/pages/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
   };
   "routes/_index.tsx": {
     id: "routes/_index";
@@ -94,6 +103,14 @@ type RouteFiles = {
   "routes/cart.tsx": {
     id: "routes/cart";
     page: "/cart";
+  };
+  "routes/cart[.]js.tsx": {
+    id: "routes/cart[.]js";
+    page: "/cart.js";
+  };
+  "routes/apps.loggedincustomer.tsx": {
+    id: "routes/apps.loggedincustomer";
+    page: "/apps/loggedincustomer";
   };
   "routes/search.tsx": {
     id: "routes/search";
@@ -134,6 +151,10 @@ type RouteFiles = {
   "routes/pages.faqs.tsx": {
     id: "routes/pages.faqs";
     page: "/pages/faqs";
+  };
+  "routes/pages.mls-gourmet.tsx": {
+    id: "routes/pages.mls-gourmet";
+    page: "/pages/mls-gourmet";
   };
   "routes/pages.$handle.tsx": {
     id: "routes/pages.$handle";
@@ -181,6 +202,8 @@ type RouteModules = {
   "root": typeof import("./app/root.tsx");
   "routes/_index": typeof import("./app/routes/_index.tsx");
   "routes/cart": typeof import("./app/routes/cart.tsx");
+  "routes/cart[.]js": typeof import("./app/routes/cart[.]js.tsx");
+  "routes/apps.loggedincustomer": typeof import("./app/routes/apps.loggedincustomer.tsx");
   "routes/search": typeof import("./app/routes/search.tsx");
   "routes/collections.$handle": typeof import("./app/routes/collections.$handle.tsx");
   "routes/products.$handle": typeof import("./app/routes/products.$handle.tsx");
@@ -191,6 +214,7 @@ type RouteModules = {
   "routes/pages.refund-exchange": typeof import("./app/routes/pages.refund-exchange.tsx");
   "routes/pages.rewards": typeof import("./app/routes/pages.rewards.tsx");
   "routes/pages.faqs": typeof import("./app/routes/pages.faqs.tsx");
+  "routes/pages.mls-gourmet": typeof import("./app/routes/pages.mls-gourmet.tsx");
   "routes/pages.$handle": typeof import("./app/routes/pages.$handle.tsx");
   "routes/account": typeof import("./app/routes/account.tsx");
   "routes/account._index": typeof import("./app/routes/account._index.tsx");

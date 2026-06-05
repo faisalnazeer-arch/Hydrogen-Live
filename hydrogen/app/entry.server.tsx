@@ -59,7 +59,7 @@ export default async function handleRequest(
       "media-src 'self' https: blob:",
       "connect-src 'self' https://cdn.shopify.com https://shopify.com https://*.myshopify.com http://localhost:* ws://localhost:* wss://localhost:* https://*.yotpo.com",
       "font-src 'self' https: data:",
-      "frame-src https://www.youtube.com https://player.vimeo.com https://shopify.com https://*.yotpo.com",
+      "frame-src https://www.youtube.com https://player.vimeo.com https://shopify.com https://*.yotpo.com https://maps.google.com https://www.google.com",
     ].join("; ")
   );
 
