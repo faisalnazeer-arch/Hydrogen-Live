@@ -110,6 +110,48 @@ export function buildRatingSummary(
   return { average, count: data.total_count ?? 0, histogram };
 }
 
+export async function fetchJudgemeStoreReviews(
+  shopDomain: string,
+  apiToken: string | undefined,
+  page = 1,
+  perPage = 10,
+): Promise<JudgemeReviewsResponse> {
+  if (!apiToken) return emptyResponse(page, perPage);
+  const url =
+    `${JUDGEME_BASE}/reviews?api_token=${encodeURIComponent(apiToken)}` +
+    `&shop_domain=${encodeURIComponent(shopDomain)}` +
+    `&page=${page}&per_page=${perPage}`;
+  try {
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) return emptyResponse(page, perPage);
+    const data = (await res.json()) as JudgemeReviewsResponse;
+    return data;
+  } catch {
+    return emptyResponse(page, perPage);
+  }
+}
+
+export async function fetchJudgemeShopStats(
+  shopDomain: string,
+  apiToken: string | undefined,
+): Promise<{ average: number; count: number }> {
+  if (!apiToken) return { average: 0, count: 0 };
+  const url =
+    `${JUDGEME_BASE}/shops/judgeme_widgets?api_token=${encodeURIComponent(apiToken)}` +
+    `&shop_domain=${encodeURIComponent(shopDomain)}&_type=site_reviews&per_page=0`;
+  try {
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) return { average: 0, count: 0 };
+    const data = (await res.json()) as any;
+    return {
+      average: data?.rating ?? data?.average ?? 0,
+      count: data?.total_count ?? data?.count ?? 0,
+    };
+  } catch {
+    return { average: 0, count: 0 };
+  }
+}
+
 function emptyResponse(page: number, perPage: number): JudgemeReviewsResponse {
   return { reviews: [], current_page: page, per_page: perPage, total_count: undefined };
 }

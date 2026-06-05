@@ -36,6 +36,9 @@ type Pages = {
       "handle": string;
     };
   };
+  "/api/reviews/store": {
+    params: {};
+  };
   "/api/reviews/:handle": {
     params: {
       "handle": string;
@@ -50,6 +53,9 @@ type Pages = {
     params: {
       "productId": string;
     };
+  };
+  "/pages/customer-reviews": {
+    params: {};
   };
   "/pages/contact-us": {
     params: {};
@@ -94,7 +100,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/cart" | "/cart.js" | "/apps/loggedincustomer" | "/search" | "/collections/:handle" | "/products/:handle" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/api/globo-options/:productId" | "/pages/contact-us" | "/pages/refund-exchange" | "/pages/rewards" | "/pages/faqs" | "/pages/mls-gourmet" | "/pages/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
+    page: "/" | "/cart" | "/cart.js" | "/apps/loggedincustomer" | "/search" | "/collections/:handle" | "/products/:handle" | "/api/reviews/store" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/api/globo-options/:productId" | "/pages/customer-reviews" | "/pages/contact-us" | "/pages/refund-exchange" | "/pages/rewards" | "/pages/faqs" | "/pages/mls-gourmet" | "/pages/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
   };
   "routes/_index.tsx": {
     id: "routes/_index";
@@ -124,6 +130,10 @@ type RouteFiles = {
     id: "routes/products.$handle";
     page: "/products/:handle";
   };
+  "routes/api.reviews.store.tsx": {
+    id: "routes/api.reviews.store";
+    page: "/api/reviews/store";
+  };
   "routes/api.reviews.$handle.tsx": {
     id: "routes/api.reviews.$handle";
     page: "/api/reviews/:handle";
@@ -135,6 +145,10 @@ type RouteFiles = {
   "routes/api.globo-options.$productId.tsx": {
     id: "routes/api.globo-options.$productId";
     page: "/api/globo-options/:productId";
+  };
+  "routes/pages.customer-reviews.tsx": {
+    id: "routes/pages.customer-reviews";
+    page: "/pages/customer-reviews";
   };
   "routes/pages.contact.tsx": {
     id: "routes/pages.contact";
@@ -207,9 +221,11 @@ type RouteModules = {
   "routes/search": typeof import("./app/routes/search.tsx");
   "routes/collections.$handle": typeof import("./app/routes/collections.$handle.tsx");
   "routes/products.$handle": typeof import("./app/routes/products.$handle.tsx");
+  "routes/api.reviews.store": typeof import("./app/routes/api.reviews.store.tsx");
   "routes/api.reviews.$handle": typeof import("./app/routes/api.reviews.$handle.tsx");
   "routes/api.selling-plans.$handle": typeof import("./app/routes/api.selling-plans.$handle.tsx");
   "routes/api.globo-options.$productId": typeof import("./app/routes/api.globo-options.$productId.tsx");
+  "routes/pages.customer-reviews": typeof import("./app/routes/pages.customer-reviews.tsx");
   "routes/pages.contact": typeof import("./app/routes/pages.contact.tsx");
   "routes/pages.refund-exchange": typeof import("./app/routes/pages.refund-exchange.tsx");
   "routes/pages.rewards": typeof import("./app/routes/pages.rewards.tsx");
