@@ -74,20 +74,25 @@ export default {
         setCartId: cartSetIdDefault(),
       });
 
-      const adminFetch = async <T = any>(query: string, variables: Record<string, any> = {}): Promise<T> => {
-        const res = await fetch(
-          `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2025-07/graphql.json`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Shopify-Access-Token": env.SHOPIFY_ADMIN_API_TOKEN,
-            },
-            body: JSON.stringify({ query, variables }),
-          }
-        );
-        const json = await res.json() as any;
-        return json.data as T;
+      const adminFetch = async (query: string, variables: Record<string, any> = {}): Promise<any> => {
+        if (!env.SHOPIFY_ADMIN_API_TOKEN) return {};
+        try {
+          const res = await fetch(
+            `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2025-07/graphql.json`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Shopify-Access-Token": env.SHOPIFY_ADMIN_API_TOKEN,
+              },
+              body: JSON.stringify({ query, variables }),
+            }
+          );
+          const json = await res.json() as any;
+          return json.data ?? {};
+        } catch {
+          return {};
+        }
       };
 
       const handleRequest = createRequestHandler({
