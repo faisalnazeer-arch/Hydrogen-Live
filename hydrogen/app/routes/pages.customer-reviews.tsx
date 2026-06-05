@@ -17,6 +17,7 @@ interface ParsedReview {
   body: string;
   product: string;
   verified: boolean;
+  pictures: { small: string; original: string }[];
 }
 
 function parseReviews(html: string): ParsedReview[] {
@@ -32,8 +33,16 @@ function parseReviews(html: string): ParsedReview[] {
     const title   = part.match(/class='jdgm-rev__title'[^>]*>([^<]+)/)?.[1]?.trim() ?? "";
     const body    = part.match(/class='jdgm-rev__content'[^>]*>([\s\S]*?)<\/p>/)?.[1]?.replace(/<[^>]+>/g, "").trim() ?? "";
     const product = part.match(/class='jdgm-rev__product-title'[^>]*>([^<]+)/)?.[1]?.replace(/^about\s+/i, "").trim() ?? "";
+
+    // Extract pictures
+    const pictures: { small: string; original: string }[] = [];
+    const picMatches = part.matchAll(/href='([^']+)'[^>]*>\s*<img[^>]+src='([^']+)'/g);
+    for (const m of picMatches) {
+      if (m[1] && m[2]) pictures.push({ original: m[1], small: m[2] });
+    }
+
     if (!id) continue;
-    reviews.push({ id, rating, author, date, title, body, product, verified });
+    reviews.push({ id, rating, author, date, title, body, product, verified, pictures });
   }
   return reviews;
 }
@@ -207,6 +216,21 @@ function ReviewCard({ review }: { review: ParsedReview }) {
       {/* Review content */}
       {review.title && <p className="text-sm font-semibold">{review.title}</p>}
       {review.body && <p className="text-sm leading-relaxed text-muted-foreground">{review.body}</p>}
+
+      {/* Photos */}
+      {review.pictures.length > 0 && (
+        <div className="flex flex-wrap gap-2 pt-1">
+          {review.pictures.map((pic, i) => (
+            <a key={i} href={pic.original} target="_blank" rel="noopener noreferrer">
+              <img
+                src={pic.small}
+                alt={`Review photo ${i + 1}`}
+                className="h-16 w-16 rounded-lg object-cover ring-1 ring-border transition hover:ring-crimson"
+              />
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
