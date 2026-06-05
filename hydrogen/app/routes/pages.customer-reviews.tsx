@@ -55,16 +55,38 @@ export default function CustomerReviewsPage() {
       }
     });
 
-    // Load Judge.me JS loader (triggers widget initialization)
+    const initJdgm = () => {
+      const jdgm = (window as any).jdgm;
+      if (!jdgm) return;
+      // Mark all reviews as setup so the CSS no longer hides them
+      document.querySelectorAll(".jdgm-rev").forEach((el) => {
+        el.classList.add("jdgm--leex-done-setup");
+      });
+      // Also try calling jdgm init methods if available
+      jdgm.customizationsFromSettings?.();
+      jdgm.reinit?.();
+      jdgm.initWidgets?.();
+    };
+
+    // Load main Judge.me JS (adds jdgm--leex-done-setup to reviews)
+    const mainSrc = `${JDGM_CDN}/shopify_v2_leex.js`;
+    if (!document.querySelector(`script[src="${mainSrc}"]`)) {
+      const script = document.createElement("script");
+      script.src = mainSrc;
+      script.async = true;
+      script.onload = initJdgm;
+      document.head.appendChild(script);
+    } else {
+      initJdgm();
+    }
+
+    // Also load loader.js for full widget features
     const loaderSrc = `${JDGM_CDN}/loader.js`;
     if (!document.querySelector(`script[src="${loaderSrc}"]`)) {
       const script = document.createElement("script");
       script.src = loaderSrc;
       script.async = true;
       document.head.appendChild(script);
-    } else {
-      // Re-init if already loaded
-      if ((window as any).jdgm?.reinit) (window as any).jdgm.reinit();
     }
   }, []);
 
@@ -108,7 +130,7 @@ export default function CustomerReviewsPage() {
             <div
               className="jdgm-widget jdgm-all-reviews-widget-v2025"
               data-widget="all-reviews-v2025"
-              data-auto-install="false"
+              data-auto-install="true"
               data-entry-point="all_reviews_widget_v2025.js"
               data-entry-key="all-reviews-widget-v2025/main.js"
             >
