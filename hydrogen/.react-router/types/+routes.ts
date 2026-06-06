@@ -81,6 +81,9 @@ type Pages = {
   "/pages/mls-affiliate": {
     params: {};
   };
+  "/pages/subscription-policy": {
+    params: {};
+  };
   "/pages/:handle": {
     params: {
       "handle": string;
@@ -109,7 +112,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/cart" | "/cart.js" | "/apps/loggedincustomer" | "/search" | "/collections/:handle" | "/products/:handle" | "/api/reviews/store" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/api/globo-options/:productId" | "/pages/customer-reviews" | "/pages/contact-us" | "/pages/refund-exchange" | "/pages/rewards" | "/pages/refer-a-friend" | "/pages/faqs" | "/pages/mls-gourmet" | "/pages/our-story-new" | "/pages/mls-affiliate" | "/pages/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
+    page: "/" | "/cart" | "/cart.js" | "/apps/loggedincustomer" | "/search" | "/collections/:handle" | "/products/:handle" | "/api/reviews/store" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/api/globo-options/:productId" | "/pages/customer-reviews" | "/pages/contact-us" | "/pages/refund-exchange" | "/pages/rewards" | "/pages/refer-a-friend" | "/pages/faqs" | "/pages/mls-gourmet" | "/pages/our-story-new" | "/pages/mls-affiliate" | "/pages/subscription-policy" | "/pages/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
   };
   "routes/_index.tsx": {
     id: "routes/_index";
@@ -191,6 +194,10 @@ type RouteFiles = {
     id: "routes/pages.mls-affiliate";
     page: "/pages/mls-affiliate";
   };
+  "routes/pages.subscription-policy.tsx": {
+    id: "routes/pages.subscription-policy";
+    page: "/pages/subscription-policy";
+  };
   "routes/pages.$handle.tsx": {
     id: "routes/pages.$handle";
     page: "/pages/:handle";
@@ -255,6 +262,7 @@ type RouteModules = {
   "routes/pages.mls-gourmet": typeof import("./app/routes/pages.mls-gourmet.tsx");
   "routes/pages.our-story-new": typeof import("./app/routes/pages.our-story-new.tsx");
   "routes/pages.mls-affiliate": typeof import("./app/routes/pages.mls-affiliate.tsx");
+  "routes/pages.subscription-policy": typeof import("./app/routes/pages.subscription-policy.tsx");
   "routes/pages.$handle": typeof import("./app/routes/pages.$handle.tsx");
   "routes/account": typeof import("./app/routes/account.tsx");
   "routes/account._index": typeof import("./app/routes/account._index.tsx");

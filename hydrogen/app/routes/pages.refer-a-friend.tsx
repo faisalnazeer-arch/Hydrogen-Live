@@ -1,9 +1,10 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link } from "react-router";
-import { User, Users, Mail, Gift, Trophy, ShoppingCart, Tag, Smile, Plus, Minus } from "lucide-react";
+import { User, Users, Mail, Gift, Trophy, ShoppingCart, Tag, Smile } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { FaqAccordion } from "@/components/ui/FaqAccordion";
 
 export const meta: MetaFunction = () => [
   { title: "Refer a Friend — MLS UAE" },
@@ -171,7 +172,7 @@ export default function ReferAFriendPage() {
           <div className="mx-auto max-w-3xl px-4 sm:px-6">
             <SectionHeader eyebrow="Got Questions?" title="Frequently Asked Questions" />
             <div className="mt-8">
-              <FaqList faqs={faqs} />
+              <FaqAccordion items={faqs} />
             </div>
           </div>
         </section>
@@ -256,34 +257,3 @@ function SteakStepCard({ label, description, iconName, step }: { label: string; 
   );
 }
 
-// ── FAQ accordion ─────────────────────────────────────────────────────────────
-
-function FaqList({ faqs }: { faqs: { id: string; question: string; answer: string }[] }) {
-  const [open, setOpen] = useState<string | null>(null);
-  return (
-    <div className="divide-y divide-border rounded-xl border border-border overflow-hidden">
-      {faqs.map((faq) => (
-        <div key={faq.id}>
-          <button
-            onClick={() => setOpen(open === faq.id ? null : faq.id)}
-            className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-medium text-foreground hover:bg-muted/40 transition-colors"
-          >
-            <span className="leading-snug">{faq.question}</span>
-            {open === faq.id
-              ? <Minus className="h-4 w-4 shrink-0 text-crimson" />
-              : <Plus className="h-4 w-4 shrink-0 text-crimson" />
-            }
-          </button>
-          {open === faq.id && (
-            <div className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed">
-              {faq.answer.includes("/pages/rewards")
-                ? <><span>{faq.answer.replace("/pages/rewards", "")}</span><Link to="/pages/rewards" className="text-crimson hover:underline">Browse the MLS Rewards program here.</Link></>
-                : faq.answer
-              }
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}

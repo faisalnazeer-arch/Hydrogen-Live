@@ -1,7 +1,6 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
-import { useState } from "react";
-import { Plus, Minus } from "lucide-react";
+import { FaqAccordion } from "@/components/ui/FaqAccordion";
 
 export const meta: MetaFunction = () => [
   { title: "MLS Affiliate Program — Make Money with MLS" },
@@ -243,7 +242,7 @@ export default function AffiliatePage() {
         <section className="py-12 md:py-16 bg-white border-t border-gray-100">
           <div className="mx-auto max-w-3xl px-4 sm:px-6">
             <h2 className="mb-8 text-center text-2xl font-bold text-gray-900 sm:text-3xl">{d.faqTitle}</h2>
-            <FaqAccordion faqs={d.faqs} />
+            <FaqAccordion items={d.faqs} />
           </div>
         </section>
       )}
@@ -252,38 +251,3 @@ export default function AffiliatePage() {
   );
 }
 
-// ── FAQ Accordion ─────────────────────────────────────────────────────────────
-
-function FaqAccordion({ faqs }: { faqs: { id: string; question: string; answer: string }[] }) {
-  const [open, setOpen] = useState<string | null>(faqs[0]?.id ?? null);
-  return (
-    <div className="divide-y divide-gray-200 border border-gray-200 rounded-xl overflow-hidden">
-      {faqs.map((faq) => (
-        <div key={faq.id}>
-          <button
-            onClick={() => setOpen(open === faq.id ? null : faq.id)}
-            className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-medium text-gray-800 hover:bg-gray-50 transition-colors"
-          >
-            <span className="leading-snug">{faq.question}</span>
-            {open === faq.id
-              ? <Minus className="h-4 w-4 shrink-0" style={{ color: "#a70a10" }} />
-              : <Plus className="h-4 w-4 shrink-0" style={{ color: "#a70a10" }} />
-            }
-          </button>
-          {open === faq.id && (
-            <div className="px-5 pb-5 text-sm text-gray-600 leading-relaxed">
-              {faq.answer.includes("contactus@mlsuae.ae") ? (
-                <>
-                  {faq.answer.replace("contactus@mlsuae.ae", "")}
-                  <a href="mailto:contactus@mlsuae.ae" className="font-semibold underline" style={{ color: "#a70a10" }}>
-                    contactus@mlsuae.ae
-                  </a>
-                </>
-              ) : faq.answer}
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
