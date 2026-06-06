@@ -158,13 +158,12 @@ export default function ReferAFriendPage() {
           <div className="relative w-full overflow-hidden rounded-2xl shadow-2xl" style={{ paddingTop: "56.25%" }}>
             <iframe
               className="absolute inset-0 h-full w-full"
-              src="VIDEO_EMBED_URL"
+              src="https://www.youtube.com/embed/_9VUPq3SxOc"
               title="Refer a Friend"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
           </div>
-          <p className="mt-4 text-sm text-white/40">Share the video URL and I'll update this section</p>
         </div>
       </div>
 
