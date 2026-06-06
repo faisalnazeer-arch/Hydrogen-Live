@@ -96,7 +96,7 @@ export default function CustomerReviewsPage() {
 
       {/* Hero */}
       <div
-        className="relative overflow-hidden py-20 md:py-28"
+        className="relative overflow-hidden py-12 md:py-16"
         style={{ background: "linear-gradient(135deg, #1a0a0a 0%, #3d0000 50%, #1a0a0a 100%)" }}
       >
         <div className="absolute inset-0 bg-black/50" />
