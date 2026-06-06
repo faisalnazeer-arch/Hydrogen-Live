@@ -66,6 +66,9 @@ type Pages = {
   "/pages/rewards": {
     params: {};
   };
+  "/pages/refer-a-friend": {
+    params: {};
+  };
   "/pages/faqs": {
     params: {};
   };
@@ -100,7 +103,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/cart" | "/cart.js" | "/apps/loggedincustomer" | "/search" | "/collections/:handle" | "/products/:handle" | "/api/reviews/store" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/api/globo-options/:productId" | "/pages/customer-reviews" | "/pages/contact-us" | "/pages/refund-exchange" | "/pages/rewards" | "/pages/faqs" | "/pages/mls-gourmet" | "/pages/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
+    page: "/" | "/cart" | "/cart.js" | "/apps/loggedincustomer" | "/search" | "/collections/:handle" | "/products/:handle" | "/api/reviews/store" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/api/globo-options/:productId" | "/pages/customer-reviews" | "/pages/contact-us" | "/pages/refund-exchange" | "/pages/rewards" | "/pages/refer-a-friend" | "/pages/faqs" | "/pages/mls-gourmet" | "/pages/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
   };
   "routes/_index.tsx": {
     id: "routes/_index";
@@ -161,6 +164,10 @@ type RouteFiles = {
   "routes/pages.rewards.tsx": {
     id: "routes/pages.rewards";
     page: "/pages/rewards";
+  };
+  "routes/pages.refer-a-friend.tsx": {
+    id: "routes/pages.refer-a-friend";
+    page: "/pages/refer-a-friend";
   };
   "routes/pages.faqs.tsx": {
     id: "routes/pages.faqs";
@@ -229,6 +236,7 @@ type RouteModules = {
   "routes/pages.contact": typeof import("./app/routes/pages.contact.tsx");
   "routes/pages.refund-exchange": typeof import("./app/routes/pages.refund-exchange.tsx");
   "routes/pages.rewards": typeof import("./app/routes/pages.rewards.tsx");
+  "routes/pages.refer-a-friend": typeof import("./app/routes/pages.refer-a-friend.tsx");
   "routes/pages.faqs": typeof import("./app/routes/pages.faqs.tsx");
   "routes/pages.mls-gourmet": typeof import("./app/routes/pages.mls-gourmet.tsx");
   "routes/pages.$handle": typeof import("./app/routes/pages.$handle.tsx");

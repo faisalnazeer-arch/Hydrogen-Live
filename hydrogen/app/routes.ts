@@ -17,6 +17,7 @@ export default hydrogenRoutes([
   route('pages/contact-us', 'routes/pages.contact.tsx'),
   route('pages/refund-exchange', 'routes/pages.refund-exchange.tsx'),
   route('pages/rewards', 'routes/pages.rewards.tsx'),
+  route('pages/refer-a-friend', 'routes/pages.refer-a-friend.tsx'),
   route('pages/faqs', 'routes/pages.faqs.tsx'),
   route('pages/mls-gourmet', 'routes/pages.mls-gourmet.tsx'),
   route('pages/:handle', 'routes/pages.$handle.tsx'),
