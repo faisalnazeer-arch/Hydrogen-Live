@@ -176,7 +176,7 @@ function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
 
   return (
     <div
-      className="relative w-full min-h-[320px] sm:min-h-[420px] md:min-h-[560px] lg:min-h-[680px]"
+      className="relative w-full min-h-[220px] sm:min-h-[300px] md:min-h-[400px] lg:min-h-[480px]"
       style={{ flexShrink: 0 }}
     >
       {slide.mobileImage && (
