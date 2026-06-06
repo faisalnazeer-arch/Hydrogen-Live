@@ -1,5 +1,6 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
+import { useCallback } from "react";
 import { FaqAccordion } from "@/components/ui/FaqAccordion";
 
 export const meta: MetaFunction = () => [
@@ -224,16 +225,12 @@ export default function AffiliatePage() {
         </section>
       )}
 
-      {/* ── Register (Social Snowball) ── */}
+      {/* ── Register (Social Snowball popup) ── */}
       <section id="affiliate-register" className="py-12 md:py-16 bg-white">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6">
-          <h2 className="mb-8 text-center text-2xl font-bold text-gray-900 sm:text-3xl">{d.registerTitle}</h2>
-          <iframe
-            id="affiliate-sign-up-form"
-            src={`https://app.socialsnowball.io/register-form/mls-uae.myshopify.com/${d.snowballFormId}`}
-            style={{ border: 0, width: "100%", height: "100vh" }}
-            title="Affiliate Sign Up Form"
-          />
+        <div className="mx-auto max-w-2xl px-4 sm:px-6">
+          <h2 className="mb-3 text-center text-2xl font-bold text-gray-900 sm:text-3xl">{d.registerTitle}</h2>
+          <p className="mb-8 text-center text-sm text-gray-500">Fill out the short form to become an MLS Partner and start earning commissions.</p>
+          <AffiliateRegisterButton formId={d.snowballFormId} />
         </div>
       </section>
 
@@ -251,3 +248,28 @@ export default function AffiliatePage() {
   );
 }
 
+// ── Affiliate Register Button (popup) ────────────────────────────────────────
+
+function AffiliateRegisterButton({ formId }: { formId: string }) {
+  const openForm = useCallback(() => {
+    const url = `https://app.socialsnowball.io/register-form/mls-uae.myshopify.com/${formId}`;
+    const w = 520;
+    const h = 760;
+    const left = Math.max(0, (window.screen.width - w) / 2);
+    const top  = Math.max(0, (window.screen.height - h) / 2);
+    window.open(url, "affiliate-signup", `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`);
+  }, [formId]);
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <button
+        onClick={openForm}
+        className="inline-flex items-center gap-2 rounded-lg px-10 py-4 text-base font-bold text-white shadow-lg transition-opacity hover:opacity-90 cursor-pointer"
+        style={{ background: "#a70a10" }}
+      >
+        Apply Now — It's Free
+      </button>
+      <p className="text-xs text-gray-400">Opens a secure sign-up window · Powered by Social Snowball</p>
+    </div>
+  );
+}
