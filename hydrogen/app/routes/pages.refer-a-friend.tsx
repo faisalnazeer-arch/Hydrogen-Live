@@ -94,41 +94,47 @@ export default function ReferAFriendPage() {
       </div>
 
       {/* How can I refer friends? */}
-      <div className="border-t border-border bg-muted/30 py-16">
+      <div className="border-t border-border bg-muted/20 py-20">
         <div className="container mx-auto max-w-5xl px-4">
-          <h2 className="mb-10 text-center font-display text-2xl font-bold text-foreground">
-            How can I refer friends?
-          </h2>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
-            {HOW_TO_REFER.map(({ Icon, label, desc }, i) => (
-              <div key={i} className="flex flex-col items-center text-center gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-crimson/10 text-crimson">
-                  <Icon className="h-7 w-7" />
-                </div>
-                <p className="text-sm font-semibold text-foreground">{label}</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
-              </div>
+          <div className="mb-12 text-center">
+            <span className="inline-block rounded-full bg-crimson/10 px-4 py-1 text-xs font-bold uppercase tracking-widest text-crimson">Step by Step</span>
+            <h2 className="mt-3 font-display text-3xl font-bold text-foreground">How can I refer friends?</h2>
+          </div>
+
+          {/* First row — 3 steps */}
+          <div className="grid gap-6 sm:grid-cols-3 mb-6">
+            {HOW_TO_REFER.slice(0, 3).map(({ Icon, label, desc }, i) => (
+              <StepCard key={i} Icon={Icon} label={label} desc={desc} step={i + 1} />
+            ))}
+          </div>
+          {/* Second row — 2 steps centered */}
+          <div className="grid gap-6 sm:grid-cols-2 sm:max-w-2xl sm:mx-auto">
+            {HOW_TO_REFER.slice(3).map(({ Icon, label, desc }, i) => (
+              <StepCard key={i + 3} Icon={Icon} label={label} desc={desc} step={i + 4} />
             ))}
           </div>
         </div>
       </div>
 
       {/* How to get your free steaks */}
-      <div className="py-16 bg-[#fdf5f5]">
+      <div className="py-20 bg-[#fdf5f5]">
         <div className="container mx-auto max-w-4xl px-4">
-          <h2 className="mb-10 text-center font-display text-2xl font-bold text-foreground">
-            How to get your free steaks?
-          </h2>
-          <div className="grid gap-8 sm:grid-cols-3">
+          <div className="mb-12 text-center">
+            <span className="inline-block rounded-full bg-crimson/10 px-4 py-1 text-xs font-bold uppercase tracking-widest text-crimson">Free Reward</span>
+            <h2 className="mt-3 font-display text-3xl font-bold text-foreground">How to get your free steaks?</h2>
+          </div>
+          <div className="relative grid gap-8 sm:grid-cols-3">
+            {/* Connector line on desktop */}
+            <div className="absolute top-8 left-[16.67%] right-[16.67%] hidden h-0.5 bg-crimson/20 sm:block" />
             {HOW_TO_GET_STEAKS.map(({ step, Icon, label, desc }) => (
-              <div key={step} className="flex flex-col items-center text-center gap-3">
-                <div className="relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-crimson text-crimson">
+              <div key={step} className="relative flex flex-col items-center text-center gap-4 rounded-2xl bg-white p-6 shadow-sm border border-border">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-crimson text-white shadow-md">
                   <Icon className="h-7 w-7" />
-                  <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-crimson text-[10px] font-bold text-white">
-                    {step}
-                  </span>
                 </div>
-                <p className="text-sm font-semibold text-foreground">{label}</p>
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 flex h-6 w-6 items-center justify-center rounded-full bg-crimson text-[11px] font-bold text-white shadow">
+                  {step}
+                </span>
+                <p className="text-sm font-bold text-foreground">{label}</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
               </div>
             ))}
@@ -144,11 +150,39 @@ export default function ReferAFriendPage() {
         </div>
       </div>
 
-      {/* Meat background section */}
-      <div className="relative h-48 md:h-64 w-full overflow-hidden bg-charcoal">
-        <div className="absolute inset-0 bg-gradient-to-t from-charcoal/80 to-transparent" />
+      {/* Video section — replace VIDEO_URL with actual YouTube embed URL */}
+      <div className="border-t border-border py-20 bg-charcoal">
+        <div className="container mx-auto max-w-4xl px-4 text-center">
+          <span className="inline-block rounded-full bg-white/10 px-4 py-1 text-xs font-bold uppercase tracking-widest text-white/60">Watch</span>
+          <h2 className="mt-3 font-display text-3xl font-bold text-white mb-8">See How It Works</h2>
+          <div className="relative w-full overflow-hidden rounded-2xl shadow-2xl" style={{ paddingTop: "56.25%" }}>
+            <iframe
+              className="absolute inset-0 h-full w-full"
+              src="VIDEO_EMBED_URL"
+              title="Refer a Friend"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+          <p className="mt-4 text-sm text-white/40">Share the video URL and I'll update this section</p>
+        </div>
       </div>
 
+    </div>
+  );
+}
+
+function StepCard({ Icon, label, desc, step }: { Icon: any; label: string; desc: string; step: number }) {
+  return (
+    <div className="relative flex flex-col items-center text-center gap-4 rounded-2xl bg-white p-6 shadow-sm border border-border hover:border-crimson/30 transition-colors">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-crimson/10 text-crimson ring-4 ring-crimson/5">
+        <Icon className="h-7 w-7" />
+      </div>
+      <span className="absolute -top-3 left-1/2 -translate-x-1/2 flex h-6 w-6 items-center justify-center rounded-full bg-crimson text-[11px] font-bold text-white shadow">
+        {step}
+      </span>
+      <p className="text-sm font-bold text-foreground">{label}</p>
+      <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
     </div>
   );
 }
