@@ -103,14 +103,14 @@ export function Header({ mainMenu = [], secondaryMenu = [] }: HeaderProps) {
                   <span>{label}</span>
                 </Link>
               ))}
-              <Link
-                to="/account"
+              <a
+                href="https://mlsuae.ae/customer_authentication/redirect?locale=en&region_country=AE"
                 onClick={closeMobile}
                 className="mt-3 flex items-center gap-3 rounded-sm border-t border-border px-3 py-2 pt-4 hover:bg-muted"
               >
                 <User className="h-4 w-4 text-crimson" />
                 <span>{t("nav.account")}</span>
-              </Link>
+              </a>
             </nav>
           </SheetContent>
         </Sheet>
@@ -158,11 +158,14 @@ export function Header({ mainMenu = [], secondaryMenu = [] }: HeaderProps) {
               العربية
             </button>
           </div>
-          <Link to="/account" aria-label={t("nav.account")}>
+          <a
+            href="https://mlsuae.ae/customer_authentication/redirect?locale=en&region_country=AE"
+            aria-label={t("nav.account")}
+          >
             <Button variant="ghost" size="icon">
               <User className="h-5 w-5" />
             </Button>
-          </Link>
+          </a>
           <Button
             variant="ghost"
             size="icon"
