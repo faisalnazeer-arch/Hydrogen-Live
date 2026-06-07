@@ -52,7 +52,7 @@ export function CategorySection({
           {/* Right fade — hints that more tabs are scrollable */}
           <div className="pointer-events-none absolute right-0 top-0 h-full w-12 z-10 bg-gradient-to-l from-background to-transparent" />
           <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-            <div className="flex min-w-max border-b border-border">
+            <div className="flex min-w-max border-b border-border mx-auto w-fit">
               {tabs.map((tab, idx) => (
                 <TabButton
                   key={tab.handle}
@@ -111,7 +111,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`relative whitespace-nowrap px-5 py-2.5 text-sm font-semibold transition-colors ${
+      className={`relative whitespace-nowrap px-5 py-2.5 text-sm font-semibold capitalize transition-colors ${
         active ? "text-crimson" : "text-muted-foreground hover:text-foreground"
       }`}
     >

@@ -100,7 +100,7 @@ export function ShopByOrigin({ section }: Props) {
                     key={tab}
                     type="button"
                     onClick={() => setActiveTab(tab)}
-                    className={`relative whitespace-nowrap px-5 py-2.5 text-sm font-semibold transition-colors ${
+                    className={`relative whitespace-nowrap px-5 py-2.5 text-sm font-semibold capitalize transition-colors ${
                       activeTab === tab
                         ? "text-crimson"
                         : "text-muted-foreground hover:text-foreground"
