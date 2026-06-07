@@ -22,6 +22,7 @@ const Q_BADGES     = `{ nodes: metaobjects(type: "icon_with_text", first: 10) { 
 const Q_PRICE_SEC  = `{ nodes: metaobjects(type: "price_range_section", first: 1) { nodes { id fields { key value } } } }`;
 const Q_PRICE_TILE = `{ nodes: metaobjects(type: "price_range_tile", first: 20) { nodes { id fields { key value reference { ... on MediaImage { image { url altText } } ... on Collection { id handle title } } } } } }`;
 const Q_REELS_SEC  = `{ nodes: metaobjects(type: "reels_section", first: 1) { nodes { id fields { key value } } } }`;
+const Q_REEL_ITEMS = `{ nodes: metaobjects(type: "reel_item", first: 20) { nodes { id fields { key value reference { ... on Product { id handle title priceRange { minVariantPrice { amount currencyCode } } featuredImage { url } } ... on Video { sources { url mimeType } preview { image { url } } } } } } } }`;
 const Q_PROMO      = `{ nodes: metaobjects(type: "promo_side_by_side", first: 1) { nodes { id fields { ${imgFields} } } } }`;
 const Q_VALUE      = `{ nodes: metaobjects(type: "mls_value_banner", first: 1) { nodes { id fields { ${imgFields} } } } }`;
 const Q_COL_CFG    = `{ nodes: metaobjects(type: "mls_collection_section", first: 1) { nodes { id fields { key value } } } }`;
@@ -66,7 +67,7 @@ function parseReelItems(nodes: any[]): ReelProduct[] {
     if (video?.sources) {
       const mp4 = video.sources.find((s: any) => s.mimeType === "video/mp4") ?? video.sources[0];
       videoUrl = mp4?.url ?? null;
-      poster = video.previewImage?.url ?? poster;
+      poster = video.preview?.image?.url ?? poster;
     }
 
     reels.push({
@@ -322,12 +323,13 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const [
     heroRes, badgesRes, priceSecRes, priceTileRes, reelSecRes,
     promoRes, valueRes, colCfgRes, originRes, categoryRes,
-    cutsRes, featuredRes, colListRes, reelTagged,
+    cutsRes, featuredRes, colListRes, reelTagged, reelItemsRes,
   ] = await Promise.all([
     af(Q_HERO), af(Q_BADGES), af(Q_PRICE_SEC), af(Q_PRICE_TILE), af(Q_REELS_SEC),
     af(Q_PROMO), af(Q_VALUE), af(Q_COL_CFG), af(Q_ORIGIN), af(Q_CATEGORY),
     af(Q_CUTS), af(Q_FEATURED), af(Q_COL_LIST),
     context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" } }),
+    af(Q_REEL_ITEMS),
   ]);
 
   const data = {
@@ -344,7 +346,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     cutsSection:          cutsRes,
     featuredCollections:  featuredRes,
     featuredCollectionList: colListRes,
-    reelItems:            { nodes: [] },
+    reelItems:            reelItemsRes,
   };
 
   const parsed = parseFeaturedCollections(data?.featuredCollections?.nodes ?? []);
