@@ -60,6 +60,22 @@ const PRODUCT_QUERY = `#graphql
       id title handle descriptionHtml vendor
       tags
       images(first: 10) { nodes { url altText } }
+      media(first: 12) {
+        nodes {
+          mediaContentType
+          ... on MediaImage { image { url altText } }
+          ... on Video {
+            id
+            sources { url mimeType }
+            previewImage { url altText }
+          }
+          ... on ExternalVideo {
+            id
+            embedUrl
+            previewImage { url altText }
+          }
+        }
+      }
       options { name values }
       priceRange {
         minVariantPrice { amount currencyCode }
@@ -80,6 +96,17 @@ const PRODUCT_QUERY = `#graphql
           compareAtPrice { amount currencyCode }
           selectedOptions { name value }
           image { url altText }
+          unitPrice { amount currencyCode }
+          unitPriceMeasurement {
+            measuredType
+            quantityUnit
+            quantityValue
+            referenceUnit
+            referenceValue
+          }
+          metafields(identifiers: [
+            {namespace: "custom", key: "price_per_kg"}
+          ]) { key value namespace }
           sellingPlanAllocations(first: 10) {
             nodes {
               sellingPlan { id }
@@ -100,10 +127,46 @@ const PRODUCT_QUERY = `#graphql
         {namespace: "custom", key: "ingredients"}
         {namespace: "custom", key: "flavor_profile"}
         {namespace: "custom", key: "pairing_suggestions"}
+        {namespace: "custom", key: "understanding_rubs"}
       ]) { key value }
+      collections(first: 30) { nodes { id } }
     }
   }
 ` as const;
+
+// Converts Globo REST API option objects → GloboOption[] shape expected by GloboProductOptions
+function flattenGloboApiOptions(opts: any[]): import("~/lib/globo").GloboOption[] {
+  return opts
+    .filter((o: any) => o?.name || o?.label)
+    .map((o: any) => ({
+      elementId: String(o.id ?? o._id ?? Math.random()),
+      name: o.name ?? o.label ?? "",
+      type: (() => {
+        const t = (o.type ?? o.option_type ?? "text").toLowerCase();
+        if (t.includes("textarea")) return "textarea" as const;
+        if (t.includes("swatch") && t.includes("image")) return "image_swatch" as const;
+        if (t.includes("swatch") || t.includes("color")) return "swatch" as const;
+        if (t.includes("dropdown") || t.includes("select")) return "dropdown" as const;
+        if (t.includes("radio")) return "radio" as const;
+        if (t.includes("checkbox")) return "checkbox" as const;
+        if (t.includes("date")) return "date" as const;
+        if (t.includes("number")) return "number" as const;
+        if (t.includes("file")) return "file" as const;
+        return "text" as const;
+      })(),
+      required: o.required ?? false,
+      placeholder: o.placeholder ?? "",
+      values: (o.values ?? o.option_values ?? []).map((v: any) => ({
+        label: typeof v === "string" ? v : (v.label ?? v.name ?? v.value ?? ""),
+        value: typeof v === "string" ? v : (v.value ?? v.label ?? ""),
+        color: v.color ?? v.color_code ?? undefined,
+        image: v.image ?? v.image_url ?? undefined,
+      })),
+      min_value: o.min_value,
+      max_value: o.max_value,
+      position: o.position ?? 0,
+    }));
+}
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const { handle } = params;
@@ -111,6 +174,9 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
   const { env } = context;
   const shopDomain = env.PUBLIC_STORE_DOMAIN;
+  // Use the live store custom domain for HTML scraping — the myshopify subdomain
+  // may redirect to a password page or serve a stripped theme without Globo scripts.
+  const liveDomain = (env as any).PUBLIC_LIVE_STORE_DOMAIN ?? shopDomain;
   const judgemeToken = env.JUDGEME_API_TOKEN;
 
   const lang = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
@@ -124,28 +190,96 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
   const externalId = data.product.id.split("/").pop() ?? undefined;
 
-  // Detect template early so we can conditionally fetch Globo options in parallel
-  const templateSuffix =
-    (data.product.tags?.find((t: string) => t.startsWith("template:"))?.replace("template:", "") ?? null) as string | null;
+  // Numeric collection IDs — used to filter Globo automate rules (collection-based targeting)
+  const collectionIds: number[] = (data.product.collections?.nodes ?? [])
+    .map((c: any) => Number(c.id.split("/").pop()))
+    .filter(Boolean);
 
-  // Globo embeds option data in the Shopify storefront HTML — scrape it from there
-  const globoPromise: Promise<GloboOptionSet[]> =
-    templateSuffix === "whole-cuts" && externalId
-      ? fetch(`https://${shopDomain}/products/${handle}`, {
-          headers: { Accept: "text/html", "User-Agent": "Mozilla/5.0" },
-        })
-          .then((r) => (r.ok ? r.text() : ""))
-          .then((html) => extractGloboOptionsFromHtml(html, Number(externalId)))
-          .catch(() => [])
-      : Promise.resolve([]);
+  // Case-insensitive tag detection so "Template:whole-cuts" and "template:whole-cuts" both work
+  const templateTag = data.product.tags?.find((t: string) => t.toLowerCase().startsWith("template:"));
+  const templateSuffix = templateTag ? templateTag.replace(/^template:/i, "").trim() : null as string | null;
+
+  // Strategy 1: scrape Globo config from Shopify theme HTML (proven approach).
+  // Strategy 2: try the Globo app-proxy JSON endpoint as fallback.
+  // Both run for every product so all templates get Globo options.
+  // Fetch Globo options by scraping the LIVE store's product page HTML.
+  // We try the custom domain first (mlsuae.ae) because that's where the Shopify
+  // theme with Globo is actually running. The myshopify subdomain may serve a
+  // password page or a Globo-less version of the HTML.
+  const globoPromise: Promise<GloboOptionSet[]> = externalId
+    ? (async () => {
+        const numId = Number(externalId);
+
+        // 1️⃣  Scrape live custom domain (most reliable)
+        try {
+          const r = await fetch(`https://${liveDomain}/products/${handle}`, {
+            headers: { Accept: "text/html", "User-Agent": "Mozilla/5.0" },
+            redirect: "follow",
+          });
+          if (r.ok) {
+            const html = await r.text();
+            const fromHtml = extractGloboOptionsFromHtml(html, numId, collectionIds);
+            if (fromHtml.length > 0) return fromHtml;
+          }
+        } catch { /* try next */ }
+
+        // 2️⃣  Fallback: scrape myshopify domain (in case custom domain same)
+        if (liveDomain !== shopDomain) {
+          try {
+            const r = await fetch(`https://${shopDomain}/products/${handle}`, {
+              headers: { Accept: "text/html", "User-Agent": "Mozilla/5.0" },
+              redirect: "follow",
+            });
+            if (r.ok) {
+              const html = await r.text();
+              const fromHtml = extractGloboOptionsFromHtml(html, numId, collectionIds);
+              if (fromHtml.length > 0) return fromHtml;
+            }
+          } catch { /* try next */ }
+        }
+
+        // 3️⃣  Fallback: Globo app proxy JSON (try multiple URL patterns on both domains)
+        const proxyPaths = [
+          `/apps/product-options-by-globo/option_sets.json?product_id=${externalId}`,
+          `/apps/globo-product-options/option_sets.json?product_id=${externalId}`,
+          `/apps/product-options/api/products/${externalId}/option_sets`,
+        ];
+        const domains = [...new Set([shopDomain, liveDomain])];
+        for (const domain of domains) {
+          for (const path of proxyPaths) {
+            try {
+              const apiRes = await fetch(
+                `https://${domain}${path}`,
+                { headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0" }, redirect: "follow" },
+              );
+              if (!apiRes.ok) continue;
+              const d = await apiRes.json() as any;
+              const rawSets: any[] = Array.isArray(d)
+                ? d
+                : (d?.option_sets ?? d?.optionSets ?? d?.data?.option_sets ?? d?.data?.optionSets ?? []);
+              const sets = rawSets
+                .map((set: any) => ({
+                  id: String(set.id ?? Math.random()),
+                  name: set.name ?? "",
+                  options: flattenGloboApiOptions(set.options ?? set.custom_options ?? []),
+                }))
+                .filter((s: GloboOptionSet) => s.options.length > 0);
+              if (sets.length > 0) return sets;
+            } catch { /* try next */ }
+          }
+        }
+
+        return [];
+      })()
+    : Promise.resolve([]);
 
   const [reviewsData, judgemeRating, recsData, settingsData, globoOptionSets] = await Promise.all([
     fetchJudgemeReviews(handle, shopDomain, judgemeToken, 1, 10, externalId),
     fetchJudgemeRating(data.product.id, shopDomain, judgemeToken),
     context.storefront.query(RECOMMENDATIONS_QUERY, {
       variables: { productId: data.product.id, language, country: "AE" as const },
-    }),
-    context.adminFetch(PAGE_SETTINGS_QUERY),
+    }).catch(() => null),
+    context.adminFetch(PAGE_SETTINGS_QUERY).catch(() => null),
     globoPromise,
   ]);
 

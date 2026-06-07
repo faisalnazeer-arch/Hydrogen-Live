@@ -39,23 +39,33 @@ export async function fetchJudgemeReviews(
   externalId?: string,
 ): Promise<JudgemeReviewsResponse> {
   if (!apiToken) return emptyResponse(page, perPage);
+
+  // Put externalId first — it's the most reliable key Judge.me uses.
   let url =
     `${JUDGEME_BASE}/reviews?api_token=${encodeURIComponent(apiToken)}` +
     `&shop_domain=${encodeURIComponent(shopDomain)}` +
-    `&handle=${encodeURIComponent(handle)}` +
     `&page=${page}&per_page=${perPage}`;
-  if (externalId) {
-    url += `&product_external_id=${encodeURIComponent(externalId)}`;
-  }
+  if (externalId) url += `&product_external_id=${encodeURIComponent(externalId)}`;
+  url += `&handle=${encodeURIComponent(handle)}`;
+
   try {
     const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) return emptyResponse(page, perPage);
     const data = (await res.json()) as JudgemeReviewsResponse;
-    // JudgMe omits total_count when the product isn't indexed — that means the
-    // returned reviews are shop-wide, not product-specific. Discard them.
-    if (data.total_count === undefined || data.total_count === null) {
+
+    // Without externalId, Judge.me may return shop-wide reviews when the
+    // product is not indexed (total_count will be absent). Discard those.
+    // When externalId IS provided the response is always product-specific.
+    if (!externalId && (data.total_count === undefined || data.total_count === null)) {
       return emptyResponse(page, perPage);
     }
+
+    // Normalise: if total_count is still null/undefined, fall back to the
+    // length of the reviews array so the UI never silently hides real reviews.
+    if (data.total_count == null) {
+      data.total_count = data.reviews?.length ?? 0;
+    }
+
     return data;
   } catch {
     return emptyResponse(page, perPage);

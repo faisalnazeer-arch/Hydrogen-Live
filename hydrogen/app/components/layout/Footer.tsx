@@ -9,14 +9,46 @@ import {
 } from "@/components/ui/accordion";
 import type { FooterSettings, FooterLink } from "~/root";
 
+const DEFAULTS = {
+  companyName:    "M L S FOODSTUFF TRADING LLC",
+  address:        "Marasi Drive, Business Bay\nP.O.Box 93770\nDubai, United Arab Emirates",
+  phone:          "+971504516403",
+  email:          "contactus@mlsuae.ae",
+  contactHeading: "Contact Us",
+  copyright:      "MLS UAE. All rights reserved.",
+};
+
+interface ContactData {
+  heading: string;
+  address: string;
+  phone: string;
+  email: string;
+  instagram?: string | null;
+  facebook?: string | null;
+  brandText?: string | null;
+  copyright: string;
+  bottomTagline?: string | null;
+}
+
 interface Props {
   settings: FooterSettings | null;
   menuCols: Array<{ heading: string; links: FooterLink[] }>;
 }
 
 export function Footer({ settings, menuCols }: Props) {
-  if (!settings) return null;
   const year = new Date().getFullYear();
+
+  const contact: ContactData = {
+    heading:       settings?.contactHeading || DEFAULTS.contactHeading,
+    address:       settings?.address        || DEFAULTS.address,
+    phone:         settings?.phone          || DEFAULTS.phone,
+    email:         settings?.email          || DEFAULTS.email,
+    instagram:     settings?.instagramUrl,
+    facebook:      settings?.facebookUrl,
+    brandText:     settings?.brandText,
+    copyright:     settings?.copyright      || DEFAULTS.copyright,
+    bottomTagline: settings?.bottomTagline,
+  };
 
   return (
     <footer className="mt-16 bg-charcoal text-charcoal-foreground">
@@ -24,16 +56,16 @@ export function Footer({ settings, menuCols }: Props) {
 
         {/* ── Desktop ─────────────────────────────────────────────── */}
         <div className="hidden gap-10 md:flex md:flex-wrap">
-          <BrandCol settings={settings} />
+          <BrandCol contact={contact} />
           {menuCols.map((col) => (
             <NavCol key={col.heading} heading={col.heading} links={col.links} />
           ))}
-          <ContactCol settings={settings} />
+          <ContactCol contact={contact} />
         </div>
 
         {/* ── Mobile accordion ────────────────────────────────────── */}
         <div className="md:hidden">
-          <BrandCol settings={settings} />
+          <BrandCol contact={contact} />
           <Accordion type="single" collapsible className="mt-6">
             {menuCols.map((col) => (
               <AccordionItem key={col.heading} value={col.heading} className="border-off-white/10">
@@ -47,10 +79,10 @@ export function Footer({ settings, menuCols }: Props) {
             ))}
             <AccordionItem value="contact" className="border-off-white/10">
               <AccordionTrigger className="font-display text-sm font-bold uppercase tracking-wider text-gold hover:no-underline">
-                {settings.contactHeading}
+                {contact.heading}
               </AccordionTrigger>
               <AccordionContent>
-                <ContactList settings={settings} />
+                <ContactList contact={contact} />
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -60,36 +92,32 @@ export function Footer({ settings, menuCols }: Props) {
       {/* ── Bottom bar ──────────────────────────────────────────────── */}
       <div className="border-t border-off-white/10">
         <div className="container mx-auto flex flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-off-white/60 sm:flex-row">
-          <span>© {year} {settings.copyright}</span>
-          <span>{settings.bottomTagline}</span>
+          <span>© {year} {contact.copyright}</span>
+          {contact.bottomTagline && <span>{contact.bottomTagline}</span>}
         </div>
       </div>
     </footer>
   );
 }
 
-// ── Brand column ──────────────────────────────────────────────────────────────
-function BrandCol({ settings }: { settings: FooterSettings }) {
+function BrandCol({ contact }: { contact: ContactData }) {
   return (
-    <div className="flex-1 min-w-[260px] max-w-[320px]">
-      <div className="mb-4">
-        <img
-          src={logo}
-          alt="Muscat Livestock Store"
-          className="h-14 w-auto brightness-0 invert"
-        />
+    <div className="min-w-[240px] max-w-[320px] flex-1">
+      <div className="mb-3">
+        <img src={logo} alt="MLS UAE" className="h-14 w-auto brightness-0 invert" />
       </div>
-      {settings.brandText && (
-        <p className="text-sm text-off-white/70">{settings.brandText}</p>
+      <p className="text-sm font-semibold text-gold">{DEFAULTS.companyName}</p>
+      {contact.brandText && (
+        <p className="mt-1 text-sm text-off-white/70">{contact.brandText}</p>
       )}
       <div className="mt-4 flex gap-3">
-        {settings.instagramUrl && (
-          <a href={settings.instagramUrl} aria-label="Instagram" className="hover:text-gold" target="_blank" rel="noopener noreferrer">
+        {contact.instagram && (
+          <a href={contact.instagram} aria-label="Instagram" className="text-off-white/70 hover:text-gold" target="_blank" rel="noopener noreferrer">
             <Instagram className="h-5 w-5" />
           </a>
         )}
-        {settings.facebookUrl && (
-          <a href={settings.facebookUrl} aria-label="Facebook" className="hover:text-gold" target="_blank" rel="noopener noreferrer">
+        {contact.facebook && (
+          <a href={contact.facebook} aria-label="Facebook" className="text-off-white/70 hover:text-gold" target="_blank" rel="noopener noreferrer">
             <Facebook className="h-5 w-5" />
           </a>
         )}
@@ -98,7 +126,6 @@ function BrandCol({ settings }: { settings: FooterSettings }) {
   );
 }
 
-// ── Nav column ────────────────────────────────────────────────────────────────
 function NavCol({ heading, links }: { heading: string; links: FooterLink[] }) {
   return (
     <div className="min-w-[140px] flex-1">
@@ -110,44 +137,51 @@ function NavCol({ heading, links }: { heading: string; links: FooterLink[] }) {
   );
 }
 
-// ── Contact column ────────────────────────────────────────────────────────────
-function ContactCol({ settings }: { settings: FooterSettings }) {
+function ContactCol({ contact }: { contact: ContactData }) {
   return (
-    <div className="min-w-[180px] flex-1">
+    <div className="min-w-[200px] flex-1">
       <h4 className="mb-4 font-display text-sm font-bold uppercase tracking-wider text-gold">
-        {settings.contactHeading}
+        {contact.heading}
       </h4>
-      <ContactList settings={settings} />
+      <ContactList contact={contact} />
     </div>
   );
 }
 
-function ContactList({ settings }: { settings: FooterSettings }) {
+function ContactList({ contact }: { contact: ContactData }) {
   return (
     <ul className="space-y-3 text-sm text-off-white/80">
-      {settings.address && (
+      {contact.address && (
         <li className="flex items-start gap-2">
           <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-          <span>{settings.address}</span>
+          <span className="whitespace-pre-line">{contact.address}</span>
         </li>
       )}
-      {settings.phone && (
+      {contact.phone && (
         <li className="flex items-center gap-2">
           <Phone className="h-4 w-4 shrink-0 text-gold" />
-          <a href={`tel:${settings.phone}`} className="hover:text-gold">{settings.phone}</a>
+          <a
+            href={`https://wa.me/${contact.phone.replace(/\D/g, "")}`}
+            className="hover:text-gold"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {contact.phone}
+          </a>
         </li>
       )}
-      {settings.email && (
+      {contact.email && (
         <li className="flex items-center gap-2">
           <Mail className="h-4 w-4 shrink-0 text-gold" />
-          <a href={`mailto:${settings.email}`} className="hover:text-gold">{settings.email}</a>
+          <a href={`mailto:${contact.email}`} className="hover:text-gold">
+            {contact.email}
+          </a>
         </li>
       )}
     </ul>
   );
 }
 
-// ── Link list ─────────────────────────────────────────────────────────────────
 function LinkList({ links }: { links: FooterLink[] }) {
   return (
     <ul className="space-y-2 text-sm text-off-white/80">
