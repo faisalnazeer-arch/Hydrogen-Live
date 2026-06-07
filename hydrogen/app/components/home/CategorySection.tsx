@@ -48,18 +48,21 @@ export function CategorySection({
 
       {/* Collection tabs */}
       {hasTabs && (
-        <div className="mb-3 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-          <div className="flex min-w-max border-b border-border mx-auto w-fit">
-            {tabs.map((tab, idx) => (
-              <TabButton
-                key={tab.handle}
-                active={idx === activeIdx}
-                onClick={() => setActiveIdx(idx)}
-                count={tab.products.length}
-              >
-                {tab.label}
-              </TabButton>
-            ))}
+        <div className="relative mb-3">
+          {/* Right fade — hints that more tabs are scrollable */}
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-12 z-10 bg-gradient-to-l from-background to-transparent" />
+          <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+            <div className="flex min-w-max border-b border-border">
+              {tabs.map((tab, idx) => (
+                <TabButton
+                  key={tab.handle}
+                  active={idx === activeIdx}
+                  onClick={() => setActiveIdx(idx)}
+                >
+                  {tab.label}
+                </TabButton>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -98,28 +101,21 @@ export function CategorySection({
 function TabButton({
   active,
   onClick,
-  count,
   children,
 }: {
   active: boolean;
   onClick: () => void;
-  count: number;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`relative px-6 py-2.5 text-sm font-semibold transition-colors ${
+      className={`relative whitespace-nowrap px-5 py-2.5 text-sm font-semibold transition-colors ${
         active ? "text-crimson" : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {children}
-      {count > 0 && (
-        <span className={`ml-1.5 text-xs ${active ? "text-crimson/70" : "text-muted-foreground/70"}`}>
-          ({count})
-        </span>
-      )}
       {active && (
         <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-crimson" />
       )}

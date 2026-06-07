@@ -89,23 +89,31 @@ export function ShopByOrigin({ section }: Props) {
           </h2>
         </div>
 
-        {/* Category tabs */}
+        {/* Category tabs — scrollable, same style as Our Collections */}
         {categories.length > 1 && (
-          <div className="mb-8 flex flex-wrap justify-center gap-2">
-            {categories.map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`rounded-full border-2 px-6 py-2 text-sm font-bold uppercase tracking-wider transition-colors ${
-                  activeTab === tab
-                    ? "border-crimson bg-crimson text-white"
-                    : "border-crimson text-crimson hover:bg-crimson/10"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
+          <div className="relative mb-8">
+            <div className="pointer-events-none absolute right-0 top-0 h-full w-12 z-10 bg-gradient-to-l from-bone to-transparent" />
+            <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+              <div className="flex min-w-max border-b border-border mx-auto w-fit">
+                {categories.map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveTab(tab)}
+                    className={`relative whitespace-nowrap px-5 py-2.5 text-sm font-semibold transition-colors ${
+                      activeTab === tab
+                        ? "text-crimson"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {tab}
+                    {activeTab === tab && (
+                      <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-crimson" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
