@@ -2,7 +2,6 @@ import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData, Link } from "react-router";
 import { Star, ChevronDown, ArrowRight, Settings, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
-import { shopifyImageUrl } from "~/lib/shopify";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => [
   { title: `${data?.page?.heroTitle ?? "Subscriptions"} — MLS UAE` },
@@ -29,19 +28,6 @@ const PAGE_QUERY = `{
   }
 }`;
 
-const PRODUCTS_QUERY = `#graphql
-  query SubProducts($country: CountryCode, $language: LanguageCode)
-  @inContext(country: $country, language: $language) {
-    products(first: 6, query: "selling_plan:true") {
-      nodes {
-        handle title
-        priceRange { minVariantPrice { amount currencyCode } }
-        images(first: 1) { nodes { url altText } }
-        sellingPlanGroups(first: 1) { nodes { name } }
-      }
-    }
-  }
-` as const;
 
 // ─── Loader ───────────────────────────────────────────────────────────────────
 
@@ -49,10 +35,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const lang = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
   const language = (lang === "ar" ? "AR" : "EN") as "AR" | "EN";
 
-  const [adminData, { products }] = await Promise.all([
-    context.adminFetch(PAGE_QUERY),
-    context.storefront.query(PRODUCTS_QUERY, { variables: { country: "AE" as const, language } }),
-  ]);
+  const adminData = await context.adminFetch(PAGE_QUERY);
 
   const node = adminData?.page?.nodes?.[0];
   const f = Object.fromEntries((node?.fields ?? []).map((x: any) => [x.key, x]));
@@ -85,12 +68,12 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
     benefits: refs("benefit_items").map((n: any) => {
       const nf = Object.fromEntries(n.fields.map((x: any) => [x.key, x.value]));
-      return { id: n.id, emoji: nf.emoji ?? "", title: nf.title ?? "", description: nf.description ?? "" };
+      return { id: n.id, emoji: nf.emoji ?? "", title: nf.title ?? "", description: nf.description ?? "", imageUrl: nf.image_url ?? "" };
     }),
 
     steps: refs("step_items").map((n: any) => {
       const nf = Object.fromEntries(n.fields.map((x: any) => [x.key, x.value]));
-      return { id: n.id, number: nf.number ?? "", title: nf.title ?? "", description: nf.description ?? "" };
+      return { id: n.id, number: nf.number ?? "", title: nf.title ?? "", description: nf.description ?? "", imageUrl: nf.image_url ?? "" };
     }),
 
     reviews: refs("review_items").map((n: any) => {
@@ -104,14 +87,10 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     }),
   };
 
-  return { page, products: products.nodes };
+  return { page };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmt(amount: string, currency: string) {
-  return new Intl.NumberFormat("en-AE", { style: "currency", currency, minimumFractionDigits: 0 }).format(parseFloat(amount));
-}
 
 // Timeline week colours cycling
 const WEEK_COLOURS = ["from-crimson to-rich-red", "from-[#c0392b] to-crimson", "from-rich-red to-charcoal", "from-charcoal to-[#1a0a0a]"];
@@ -119,7 +98,7 @@ const WEEK_COLOURS = ["from-crimson to-rich-red", "from-[#c0392b] to-crimson", "
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SubscriptionsPage() {
-  const { page, products } = useLoaderData<typeof loader>();
+  const { page } = useLoaderData<typeof loader>();
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -271,11 +250,20 @@ export default function SubscriptionsPage() {
               <h2 className="font-display text-2xl font-extrabold md:text-3xl">{page.benefits_title}</h2>
             </div>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {page.benefits.map(({ id, emoji, title, description }) => (
-                <div key={id} className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-7 text-center shadow-sm transition-shadow hover:shadow-md">
-                  <span className="text-5xl leading-none">{emoji}</span>
-                  <h3 className="font-display text-base font-bold leading-snug">{title}</h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
+              {page.benefits.map(({ id, emoji, title, description, imageUrl }) => (
+                <div key={id} className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card pb-7 pt-6 text-center shadow-sm transition-shadow hover:shadow-md overflow-hidden">
+                  {/* image above — or fall back to emoji */}
+                  {imageUrl ? (
+                    <div className="flex h-28 w-full items-center justify-center px-4">
+                      <img src={imageUrl} alt={title} className="h-full w-auto max-w-full object-contain" />
+                    </div>
+                  ) : (
+                    <span className="text-5xl leading-none pt-2">{emoji}</span>
+                  )}
+                  <div className="px-5">
+                    <h3 className="font-display text-base font-bold leading-snug">{title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -291,11 +279,16 @@ export default function SubscriptionsPage() {
               <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-crimson">Simple Setup</p>
               <h2 className="font-display text-2xl font-extrabold md:text-3xl">{page.stepsTitle}</h2>
             </div>
-            <div className="relative grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="absolute left-[12.5%] right-[12.5%] top-[2.2rem] hidden h-0.5 bg-border lg:block" />
-              {page.steps.map(({ id, number, title, description }) => (
-                <div key={id} className="relative flex flex-col items-center gap-3 text-center">
-                  <div className="relative z-10 grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-crimson text-xl font-extrabold text-white shadow-md ring-4 ring-background">
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+              {page.steps.map(({ id, number, title, description, imageUrl }) => (
+                <div key={id} className="flex flex-col items-center gap-3 text-center">
+                  {/* image above step number */}
+                  {imageUrl && (
+                    <div className="flex h-40 w-full items-end justify-center">
+                      <img src={imageUrl} alt={title} className="max-h-full w-auto max-w-[160px] object-contain drop-shadow-md" />
+                    </div>
+                  )}
+                  <div className="grid h-14 w-14 place-items-center rounded-full bg-crimson text-xl font-extrabold text-white shadow-md ring-4 ring-background">
                     {number}
                   </div>
                   <h3 className="font-display text-base font-bold">{title}</h3>
@@ -310,49 +303,6 @@ export default function SubscriptionsPage() {
               >
                 Get Started Now <ArrowRight className="h-4 w-4" />
               </Link>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ══ PRODUCTS ══════════════════════════════════════════════════════════ */}
-      {products.length > 0 && (
-        <section className="py-16 md:py-20">
-          <div className="container mx-auto px-4">
-            <div className="mb-8 text-center">
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-crimson">Shop &amp; Subscribe</p>
-              <h2 className="font-display text-2xl font-extrabold md:text-3xl">Available for Subscription</h2>
-              <p className="mt-2 text-sm text-muted-foreground">Open any product and choose "Subscribe &amp; Save" to begin</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-              {products.map((p) => (
-                <Link
-                  key={p.handle}
-                  to={`/products/${p.handle}`}
-                  className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
-                >
-                  {p.images.nodes[0] && (
-                    <div className="aspect-square overflow-hidden bg-muted">
-                      <img
-                        src={shopifyImageUrl(p.images.nodes[0].url, 400)}
-                        alt={p.images.nodes[0].altText ?? p.title}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                    </div>
-                  )}
-                  <div className="flex flex-1 flex-col p-3">
-                    <p className="line-clamp-2 text-xs font-medium text-foreground">{p.title}</p>
-                    <p className="mt-1 font-display text-sm font-bold text-crimson">
-                      {fmt(p.priceRange.minVariantPrice.amount, p.priceRange.minVariantPrice.currencyCode)}
-                    </p>
-                    {p.sellingPlanGroups.nodes[0] && (
-                      <span className="mt-1.5 inline-block rounded-full bg-crimson/10 px-2 py-0.5 text-[10px] font-semibold text-crimson">
-                        Subscribe &amp; Save
-                      </span>
-                    )}
-                  </div>
-                </Link>
-              ))}
             </div>
           </div>
         </section>
