@@ -265,11 +265,10 @@ export default function SubscriptionsPage() {
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {page.steps.map(({ id, number, title, description, imageUrl }) => (
                 <div key={id} className="flex flex-col items-center gap-3 text-center">
-                  {/* Larger image — h-56 */}
                   {imageUrl && (
-                    <div className="flex h-56 w-full items-end justify-center">
+                    <div className="flex h-72 w-full items-end justify-center">
                       <img src={imageUrl} alt={title}
-                        className="max-h-full w-auto max-w-[200px] object-contain drop-shadow-md" />
+                        className="h-full w-auto max-w-full object-contain drop-shadow-lg" />
                     </div>
                   )}
                   <div className="grid h-12 w-12 place-items-center rounded-full bg-crimson text-lg font-extrabold text-white shadow-md ring-4 ring-background">
@@ -336,55 +335,64 @@ function ReviewsSlider({ reviews }: { reviews: Review[] }) {
   const prev = () => setCurrent((c) => (c - 1 + count) % count);
   const next = () => setCurrent((c) => (c + 1) % count);
 
+  const ReviewCard = ({ id, name, title, body, rating }: Review) => (
+    <div key={id} className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-6 shadow-sm h-full">
+      <div className="flex gap-0.5">
+        {Array.from({ length: rating }).map((_, i) => (
+          <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
+        ))}
+      </div>
+      <p className="font-display text-base font-bold text-foreground">{title}</p>
+      <p className="text-sm leading-relaxed text-muted-foreground flex-1">{body}</p>
+      <p className="text-xs font-semibold text-crimson">— {name}</p>
+    </div>
+  );
+
   return (
-    <div className="relative">
-      {/* Slider track */}
-      <div className="overflow-hidden">
-        <div
-          className="flex transition-transform duration-500 ease-in-out"
-          style={{ transform: `translateX(-${current * 100}%)` }}
-        >
-          {reviews.map(({ id, name, title, body, rating }) => (
-            <div key={id} className="w-full shrink-0 px-2 sm:px-4">
-              <div className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
-                <div className="mb-3 flex gap-0.5">
-                  {Array.from({ length: rating }).map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
-                  ))}
-                </div>
-                <p className="font-display text-base font-bold text-foreground md:text-lg">{title}</p>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground md:text-base">{body}</p>
-                <p className="mt-4 text-xs font-semibold text-crimson">— {name}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+    <>
+      {/* ── Desktop: all 3 side by side ── */}
+      <div className="hidden md:grid md:grid-cols-3 gap-5">
+        {reviews.map((r) => <ReviewCard key={r.id} {...r} />)}
       </div>
 
-      {/* Arrows */}
-      {count > 1 && (
-        <>
-          <button type="button" onClick={prev} aria-label="Previous review"
-            className="absolute -left-2 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-full border border-border bg-background shadow-sm transition-all hover:border-crimson hover:text-crimson sm:-left-4">
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button type="button" onClick={next} aria-label="Next review"
-            className="absolute -right-2 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-full border border-border bg-background shadow-sm transition-all hover:border-crimson hover:text-crimson sm:-right-4">
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </>
-      )}
-
-      {/* Dots */}
-      {count > 1 && (
-        <div className="mt-5 flex items-center justify-center gap-2">
-          {reviews.map((_, i) => (
-            <button key={i} type="button" onClick={() => setCurrent(i)} aria-label={`Review ${i + 1}`}
-              className={`rounded-full transition-all duration-300 ${i === current ? "h-2 w-6 bg-crimson" : "h-2 w-2 bg-border hover:bg-muted-foreground"}`} />
-          ))}
+      {/* ── Mobile: single-card slider ── */}
+      <div className="relative md:hidden">
+        <div className="overflow-hidden">
+          <div
+            className="flex transition-transform duration-500 ease-in-out"
+            style={{ transform: `translateX(-${current * 100}%)` }}
+          >
+            {reviews.map((r) => (
+              <div key={r.id} className="w-full shrink-0 px-1">
+                <ReviewCard {...r} />
+              </div>
+            ))}
+          </div>
         </div>
-      )}
-    </div>
+
+        {count > 1 && (
+          <>
+            <button type="button" onClick={prev} aria-label="Previous review"
+              className="absolute -left-1 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center rounded-full border border-border bg-background shadow-sm transition-all hover:border-crimson hover:text-crimson">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button type="button" onClick={next} aria-label="Next review"
+              className="absolute -right-1 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center rounded-full border border-border bg-background shadow-sm transition-all hover:border-crimson hover:text-crimson">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </>
+        )}
+
+        {count > 1 && (
+          <div className="mt-4 flex items-center justify-center gap-2">
+            {reviews.map((_, i) => (
+              <button key={i} type="button" onClick={() => setCurrent(i)} aria-label={`Review ${i + 1}`}
+                className={`rounded-full transition-all duration-300 ${i === current ? "h-2 w-6 bg-crimson" : "h-2 w-2 bg-border"}`} />
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
