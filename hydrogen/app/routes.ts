@@ -8,6 +8,8 @@ export default hydrogenRoutes([
   route('apps/loggedincustomer', 'routes/apps.loggedincustomer.tsx'),
   route('search', 'routes/search.tsx'),
   route('collections/:handle', 'routes/collections.$handle.tsx'),
+  route('blogs/:handle', 'routes/blogs.$handle.tsx'),
+  route('blogs/:blogHandle/:articleHandle', 'routes/blogs.$blogHandle.$articleHandle.tsx'),
   route('products/:handle', 'routes/products.$handle.tsx'),
   route('api/reviews/store', 'routes/api.reviews.store.tsx'),
   route('api/reviews/:handle', 'routes/api.reviews.$handle.tsx'),
