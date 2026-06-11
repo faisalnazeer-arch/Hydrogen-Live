@@ -231,6 +231,25 @@ export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFuncti
   return currentUrl.pathname !== nextUrl.pathname;
 }
 
+const EMPTY_LAZY = {
+  reviews: [] as any[],
+  reviewsTotalCount: 0,
+  rating: { average: 0, count: 0 },
+  recommendations: [] as any[],
+  globoOptionSets: [] as any[],
+  templateSettings: {} as Record<string, { sectionTitle: string | null; highlightText: string | null; accordions: Array<{heading: string; content: string}> }>,
+  pageSettings: {
+    deliveryTitle: "Delivery Info",
+    deliveryContent: null as string | null,
+    supportTitle: "Customer Support",
+    supportContent: null as string | null,
+    dubaiDeliveryInfo: null as any,
+    abudhabiDeliveryInfo: null as any,
+    sharjahDeliveryInfo: null as any,
+    badgeImage: null as string | null,
+  },
+};
+
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const { handle } = params;
   if (!handle) throw new Response("Missing handle", { status: 400 });
@@ -280,67 +299,33 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   // We try the custom domain first (mlsuae.ae) because that's where the Shopify
   // theme with Globo is actually running. The myshopify subdomain may serve a
   // password page or a Globo-less version of the HTML.
+  // Globo HTML scrape — capped at 1 200 ms total so it never blocks SSR.
+  // If it misses, the client-side /api/globo-options/:id fetch takes over automatically.
   const globoPromise: Promise<GloboOptionSet[]> = externalId
-    ? (async () => {
-        const numId = Number(externalId);
-        const htmlHeaders = { Accept: "text/html", "User-Agent": "Mozilla/5.0" };
-
-        // 1️⃣  Scrape both domains in parallel, 3-second timeout each
-        const htmlUrls = [...new Set([liveDomain, shopDomain])].map(
-          (d) => `https://${d}/products/${handle}`,
-        );
-        const htmlResults = await Promise.allSettled(
-          htmlUrls.map((url) =>
-            fetch(url, { headers: htmlHeaders, redirect: "follow", signal: AbortSignal.timeout(3000) }),
-          ),
-        );
-        for (const res of htmlResults) {
-          if (res.status !== "fulfilled" || !res.value.ok) continue;
-          try {
-            const html = await res.value.text();
-            const fromHtml = extractGloboOptionsFromHtml(html, numId, collectionIds);
-            if (fromHtml.length > 0) return fromHtml;
-          } catch { /* try next */ }
-        }
-
-        // 2️⃣  Fallback: all Globo app-proxy JSON endpoints in parallel, 2-second timeout each
-        const proxyPaths = [
-          `/apps/product-options-by-globo/option_sets.json?product_id=${externalId}`,
-          `/apps/globo-product-options/option_sets.json?product_id=${externalId}`,
-          `/apps/product-options/api/products/${externalId}/option_sets`,
-        ];
-        const proxyUrls = [...new Set([shopDomain, liveDomain])].flatMap((d) =>
-          proxyPaths.map((p) => `https://${d}${p}`),
-        );
-        const proxyResults = await Promise.allSettled(
-          proxyUrls.map((url) =>
-            fetch(url, {
-              headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0" },
-              redirect: "follow",
-              signal: AbortSignal.timeout(2000),
-            }),
-          ),
-        );
-        for (const res of proxyResults) {
-          if (res.status !== "fulfilled" || !res.value.ok) continue;
-          try {
-            const d = await res.value.json() as any;
-            const rawSets: any[] = Array.isArray(d)
-              ? d
-              : (d?.option_sets ?? d?.optionSets ?? d?.data?.option_sets ?? d?.data?.optionSets ?? []);
-            const sets = rawSets
-              .map((set: any) => ({
-                id: String(set.id ?? Math.random()),
-                name: set.name ?? "",
-                options: flattenGloboApiOptions(set.options ?? set.custom_options ?? []),
-              }))
-              .filter((s: GloboOptionSet) => s.options.length > 0);
-            if (sets.length > 0) return sets;
-          } catch { /* try next */ }
-        }
-
-        return [];
-      })()
+    ? Promise.race([
+        (async () => {
+          const numId = Number(externalId);
+          const htmlHeaders = { Accept: "text/html", "User-Agent": "Mozilla/5.0" };
+          const htmlUrls = [...new Set([liveDomain, shopDomain])].map(
+            (d) => `https://${d}/products/${handle}`,
+          );
+          const htmlResults = await Promise.allSettled(
+            htmlUrls.map((url) =>
+              fetch(url, { headers: htmlHeaders, redirect: "follow", signal: AbortSignal.timeout(1200) }),
+            ),
+          );
+          for (const res of htmlResults) {
+            if (res.status !== "fulfilled" || !res.value.ok) continue;
+            try {
+              const html = await res.value.text();
+              const fromHtml = extractGloboOptionsFromHtml(html, numId, collectionIds);
+              if (fromHtml.length > 0) return fromHtml;
+            } catch { /* try next */ }
+          }
+          return [];
+        })(),
+        new Promise<GloboOptionSet[]>((resolve) => setTimeout(() => resolve([]), 1200)),
+      ])
     : Promise.resolve([]);
 
   // Compute discount map synchronously from already-fetched product data
@@ -366,17 +351,19 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     }
   }
 
-  // Fire all slow external fetches — NOT awaited, stream in after the page renders
-  const lazyData = Promise.all([
-    fetchJudgemeReviews(handle, shopDomain, judgemeToken, 1, 10, externalId),
-    fetchJudgemeRating(data.product.id, shopDomain, judgemeToken),
-    context.storefront.query(RECOMMENDATIONS_QUERY, {
-      variables: { productId: data.product.id, language, country: "AE" as const },
-    }).catch(() => null),
-    context.adminFetch(PAGE_SETTINGS_QUERY).catch(() => null),
-    context.adminFetch(TEMPLATE_SETTINGS_QUERY).catch(() => null),
-    globoPromise,
-  ]).then(([reviewsData, judgemeRating, recsData, settingsData, templateSettingsData, globoOptionSets]) => {
+  // Fire all slow external fetches — NOT awaited, stream in after the page renders.
+  // Hard 3 500 ms deadline: if any upstream is slow the page still loads with defaults.
+  const lazyData = Promise.race([
+    Promise.all([
+      fetchJudgemeReviews(handle, shopDomain, judgemeToken, 1, 10, externalId).catch(() => ({ reviews: [], total_count: 0 })),
+      fetchJudgemeRating(data.product.id, shopDomain, judgemeToken).catch(() => ({ average: 0, count: 0 })),
+      context.storefront.query(RECOMMENDATIONS_QUERY, {
+        variables: { productId: data.product.id, language, country: "AE" as const },
+      }).catch(() => null),
+      context.adminFetch(PAGE_SETTINGS_QUERY).catch(() => null),
+      context.adminFetch(TEMPLATE_SETTINGS_QUERY).catch(() => null),
+      globoPromise,
+    ]).then(([reviewsData, judgemeRating, recsData, settingsData, templateSettingsData, globoOptionSets]) => {
     const reviewsSummary = buildRatingSummary(reviewsData);
     const rating = judgemeRating.average > 0 ? judgemeRating : reviewsSummary;
     const recommendations: ShopifyProduct[] = (recsData?.productRecommendations ?? [])
@@ -437,7 +424,12 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
         badgeImage: getPageMeta("badge_image"),
       },
     };
-  });
+    }),
+    // Timeout fallback — resolves with empty defaults so the page never hangs
+    new Promise<typeof EMPTY_LAZY>((resolve) =>
+      setTimeout(() => resolve({ ...EMPTY_LAZY }), 3500)
+    ),
+  ]);
 
   // Return critical data immediately; lazyData streams in while the page is already visible
   return {
@@ -449,25 +441,6 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     lazyData,
   };
 }
-
-const EMPTY_LAZY = {
-  reviews: [],
-  reviewsTotalCount: 0,
-  rating: { average: 0, count: 0 },
-  recommendations: [],
-  globoOptionSets: [],
-  templateSettings: {} as Record<string, { sectionTitle: string | null; highlightText: string | null; accordions: Array<{heading: string; content: string}> }>,
-  pageSettings: {
-    deliveryTitle: "Delivery Info",
-    deliveryContent: null,
-    supportTitle: "Customer Support",
-    supportContent: null,
-    dubaiDeliveryInfo: null,
-    abudhabiDeliveryInfo: null,
-    sharjahDeliveryInfo: null,
-    badgeImage: null,
-  },
-};
 
 function renderTemplate(suffix: string | null | undefined, props: any) {
   // Suffixes verified against live Shopify store (807 products, scanned 2026-06-11)
