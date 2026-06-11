@@ -145,14 +145,14 @@ export function SubscriptionSelector({
             {allPlans.length > 0 && (
               <div className="mt-4">
                 <p className="mb-2 text-sm font-bold">{t("subscription.deliver_every")}</p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex gap-2">
                   {allPlans.map((plan) => (
                     <button
                       key={plan.id}
                       type="button"
                       onClick={(e) => { e.stopPropagation(); onSelect(plan.id); }}
                       className={cn(
-                        "flex min-w-[110px] flex-col items-center rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors",
+                        "flex flex-1 flex-col items-center rounded-lg border px-2 py-2.5 text-sm font-semibold transition-colors",
                         plan.id === selectedPlanId
                           ? "border-crimson bg-crimson text-white"
                           : "border-border bg-muted/50 hover:border-crimson",
