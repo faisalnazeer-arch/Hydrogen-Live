@@ -1084,24 +1084,6 @@ export function ProductPageShell({
           </div>
         </div>
 
-        {/* ── "Choose Options" strip — sits between panel and ATC row ── */}
-        {(hasOptions || sellingPlanGroups.length > 0) && (
-          <button
-            type="button"
-            onClick={() => setStickyExpanded((e) => !e)}
-            className={`flex w-full items-center justify-center gap-2 border-t py-2.5 text-sm font-semibold transition-colors ${
-              stickyExpanded
-                ? "border-crimson/30 bg-crimson/5 text-crimson"
-                : "border-border bg-muted/30 text-foreground hover:bg-muted/60"
-            }`}
-          >
-            {stickyExpanded
-              ? <><ChevronDown className="h-4 w-4" /> Close</>
-              : <><ChevronUp className="h-4 w-4" /> Choose your options</>
-            }
-          </button>
-        )}
-
         {/* ── Main ATC row ── */}
         <div className="container mx-auto flex items-center gap-2 px-4 py-3">
           {images[0] && (
@@ -1119,6 +1101,19 @@ export function ProductPageShell({
             )}
             <p className="text-xs font-bold text-crimson sm:text-sm">{formatPrice(displayPrice?.amount ?? "0", currency)}</p>
           </div>
+
+          {/* Expand toggle */}
+          {(hasOptions || sellingPlanGroups.length > 0) && (
+            <button
+              type="button"
+              onClick={() => setStickyExpanded((e) => !e)}
+              className="flex flex-shrink-0 items-center gap-1 rounded-lg border border-crimson/60 bg-crimson/5 px-3 py-2 text-xs font-semibold text-crimson transition-colors hover:bg-crimson/10"
+            >
+              {stickyExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+              <span className="hidden xs:inline">{stickyExpanded ? "Close" : "Choose options"}</span>
+              <span className="xs:hidden">{stickyExpanded ? "Close" : "Options"}</span>
+            </button>
+          )}
 
           {variant?.availableForSale ? (
             <div className="flex items-center gap-2">
