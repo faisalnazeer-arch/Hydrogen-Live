@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
 import { useState } from "react";
-import { Clock, Truck, MapPin, CheckCircle2, Package } from "lucide-react";
+import { Clock, Truck, MapPin, CheckCircle2, Package, RefreshCw } from "lucide-react";
 
 export const meta: MetaFunction = () => [
   { title: "Delivery Info — MLS UAE" },
@@ -196,6 +196,26 @@ export default function DeliveryInfoPage() {
           <div className="mt-6 rounded-xl border border-crimson/20 bg-crimson/5 px-4 py-3">
             <p className="text-sm font-semibold text-crimson">Operating hours</p>
             <p className="text-sm text-muted-foreground">{city.hours}</p>
+          </div>
+        </div>
+
+        {/* Returns */}
+        <div className="mx-auto mt-8 max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-[0.15em] text-crimson">
+            <RefreshCw className="h-4 w-4" />
+            100% Free Replacements &amp; Returns
+          </h2>
+          <div className="divide-y divide-border/50">
+            {[
+              "Drop a WhatsApp message or send us an email within 24 hours after delivery.",
+              "We will exchange the product and deliver it again to your door, or you can pick it up if you want.",
+              "You will receive the product or a refund. Refunds will be processed within 14 working days.",
+            ].map((line, i) => (
+              <p key={i} className="flex items-start gap-2.5 py-3 text-sm leading-relaxed text-muted-foreground">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-crimson" />
+                {line}
+              </p>
+            ))}
           </div>
         </div>
 
