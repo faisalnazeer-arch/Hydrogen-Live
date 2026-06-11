@@ -161,9 +161,9 @@ function parseFooterSettings(nodes: any[]): FooterSettings | null {
   };
 }
 
-function parseCartDrawerConfig(nodes: any[]): { freeShippingThreshold: number; deliveryItems: string[] } {
+function parseCartDrawerConfig(nodes: any[]) {
   const node = nodes[0];
-  if (!node) return { freeShippingThreshold: 350, deliveryItems: [] };
+  if (!node) return { freeShippingThreshold: 350, deliveryItems: [], freeGiftSubVariantId: "", freeGiftCarVariantId: "" };
   const f = Object.fromEntries(node.fields.map((x: any) => [x.key, x]));
   return {
     freeShippingThreshold: parseInt(f.free_shipping_threshold?.value ?? "350", 10) || 350,
@@ -171,6 +171,8 @@ function parseCartDrawerConfig(nodes: any[]): { freeShippingThreshold: number; d
       f.delivery_item_1?.value, f.delivery_item_2?.value, f.delivery_item_3?.value,
       f.delivery_item_4?.value, f.delivery_item_5?.value, f.delivery_item_6?.value,
     ].filter((v): v is string => typeof v === "string" && v.trim().length > 0),
+    freeGiftSubVariantId: f.free_gift_subscription_variant_id?.value ?? "",
+    freeGiftCarVariantId: f.free_gift_carcass_variant_id?.value ?? "",
   };
 }
 
@@ -233,6 +235,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       footerSettings: null as FooterSettings | null,
       footerMenuCols: [] as { heading: string; links: FooterLink[] }[],
       announcementMessages: [] as string[],
+      cartDrawerConfig: { freeShippingThreshold: 350, deliveryItems: [], freeGiftSubVariantId: "", freeGiftCarVariantId: "" },
     };
   }
 }

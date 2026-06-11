@@ -14,7 +14,7 @@ import {
   Truck,
 } from "lucide-react";
 import { Link } from "react-router";
-import { useCartStore } from "@/stores/cartStore";
+import { useCartStore, initGiftIds } from "@/stores/cartStore";
 import { formatPrice, shopifyImageUrl } from "@/lib/shopify";
 import { useT } from "@/i18n/strings";
 import { useCartDrawerConfig } from "@/lib/cartDrawerConfig";
@@ -68,8 +68,13 @@ export function CartDrawer() {
   useEffect(() => { if (isOpen) syncCart(); }, [isOpen, syncCart]);
   useEffect(() => { setNoteValue(orderNote); }, [orderNote]);
 
-  const subGiftId     = typeof window !== "undefined" ? ((window as any).ENV?.PUBLIC_FREE_GIFT_SUBSCRIPTION_VARIANT_ID ?? "") : "";
-  const carcassGiftId = typeof window !== "undefined" ? ((window as any).ENV?.PUBLIC_FREE_GIFT_CARCASS_VARIANT_ID     ?? "") : "";
+  const subGiftId     = drawerConfig.freeGiftSubVariantId;
+  const carcassGiftId = drawerConfig.freeGiftCarVariantId;
+
+  // Keep the store's gift IDs in sync with whatever metaobject says
+  useEffect(() => {
+    initGiftIds(subGiftId, carcassGiftId);
+  }, [subGiftId, carcassGiftId]);
 
   const totalItems = items.reduce((n, i) => n + i.quantity, 0);
   const subtotal = items.reduce((n, i) => n + parseFloat(i.price.amount) * i.quantity, 0);

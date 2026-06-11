@@ -241,9 +241,11 @@ const EMPTY: Pick<CartStore,
 
 // ── Free gift helpers ──────────────────────────────────────────────────────
 
-function getEnvGiftId(key: string): string {
-  if (typeof window === "undefined") return "";
-  return (window as any).ENV?.[key] ?? "";
+// Set by CartDrawer on mount from the mls_cart_drawer_config metaobject.
+const _giftIds = { sub: "", car: "" };
+export function initGiftIds(sub: string, car: string) {
+  _giftIds.sub = sub;
+  _giftIds.car = car;
 }
 
 function makeGiftItem(variantId: string): CartItem {
@@ -281,8 +283,8 @@ async function syncFreeGifts(
   if (_giftSyncing) return;
   _giftSyncing = true;
   try {
-    const subId = getEnvGiftId("PUBLIC_FREE_GIFT_SUBSCRIPTION_VARIANT_ID");
-    const carId = getEnvGiftId("PUBLIC_FREE_GIFT_CARCASS_VARIANT_ID");
+    const subId = _giftIds.sub;
+    const carId = _giftIds.car;
     if (!subId && !carId) return;
 
     const { items, cartId } = get();

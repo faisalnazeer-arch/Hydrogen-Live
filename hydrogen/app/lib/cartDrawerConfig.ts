@@ -3,6 +3,8 @@ import { useRouteLoaderData } from "react-router";
 export interface CartDrawerConfig {
   freeShippingThreshold: number;
   deliveryItems: string[];
+  freeGiftSubVariantId: string;
+  freeGiftCarVariantId: string;
 }
 
 const DEFAULT_CONFIG: CartDrawerConfig = {
@@ -13,6 +15,8 @@ const DEFAULT_CONFIG: CartDrawerConfig = {
     "🎁 **Special Offer Activated:** FREE gift of 2x Angus beef burgers and 1x AUS Grass-fed Beef Striploin on orders above **AED 40** with your first purchase!",
     "**Free Shipping** above AED 350",
   ],
+  freeGiftSubVariantId: "",
+  freeGiftCarVariantId: "",
 };
 
 export function useCartDrawerConfig(): CartDrawerConfig {
@@ -22,5 +26,7 @@ export function useCartDrawerConfig(): CartDrawerConfig {
   return {
     freeShippingThreshold: config.freeShippingThreshold || DEFAULT_CONFIG.freeShippingThreshold,
     deliveryItems: config.deliveryItems?.length > 0 ? config.deliveryItems : DEFAULT_CONFIG.deliveryItems,
+    freeGiftSubVariantId: config.freeGiftSubVariantId ?? "",
+    freeGiftCarVariantId: config.freeGiftCarVariantId ?? "",
   };
 }
