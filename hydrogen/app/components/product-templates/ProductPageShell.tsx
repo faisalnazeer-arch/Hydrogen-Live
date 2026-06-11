@@ -836,52 +836,44 @@ export function ProductPageShell({
               <StockBadge available={variant?.availableForSale ?? false} qty={variant?.quantityAvailable ?? null} />
             </div>
 
-            {/* Price per kg — shown from Shopify unit pricing, or custom metafield, or parsed from variant title */}
+            {/* Price per kg — updates on every variant change */}
             {(() => {
+              const pricePerKgLine = (label: string) => (
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">Price per kg:</span>{" "}
+                  {label}
+                </p>
+              );
+
               // 1. Shopify built-in unit price
               const unitPrice = (variant as any)?.unitPrice;
               const unitMeasure = (variant as any)?.unitPriceMeasurement;
               if (unitPrice?.amount && parseFloat(unitPrice.amount) > 0) {
                 const unit = unitMeasure?.referenceUnit ?? "kg";
-                return (
-                  <p className="text-xs text-muted-foreground">
-                    {formatPrice(unitPrice.amount, unitPrice.currencyCode)} / {unit}
-                  </p>
-                );
+                return pricePerKgLine(`${formatPrice(unitPrice.amount, unitPrice.currencyCode)} / ${unit}`);
               }
 
-              // 2. Custom metafield per_kg_price on the variant
-              const metaPerKg = (variant as any)?.metafields?.find(
-                (m: any) => m?.key === "per_kg_price"
-              )?.value;
+              // 2. Custom metafield per_kg_price or price_per_kg on the variant
+              const metaPerKg =
+                (variant as any)?.metafields?.find((m: any) => m?.key === "per_kg_price")?.value ??
+                (variant as any)?.metafields?.find((m: any) => m?.key === "price_per_kg")?.value;
               if (metaPerKg) {
                 const numVal = parseFloat(metaPerKg);
                 if (!isNaN(numVal) && numVal > 0) {
-                  return (
-                    <p className="text-xs text-muted-foreground">
-                      {formatPrice(numVal.toString(), currency)} / kg
-                    </p>
-                  );
+                  return pricePerKgLine(formatPrice(numVal.toString(), currency));
                 }
               }
 
               // 3. Parse weight from variant title and calculate (e.g. "6kg", "500g", "2.5 kg")
               if (variant?.title && displayPrice?.amount) {
                 const kgMatch = variant.title.match(/(\d+(?:\.\d+)?)\s*kg/i);
-                const gMatch  = variant.title.match(/(\d+(?:\.\d+)?)\s*g(?!$|\w)/i); // grams, not "grilled"
+                const gMatch  = variant.title.match(/(\d+(?:\.\d+)?)\s*g(?!$|\w)/i);
                 let kgValue: number | null = null;
                 if (kgMatch)  kgValue = parseFloat(kgMatch[1]);
                 else if (gMatch) kgValue = parseFloat(gMatch[1]) / 1000;
-
                 if (kgValue && kgValue > 0) {
-                  const pricePerKg = parseFloat(displayPrice.amount) / kgValue;
-                  if (pricePerKg > 0) {
-                    return (
-                      <p className="text-xs text-muted-foreground">
-                        {formatPrice(pricePerKg.toFixed(2), currency)} / kg
-                      </p>
-                    );
-                  }
+                  const ppkg = parseFloat(displayPrice.amount) / kgValue;
+                  if (ppkg > 0) return pricePerKgLine(formatPrice(ppkg.toFixed(2), currency));
                 }
               }
 
