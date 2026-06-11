@@ -958,13 +958,15 @@ export function ProductPageShell({
             </div>
           )}
 
-          {/* Trust badge image — editable via product_page_settings metaobject (badge_image field) */}
-          <img
-            src={pageSettings?.badgeImage ?? "https://mlsuae.ae/cdn/shop/files/jm.jpg?v=1778667759"}
-            alt="Trust badges"
-            className="mx-auto w-4/5 h-auto object-contain"
-            loading="lazy"
-          />
+          {/* Trust badge image — set badge_image in product_page_settings metaobject to show */}
+          {pageSettings?.badgeImage && (
+            <img
+              src={pageSettings.badgeImage}
+              alt="Trust badges"
+              className="mx-auto w-4/5 h-auto object-contain"
+              loading="lazy"
+            />
+          )}
 
           {/* Pickup availability — shown below ATC */}
           {(() => {
