@@ -133,6 +133,21 @@ const CART_NOTE_UPDATE = `
   }
 `;
 
+const VARIANT_LOOKUP = `
+  query variantLookup($id: ID!) {
+    node(id: $id) {
+      ... on ProductVariant {
+        title
+        image { url altText }
+        product {
+          id title handle
+          images(first: 1) { edges { node { url altText } } }
+        }
+      }
+    }
+  }
+`;
+
 const CART_GIFT_CARD_CODES_UPDATE = `
   mutation cartGiftCardCodesUpdate($cartId: ID!, $giftCardCodes: [String!]!) {
     cartGiftCardCodesUpdate(cartId: $cartId, giftCardCodes: $giftCardCodes) {
@@ -229,6 +244,43 @@ async function removeLineFromShopifyCart(cartId: string, lineId: string) {
   return { success: true as const };
 }
 
+async function fetchGiftVariantData(variantId: string): Promise<Partial<CartItem>> {
+  try {
+    const data = await storefrontApiRequest<any>(VARIANT_LOOKUP, { id: variantId });
+    const v = data?.data?.node;
+    if (!v) return {};
+    const imgUrl = v.image?.url ?? v.product?.images?.edges?.[0]?.node?.url ?? null;
+    const imgAlt = v.image?.altText ?? null;
+    return {
+      variantTitle: v.title ?? "Free Gift",
+      product: {
+        node: {
+          id: v.product?.id ?? "",
+          title: v.product?.title ?? "Free Gift",
+          handle: v.product?.handle ?? "",
+          description: "",
+          descriptionHtml: "",
+          tags: [],
+          vendor: "",
+          productType: "",
+          availableForSale: true,
+          priceRange: {
+            minVariantPrice: { amount: "0", currencyCode: "AED" },
+            maxVariantPrice: { amount: "0", currencyCode: "AED" },
+          },
+          images: imgUrl
+            ? { edges: [{ node: { url: imgUrl, altText: imgAlt } }] }
+            : { edges: [] },
+          variants: { edges: [] },
+          options: [],
+        },
+      } as ShopifyProduct,
+    };
+  } catch {
+    return {};
+  }
+}
+
 const EMPTY: Pick<CartStore,
   "discountCodes" | "giftCardCodes" | "appliedGiftCards" | "totalAmount" | "orderNote"
 > = {
@@ -306,11 +358,14 @@ async function syncFreeGifts(
       if (wantSub && !hasSub) {
         const gift = makeGiftItem(subId);
         set((s) => ({ items: [...s.items, { ...gift, isPending: true }] }));
-        const res = await addLineToShopifyCart(cartId, gift);
+        const [res, variantData] = await Promise.all([
+          addLineToShopifyCart(cartId, gift),
+          fetchGiftVariantData(subId),
+        ]);
         set((s) => ({
           items: res.success
             ? s.items.map((i) => i.variantId === subId && i.isPending
-                ? { ...i, lineId: res.lineId ?? null, isPending: false } : i)
+                ? { ...i, ...variantData, lineId: res.lineId ?? null, isPending: false } : i)
             : s.items.filter((i) => !(i.variantId === subId && i.isPending)),
         }));
       } else if (!wantSub && hasSub?.lineId) {
@@ -324,11 +379,14 @@ async function syncFreeGifts(
       if (wantCar && !hasCar) {
         const gift = makeGiftItem(carId);
         set((s) => ({ items: [...s.items, { ...gift, isPending: true }] }));
-        const res = await addLineToShopifyCart(cartId, gift);
+        const [res, variantData] = await Promise.all([
+          addLineToShopifyCart(cartId, gift),
+          fetchGiftVariantData(carId),
+        ]);
         set((s) => ({
           items: res.success
             ? s.items.map((i) => i.variantId === carId && i.isPending
-                ? { ...i, lineId: res.lineId ?? null, isPending: false } : i)
+                ? { ...i, ...variantData, lineId: res.lineId ?? null, isPending: false } : i)
             : s.items.filter((i) => !(i.variantId === carId && i.isPending)),
         }));
       } else if (!wantCar && hasCar?.lineId) {

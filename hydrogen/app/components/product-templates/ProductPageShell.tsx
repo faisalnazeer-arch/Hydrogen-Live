@@ -716,10 +716,14 @@ export function ProductPageShell({
 
   const handleAddToCart = async () => {
     if (!variant) return;
+    const selectedPlan = selectedPlanId
+      ? sellingPlanGroups.flatMap((g) => g.plans).find((p) => p.id === selectedPlanId)
+      : null;
     await addItem({
       product: shopifyProduct, variantId: variant.id, variantTitle: variant.title,
       price: displayPrice, quantity: qty, selectedOptions: variant.selectedOptions,
       sellingPlanId: selectedPlanId ?? undefined,
+      sellingPlanName: selectedPlan?.name ?? null,
       attributes: globoAttributes.length ? globoAttributes : undefined,
     });
   };
