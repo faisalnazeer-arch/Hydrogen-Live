@@ -96,6 +96,9 @@ const PRODUCT_QUERY = `#graphql
           compareAtPrice { amount currencyCode }
           selectedOptions { name value }
           image { url altText }
+          storeAvailability(first: 10) {
+            nodes { available location { name address { city } } }
+          }
           unitPrice { amount currencyCode }
           unitPriceMeasurement {
             measuredType

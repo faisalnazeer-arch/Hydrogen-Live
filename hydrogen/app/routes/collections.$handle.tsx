@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData, useNavigate, useNavigation } from "react-router";
 import { SlidersHorizontal, X, ChevronDown, ChevronUp } from "lucide-react";
@@ -108,6 +108,26 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
   return { collection: data.collection, sortIdx };
 }
 
+function CollectionDescription({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [clamped, setClamped] = useState(false);
+  const ref = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (ref.current) setClamped(ref.current.scrollHeight > ref.current.clientHeight + 4);
+  }, [text]);
+  return (
+    <div className="mx-auto mt-2 max-w-2xl">
+      <p ref={ref} className={`text-sm text-muted-foreground ${!expanded ? "line-clamp-3" : ""}`}>{text}</p>
+      {(clamped || expanded) && (
+        <button type="button" onClick={() => setExpanded((e) => !e)}
+          className="mt-1 text-xs font-semibold text-crimson hover:underline">
+          {expanded ? "Read Less ↑" : "Read More ↓"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   return [
     { title: `${data?.collection?.title ?? "Collection"} — MLS UAE` },
@@ -185,9 +205,7 @@ export default function Collection() {
       <div className="border-b border-border bg-card px-4 py-8">
         <div className="container mx-auto text-center">
           <h1 className="font-display text-3xl font-extrabold">{collection.title}</h1>
-          {collection.description && (
-            <p className="mx-auto mt-2 max-w-2xl text-sm text-muted-foreground">{collection.description}</p>
-          )}
+          {collection.description && <CollectionDescription text={collection.description} />}
         </div>
       </div>
 

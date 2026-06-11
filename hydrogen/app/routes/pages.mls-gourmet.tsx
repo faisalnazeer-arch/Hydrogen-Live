@@ -1,8 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
-import { MapPin, Clock, ExternalLink, ChevronUp } from "lucide-react";
+import { MapPin, Clock, ExternalLink, Phone, Navigation } from "lucide-react";
 import { useState } from "react";
-import { cn } from "@/lib/utils";
 import { FaqAccordion, parseFaqItems } from "@/components/ui/FaqAccordion";
 
 export const meta: MetaFunction = () => [
@@ -14,18 +13,14 @@ const GOURMET_QUERY = `{
   page: metaobjects(type: "mls_gourmet_page", first: 1) {
     nodes {
       fields {
-        key
-        value
+        key value
         references(first: 20) {
           nodes {
             ... on Metaobject {
               id
               fields {
-                key
-                value
-                reference {
-                  ... on MediaImage { image { url altText } }
-                }
+                key value
+                reference { ... on MediaImage { image { url altText } } }
               }
             }
           }
@@ -44,13 +39,14 @@ export async function loader({ context }: LoaderFunctionArgs) {
     const sf = Object.fromEntries(n.fields.map((x: any) => [x.key, x]));
     return {
       id: n.id,
-      name:       sf.name?.value ?? "",
-      address:    sf.address?.value ?? "",
-      hours:      sf.hours?.value ?? "",
-      mapsUrl:    sf.maps_url?.value ?? "",
-      embedUrl:   sf.embed_url?.value ?? "",
-      image:      sf.store_image?.reference?.image?.url ?? null,
-      imageAlt:   sf.store_image?.reference?.image?.altText ?? "",
+      name:     sf.name?.value ?? "",
+      address:  sf.address?.value ?? "",
+      hours:    sf.hours?.value ?? "",
+      phone:    sf.phone?.value ?? "",
+      mapsUrl:  sf.maps_url?.value ?? "",
+      embedUrl: sf.embed_url?.value ?? "",
+      image:    sf.store_image?.reference?.image?.url ?? null,
+      imageAlt: sf.store_image?.reference?.image?.altText ?? "",
     };
   });
 
@@ -58,156 +54,168 @@ export async function loader({ context }: LoaderFunctionArgs) {
 
   return {
     heroTitle:    f.hero_title?.value    ?? "MLS Gourmet Butcher Shops",
-    heroSubtitle: f.hero_subtitle?.value ?? "",
+    heroSubtitle: f.hero_subtitle?.value ?? "Premium cuts. Expert butchers. Visit us in store.",
     stores,
     faqItems,
   };
 }
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type Store = {
+  id: string; name: string; address: string; hours: string;
+  phone: string; mapsUrl: string; embedUrl: string;
+  image: string | null; imageAlt: string;
+};
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function MlsGourmetPage() {
   const { heroTitle, heroSubtitle, stores, faqItems } = useLoaderData<typeof loader>();
-
-  const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+  const [activeStore, setActiveStore] = useState(stores[0]?.id ?? "");
+  const current = stores.find((s) => s.id === activeStore) ?? stores[0];
 
   return (
     <div className="min-h-screen bg-background">
 
-      {/* Hero */}
-      <div className="bg-[#f9f3f3] py-10 text-center">
-        <h1 className="font-display text-3xl font-bold text-foreground md:text-4xl">
-          {heroTitle}
-        </h1>
-        {heroSubtitle && (
-          <p className="mx-auto mt-3 max-w-2xl px-4 text-sm text-muted-foreground md:text-base">
-            {heroSubtitle}
-          </p>
-        )}
+      {/* ── Hero ── */}
+      <div className="relative overflow-hidden bg-charcoal py-14 text-center text-white md:py-20">
+        <div className="absolute inset-0 opacity-10"
+          style={{ backgroundImage: "repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%)", backgroundSize: "20px 20px" }} />
+        <div className="relative container mx-auto px-4">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.25em] text-crimson">Visit Us</p>
+          <h1 className="font-display text-3xl font-extrabold md:text-5xl">{heroTitle}</h1>
+          <p className="mx-auto mt-3 max-w-lg text-base text-white/65 md:text-lg">{heroSubtitle}</p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+            <span className="flex items-center gap-2 text-sm text-white/70">
+              <MapPin className="h-4 w-4 text-crimson" /> {stores.length} locations across UAE
+            </span>
+            <span className="flex items-center gap-2 text-sm text-white/70">
+              <Clock className="h-4 w-4 text-crimson" /> Open everyday
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Store Locations */}
+      {/* ── Store selector tabs (mobile horizontal scroll, desktop row) ── */}
       {stores.length > 0 && (
-        <div className="container mx-auto max-w-5xl px-4 py-12 space-y-14">
-          {stores.map((store) => (
-            <StoreCard key={store.id} store={store} />
-          ))}
+        <div className="border-b border-border bg-card">
+          <div className="container mx-auto px-4">
+            <div className="flex gap-0 overflow-x-auto">
+              {stores.map((s) => (
+                <button key={s.id} type="button" onClick={() => setActiveStore(s.id)}
+                  className={`shrink-0 border-b-2 px-4 py-3.5 text-xs font-semibold whitespace-nowrap transition-colors sm:text-sm ${
+                    activeStore === s.id
+                      ? "border-crimson text-crimson"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}>
+                  {s.name.replace("MLS Gourmet Butchery - ", "").replace("MLS Gourmet - ", "")}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* FAQs */}
+      {/* ── Active store detail ── */}
+      {current && (
+        <div className="container mx-auto px-4 py-10 md:py-14">
+          <div className="grid gap-6 lg:grid-cols-2">
+
+            {/* Left: info */}
+            <div className="flex flex-col gap-6">
+              <div>
+                <h2 className="font-display text-2xl font-extrabold">{current.name}</h2>
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-start gap-3 text-sm">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-crimson" />
+                    <span className="text-foreground leading-relaxed">{current.address}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <Clock className="h-4 w-4 shrink-0 text-crimson" />
+                    <span className="text-foreground">{current.hours}</span>
+                  </div>
+                  {current.phone && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <Phone className="h-4 w-4 shrink-0 text-crimson" />
+                      <a href={`tel:${current.phone}`} className="text-foreground hover:text-crimson">{current.phone}</a>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Store image */}
+              {current.image && (
+                <div className="aspect-video overflow-hidden rounded-2xl bg-muted">
+                  <img src={current.image} alt={current.imageAlt || current.name}
+                    className="h-full w-full object-cover" />
+                </div>
+              )}
+
+              {/* CTAs */}
+              <div className="flex flex-wrap gap-3">
+                {current.mapsUrl && (
+                  <a href={current.mapsUrl} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-lg bg-crimson px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-rich-red">
+                    <Navigation className="h-4 w-4" /> Get Directions
+                  </a>
+                )}
+                {current.mapsUrl && (
+                  <a href={current.mapsUrl} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:border-crimson hover:text-crimson">
+                    <ExternalLink className="h-4 w-4" /> Open in Maps
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Right: map embed */}
+            <div className="overflow-hidden rounded-2xl border border-border bg-muted" style={{ minHeight: 360 }}>
+              {current.embedUrl ? (
+                <iframe title={`Map — ${current.name}`} src={current.embedUrl}
+                  className="h-full w-full border-0" style={{ minHeight: 360 }}
+                  loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground" style={{ minHeight: 360 }}>
+                  Map not available
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* All locations mini list */}
+          <div className="mt-10">
+            <h3 className="mb-4 font-display text-lg font-bold">All Locations</h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {stores.map((s) => (
+                <button key={s.id} type="button" onClick={() => { setActiveStore(s.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-all hover:border-crimson ${
+                    activeStore === s.id ? "border-crimson bg-crimson/5" : "border-border bg-card"
+                  }`}>
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-crimson" />
+                  <div>
+                    <p className="text-sm font-semibold leading-snug">
+                      {s.name.replace("MLS Gourmet Butchery - ", "").replace("MLS Gourmet - ", "")}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{s.address}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── FAQs ── */}
       {faqItems.length > 0 && (
-        <div className="border-t border-border">
-          <div className="container mx-auto max-w-3xl px-4 py-14">
-            <h2 className="mb-8 text-center font-display text-2xl font-bold text-foreground">FAQs</h2>
+        <div className="border-t border-border bg-muted/30">
+          <div className="container mx-auto max-w-2xl px-4 py-12 md:py-16">
+            <h2 className="mb-8 text-center font-display text-2xl font-bold">FAQs</h2>
             <FaqAccordion items={faqItems} />
           </div>
         </div>
       )}
 
-      {/* Back to top */}
-      <div className="border-t border-border py-6 text-center">
-        <button
-          onClick={scrollToTop}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Back to top <ChevronUp className="h-4 w-4" />
-        </button>
-      </div>
-
-    </div>
-  );
-}
-
-// ── Store Card ────────────────────────────────────────────────────────────────
-
-type Store = {
-  id: string;
-  name: string;
-  address: string;
-  hours: string;
-  mapsUrl: string;
-  embedUrl: string;
-  image: string | null;
-  imageAlt: string;
-};
-
-function StoreCard({ store }: { store: Store }) {
-  return (
-    <div>
-      <h2 className="mb-4 text-center font-display text-xl font-semibold text-foreground">
-        {store.name}
-      </h2>
-      <div className="grid grid-cols-1 overflow-hidden rounded-xl border border-border md:grid-cols-3">
-
-        {/* Info */}
-        <div className="flex flex-col justify-between gap-6 p-6">
-          <div className="space-y-3">
-            <div className="flex items-start gap-2 text-sm">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-crimson" />
-              <span className="text-foreground leading-relaxed">{store.address}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Clock className="h-4 w-4 shrink-0 text-crimson" />
-              <span className="text-foreground">{store.hours}</span>
-            </div>
-          </div>
-          {store.mapsUrl && (
-            <a
-              href={store.mapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex w-fit items-center gap-2 rounded-md bg-crimson px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-800"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Get Directions
-            </a>
-          )}
-        </div>
-
-        {/* Store photo */}
-        <div className="flex min-h-[220px] items-center justify-center bg-muted">
-          {store.image ? (
-            <img
-              src={store.image}
-              alt={store.imageAlt || store.name}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="text-center px-4 py-8 text-muted-foreground text-sm">
-              <div className="text-3xl mb-2">🥩</div>
-              <p className="font-medium">{store.name}</p>
-              <p className="text-xs mt-1 opacity-60">Upload photo in Shopify Admin → Metaobjects</p>
-            </div>
-          )}
-        </div>
-
-        {/* Map embed */}
-        <div className="relative min-h-[220px] overflow-hidden">
-          {store.mapsUrl && (
-            <a
-              href={store.mapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded bg-white/90 px-2 py-1 text-xs font-semibold shadow-sm hover:bg-white"
-            >
-              Open in Maps <ExternalLink className="h-3 w-3" />
-            </a>
-          )}
-          {store.embedUrl ? (
-            <iframe
-              title={`Map - ${store.name}`}
-              src={store.embedUrl}
-              className="h-full w-full min-h-[220px] border-0"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-          ) : (
-            <div className="flex h-full min-h-[220px] items-center justify-center bg-muted/50 text-xs text-muted-foreground">
-              Add embed URL in Shopify Admin
-            </div>
-          )}
-        </div>
-
-      </div>
     </div>
   );
 }

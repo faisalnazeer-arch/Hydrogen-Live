@@ -296,14 +296,26 @@ export function CartDrawer() {
                           );
                         })()}
 
-                        <div className="mt-auto flex items-center justify-between pt-1">
-                          <QuantitySelector
-                            size="sm"
-                            value={item.quantity}
-                            onChange={(qty) => updateQuantity(item.variantId, qty)}
-                            min={0}
-                            className={pending || isLoading ? "pointer-events-none opacity-50" : ""}
-                          />
+                          <div className="mt-auto flex items-center justify-between pt-1">
+                          {/* Quantity + delete side by side */}
+                          <div className="flex items-center gap-2">
+                            <QuantitySelector
+                              size="sm"
+                              value={item.quantity}
+                              onChange={(qty) => updateQuantity(item.variantId, qty)}
+                              min={0}
+                              className={pending || isLoading ? "pointer-events-none opacity-50" : ""}
+                            />
+                            <button
+                              type="button"
+                              aria-label="Remove"
+                              disabled={pending}
+                              onClick={() => removeItem(item.variantId)}
+                              className={`rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-crimson ${pending ? "cursor-not-allowed opacity-30" : ""}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
 
                           <div className="flex flex-col items-end gap-0">
                             {item.compareAtPrice && item.compareAtPrice.amount !== item.price.amount && (
@@ -323,16 +335,6 @@ export function CartDrawer() {
                           </div>
                         </div>
                       </div>
-
-                      <button
-                        type="button"
-                        aria-label="Remove"
-                        disabled={pending}
-                        onClick={() => removeItem(item.variantId)}
-                        className={`self-start text-muted-foreground hover:text-crimson ${pending ? "cursor-not-allowed opacity-30" : ""}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
                     </li>
                   );
                 })}
@@ -434,7 +436,7 @@ export function CartDrawer() {
                   </div>
                 )}
                 <div className="mb-1.5 flex items-center justify-between">
-                  <span className="text-sm font-medium">
+                  <span className="text-base font-bold">
                     {hasDiscounts ? "Total" : t("cart.subtotal")}
                   </span>
                   <span className="font-display text-xl font-bold text-crimson">

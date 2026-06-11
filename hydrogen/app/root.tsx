@@ -5,11 +5,13 @@ import {
   Scripts,
   ScrollRestoration,
   useLoaderData,
+  useNavigation,
 } from "react-router";
 import type { LinksFunction, LoaderFunctionArgs } from "react-router";
 import { useEffect } from "react";
 import { useNonce } from "@shopify/hydrogen";
 import styles from "./styles.css?url";
+import mlsLogo from "./assets/mls-logo.png";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Header } from "./components/layout/Header";
 import { Footer } from "./components/layout/Footer";
@@ -22,6 +24,8 @@ import { useLocaleStore, dirFor, type Locale } from "./stores/localeStore";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: styles },
+  { rel: "icon", type: "image/png", href: mlsLogo },
+  { rel: "apple-touch-icon", href: mlsLogo },
 ];
 
 // ── Nav types ────────────────────────────────────────────────────────────────
@@ -235,8 +239,10 @@ const queryClient = new QueryClient({
 export function Layout({ children }: { children: React.ReactNode }) {
   const nonce = useNonce();
   return (
-    <html lang="en" dir="ltr">
+    <html lang="en" dir="ltr" suppressHydrationWarning>
       <head>
+        {/* Inline script — sets lang/dir from cookie before React paints, eliminating Arabic flash */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var m=document.cookie.match(/(?:^|;\\s*)lang=([a-z]{2})/);if(m&&m[1]==='ar'){document.documentElement.lang='ar';document.documentElement.dir='rtl';}}catch(e){}})();` }} />
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <meta
@@ -259,6 +265,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
 function CartSyncWrapper() {
   useCartSync();
   return null;
+}
+
+function PageProgressBar() {
+  const navigation = useNavigation();
+  const loading = navigation.state !== "idle";
+  return (
+    <div
+      className={`fixed top-0 left-0 right-0 z-[9999] h-[3px] bg-crimson transition-all duration-300 ease-in-out ${
+        loading ? "opacity-100" : "opacity-0"
+      }`}
+      style={{
+        width: loading ? "85%" : "100%",
+        transition: loading
+          ? "width 3s cubic-bezier(0.1,0.05,0,1), opacity 0.2s"
+          : "width 0.3s ease, opacity 0.4s ease 0.1s",
+      }}
+    />
+  );
 }
 
 function LocaleSync() {
@@ -289,6 +313,7 @@ export default function App() {
   const { mainMenu, secondaryMenu, footerSettings, footerMenuCols, announcementMessages } = useLoaderData<typeof loader>();
   return (
     <QueryClientProvider client={queryClient}>
+      <PageProgressBar />
       <LocaleSync />
       <CartSyncWrapper />
       <div className="flex min-h-screen flex-col">

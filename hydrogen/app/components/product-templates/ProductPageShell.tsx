@@ -517,6 +517,22 @@ export function ProductPageShell({
 
               return null;
             })()}
+
+            {/* Pickup availability */}
+            {(() => {
+              const pickupLocations = ((variant as any)?.storeAvailability?.nodes ?? [])
+                .filter((s: any) => s.available)
+                .map((s: any) => s.location?.name ?? s.location?.address?.city)
+                .filter(Boolean);
+              if (pickupLocations.length === 0) return null;
+              return (
+                <div className="flex items-center gap-2 text-xs font-medium text-green-700">
+                  <span className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
+                  Pickup available at {pickupLocations.slice(0, 2).join(", ")}
+                  {pickupLocations.length > 2 && ` +${pickupLocations.length - 2} more`}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Variants */}
@@ -639,6 +655,14 @@ export function ProductPageShell({
           )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold sm:text-sm">{product.title}</p>
+            {variant?.title && variant.title !== "Default Title" && (
+              <p className="truncate text-[11px] text-muted-foreground">{variant.title}</p>
+            )}
+            {selectedPlanId && sellingPlanGroups.length > 0 && (
+              <p className="truncate text-[10px] text-green-700">
+                {sellingPlanGroups[0]?.plans?.find((p: any) => p.id === selectedPlanId)?.name ?? "Subscribe & Save"}
+              </p>
+            )}
             <p className="text-sm font-bold text-crimson">{formatPrice(displayPrice?.amount ?? "0", currency)}</p>
           </div>
           {variant?.availableForSale ? (
