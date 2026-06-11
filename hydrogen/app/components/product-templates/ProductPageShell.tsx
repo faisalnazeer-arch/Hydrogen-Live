@@ -1040,8 +1040,8 @@ export function ProductPageShell({
       <div className={`fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur transition-transform duration-300 ${stickyVisible ? "translate-y-0" : "translate-y-full"}`}>
 
         {/* ── Expandable panel: variants + subscription ── */}
-        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${stickyExpanded ? "max-h-[60vh]" : "max-h-0"}`}>
-          <div className="container mx-auto space-y-4 overflow-y-auto px-4 pb-4 pt-4" style={{ maxHeight: "60vh" }}>
+        <div className={`transition-all duration-300 ease-in-out ${stickyExpanded ? "max-h-[65vh] overflow-y-auto" : "max-h-0 overflow-hidden"}`}>
+          <div className="container mx-auto space-y-4 px-4 pb-4 pt-5" style={{ maxHeight: "65vh" }}>
 
             {/* Variant options */}
             {hasOptions && (
@@ -1085,21 +1085,16 @@ export function ProductPageShell({
         </div>
 
         {/* ── Main ATC row ── */}
-        <div className="container mx-auto flex items-center gap-2 px-4 py-3">
+        <div className="container mx-auto flex items-center gap-2 px-3 py-2.5">
           {images[0] && (
-            <img src={shopifyImageUrl(images[0].url, 80)} alt={product.title} className="h-11 w-11 flex-shrink-0 rounded-lg object-cover" />
+            <img src={shopifyImageUrl(images[0].url, 80)} alt={product.title} className="h-10 w-10 flex-shrink-0 rounded-lg object-cover" />
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold sm:text-sm">{product.title}</p>
+            <p className="truncate text-xs font-semibold">{product.title}</p>
             {variant?.title && variant.title !== "Default Title" && (
               <p className="truncate text-[11px] text-muted-foreground">{variant.title}</p>
             )}
-            {selectedPlanId && sellingPlanGroups.length > 0 && (
-              <p className="truncate text-[10px] text-green-700">
-                {sellingPlanGroups[0]?.plans?.find((p: any) => p.id === selectedPlanId)?.name ?? "Subscribe & Save"}
-              </p>
-            )}
-            <p className="text-xs font-bold text-crimson sm:text-sm">{formatPrice(displayPrice?.amount ?? "0", currency)}</p>
+            <p className="text-xs font-bold text-crimson">{formatPrice(displayPrice?.amount ?? "0", currency)}</p>
           </div>
 
           {/* Expand toggle */}
@@ -1107,28 +1102,28 @@ export function ProductPageShell({
             <button
               type="button"
               onClick={() => setStickyExpanded((e) => !e)}
-              className="flex flex-shrink-0 items-center gap-1 rounded-lg border border-crimson/60 bg-crimson/5 px-3 py-2 text-xs font-semibold text-crimson transition-colors hover:bg-crimson/10"
+              className="flex flex-shrink-0 items-center gap-1 rounded-lg border border-crimson/60 bg-crimson/5 px-2.5 py-2 text-xs font-semibold text-crimson transition-colors hover:bg-crimson/10"
             >
               {stickyExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
-              <span className="hidden xs:inline">{stickyExpanded ? "Close" : "Choose options"}</span>
-              <span className="xs:hidden">{stickyExpanded ? "Close" : "Options"}</span>
+              <span className="hidden sm:inline">{stickyExpanded ? "Close" : "Options"}</span>
             </button>
           )}
 
           {variant?.availableForSale ? (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center rounded-lg border border-border">
-                <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid h-9 w-9 place-items-center text-muted-foreground hover:text-foreground"><Minus className="h-3.5 w-3.5" /></button>
-                <span className="w-6 text-center text-sm font-semibold">{qty}</span>
-                <button type="button" onClick={() => setQty((q) => q + 1)} className="grid h-9 w-9 place-items-center text-muted-foreground hover:text-foreground"><Plus className="h-3.5 w-3.5" /></button>
+            <div className="flex items-center gap-1.5">
+              {/* Qty — hidden on very small screens, always visible on sm+ */}
+              <div className="hidden items-center rounded-lg border border-border sm:flex">
+                <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid h-9 w-8 place-items-center text-muted-foreground hover:text-foreground"><Minus className="h-3 w-3" /></button>
+                <span className="w-5 text-center text-xs font-semibold">{qty}</span>
+                <button type="button" onClick={() => setQty((q) => q + 1)} className="grid h-9 w-8 place-items-center text-muted-foreground hover:text-foreground"><Plus className="h-3 w-3" /></button>
               </div>
               <button type="button" onClick={handleAddToCart} disabled={isLoading}
-                className="rounded-lg bg-crimson px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-50">
+                className="flex-shrink-0 rounded-lg bg-crimson px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-50 sm:px-4 sm:text-sm">
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add to Cart"}
               </button>
             </div>
           ) : (
-            <span className="rounded-lg bg-muted px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-muted-foreground">Out of Stock</span>
+            <span className="flex-shrink-0 rounded-lg bg-muted px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Out of Stock</span>
           )}
         </div>
       </div>
