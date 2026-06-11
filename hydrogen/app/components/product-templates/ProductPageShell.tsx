@@ -853,15 +853,18 @@ export function ProductPageShell({
                 return pricePerKgLine(`${formatPrice(unitPrice.amount, unitPrice.currencyCode)} / ${unit}`);
               }
 
-              // 2. Custom metafield per_kg_price or price_per_kg on the variant
+              // 2. Custom metafield price_per_kg or per_kg_price on the variant
+              // Value may be a plain number ("96") or pre-formatted ("AED 96")
               const metaPerKg =
-                (variant as any)?.metafields?.find((m: any) => m?.key === "per_kg_price")?.value ??
-                (variant as any)?.metafields?.find((m: any) => m?.key === "price_per_kg")?.value;
-              if (metaPerKg) {
+                (variant as any)?.metafields?.find((m: any) => m?.key === "price_per_kg")?.value ??
+                (variant as any)?.metafields?.find((m: any) => m?.key === "per_kg_price")?.value;
+              if (metaPerKg?.trim()) {
                 const numVal = parseFloat(metaPerKg);
                 if (!isNaN(numVal) && numVal > 0) {
                   return pricePerKgLine(formatPrice(numVal.toString(), currency));
                 }
+                // Already formatted string e.g. "AED 96"
+                return pricePerKgLine(metaPerKg.trim());
               }
 
               // 3. Parse weight from variant title and calculate (e.g. "6kg", "500g", "2.5 kg")
