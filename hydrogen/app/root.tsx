@@ -7,7 +7,7 @@ import {
   useLoaderData,
   useNavigation,
 } from "react-router";
-import type { LinksFunction, LoaderFunctionArgs } from "react-router";
+import type { LinksFunction, LoaderFunctionArgs, ShouldRevalidateFunctionArgs } from "react-router";
 import { useEffect } from "react";
 import { useNonce } from "@shopify/hydrogen";
 import styles from "./styles.css?url";
@@ -184,6 +184,13 @@ function parseAnnouncementMessages(nodes: any[]): string[] {
   ].filter((m): m is string => typeof m === "string" && m.trim().length > 0);
 }
 
+// Skip re-fetching root layout data on every client navigation.
+// Menus, footer, and announcement bar rarely change — initial data is reused for the session.
+export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFunctionArgs) {
+  // Only revalidate when navigating back to the root itself (e.g. after a form action)
+  return currentUrl.pathname === nextUrl.pathname;
+}
+
 // ── Loader ────────────────────────────────────────────────────────────────────
 export async function loader({ context, request }: LoaderFunctionArgs) {
   const lang = request.headers
@@ -194,6 +201,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const [data, adminData] = await Promise.all([
       context.storefront.query(LAYOUT_QUERY, {
         variables: { language, country: "AE" as const },
+        cache: context.storefront.CacheLong(),
       }),
       context.adminFetch(ADMIN_FOOTER_QUERY),
     ]);
@@ -267,21 +275,74 @@ function CartSyncWrapper() {
   return null;
 }
 
-function PageProgressBar() {
+function PageLoader() {
   const navigation = useNavigation();
   const loading = navigation.state !== "idle";
   return (
-    <div
-      className={`fixed top-0 left-0 right-0 z-[9999] h-[3px] bg-crimson transition-all duration-300 ease-in-out ${
-        loading ? "opacity-100" : "opacity-0"
-      }`}
-      style={{
-        width: loading ? "85%" : "100%",
-        transition: loading
-          ? "width 3s cubic-bezier(0.1,0.05,0,1), opacity 0.2s"
-          : "width 0.3s ease, opacity 0.4s ease 0.1s",
-      }}
-    />
+    <>
+      <style>{`
+        @keyframes logo-breathe {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.55; transform: scale(0.93); }
+        }
+        @keyframes ripple-out {
+          0%   { transform: scale(0.6); opacity: 0.6; }
+          100% { transform: scale(2.4); opacity: 0; }
+        }
+        @keyframes dot-pulse {
+          0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+          40%            { transform: scale(1);   opacity: 1; }
+        }
+      `}</style>
+      <div
+        aria-hidden
+        className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center transition-opacity ${
+          loading ? "opacity-100 duration-150" : "opacity-0 duration-200 pointer-events-none"
+        }`}
+        style={{ background: "rgba(255,255,255,0.78)", backdropFilter: "blur(14px)" }}
+      >
+        {/* Logo with ripple rings */}
+        <div className="relative flex items-center justify-center" style={{ width: 200, height: 200 }}>
+          <span
+            className="absolute rounded-full"
+            style={{
+              inset: 0,
+              background: "radial-gradient(circle, rgba(185,28,28,0.18) 0%, transparent 70%)",
+              animation: "ripple-out 2s ease-out infinite",
+            }}
+          />
+          <span
+            className="absolute rounded-full"
+            style={{
+              inset: 0,
+              background: "radial-gradient(circle, rgba(185,28,28,0.12) 0%, transparent 70%)",
+              animation: "ripple-out 2s ease-out 0.9s infinite",
+            }}
+          />
+          <img
+            src={mlsLogo}
+            alt=""
+            className="relative z-10 drop-shadow-2xl"
+            style={{ height: 110, width: "auto", animation: "logo-breathe 2.4s ease-in-out infinite" }}
+          />
+        </div>
+
+        {/* Staggered dots */}
+        <div className="mt-6 flex items-center gap-2.5">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="block rounded-full bg-crimson"
+              style={{
+                width: 8,
+                height: 8,
+                animation: `dot-pulse 1.4s ease-in-out ${i * 0.22}s infinite`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -313,7 +374,7 @@ export default function App() {
   const { mainMenu, secondaryMenu, footerSettings, footerMenuCols, announcementMessages } = useLoaderData<typeof loader>();
   return (
     <QueryClientProvider client={queryClient}>
-      <PageProgressBar />
+      <PageLoader />
       <LocaleSync />
       <CartSyncWrapper />
       <div className="flex min-h-screen flex-col">

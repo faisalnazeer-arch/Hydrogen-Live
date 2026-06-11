@@ -13,7 +13,6 @@ import { OptionButton } from "@/components/shared/OptionButton";
 import { useQuickBuyStore } from "@/stores/quickBuyStore";
 import { useCartStore } from "@/stores/cartStore";
 import { formatPrice, shopifyImageUrl } from "@/lib/shopify";
-import { toast } from "sonner";
 import {
   SubscriptionSelector,
   parseSellingPlanGroups,
@@ -124,9 +123,6 @@ export function QuickBuyDrawer() {
       selectedOptions: matched.selectedOptions,
       sellingPlanId: selectedPlanId ?? undefined,
       sellingPlanName: activePlan?.name ?? null,
-    });
-    toast.success("Added to cart", {
-      description: `${node.title}${matched.title !== "Default Title" ? ` · ${matched.title}` : ""}${activePlan ? ` · ${activePlan.name}` : ""}`,
     });
     close();
   };

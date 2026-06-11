@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
-import { useLoaderData, useNavigate, useNavigation } from "react-router";
-import { SlidersHorizontal, X, ChevronDown, ChevronUp } from "lucide-react";
+import type { ShouldRevalidateFunctionArgs } from "react-router";
+import { useLoaderData, useNavigate, useNavigation, useFetcher } from "react-router";
+import { SlidersHorizontal, X, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { getOriginFromProduct, ORIGIN_LABELS, type ShopifyProduct } from "~/lib/shopify";
 import { ProductCard } from "~/components/product/ProductCard";
 
@@ -37,23 +38,34 @@ function getProductCuts(tags: string[], title: string): string[] {
 }
 
 const COLLECTION_QUERY = `#graphql
-  query Collection($handle: String!, $first: Int!, $sortKey: ProductCollectionSortKeys, $reverse: Boolean, $language: LanguageCode, $country: CountryCode)
-  @inContext(language: $language, country: $country) {
+  query Collection(
+    $handle: String!
+    $first: Int!
+    $after: String
+    $sortKey: ProductCollectionSortKeys
+    $reverse: Boolean
+    $language: LanguageCode
+    $country: CountryCode
+  ) @inContext(language: $language, country: $country) {
     collection(handle: $handle) {
       id title handle description
-      products(first: $first, sortKey: $sortKey, reverse: $reverse) {
+      products(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
         edges {
           node {
             id title handle tags availableForSale
-            vendor description descriptionHtml productType
+            vendor description productType
             priceRange {
               minVariantPrice { amount currencyCode }
               maxVariantPrice { amount currencyCode }
             }
             compareAtPriceRange { minVariantPrice { amount currencyCode } }
-            images(first: 4) { edges { node { url altText width height } } }
+            images(first: 2) { edges { node { url altText width height } } }
             options { name values }
-            variants(first: 50) {
+            variants(first: 20) {
               edges {
                 node {
                   id title availableForSale quantityAvailable
@@ -75,13 +87,23 @@ const COLLECTION_QUERY = `#graphql
 ` as const;
 
 const SORT_OPTIONS = [
-  { label: "Featured", key: "COLLECTION_DEFAULT", reverse: false },
-  { label: "Price: Low to High", key: "PRICE", reverse: false },
-  { label: "Price: High to Low", key: "PRICE", reverse: true },
-  { label: "Newest", key: "CREATED", reverse: true },
-  { label: "Best Selling", key: "BEST_SELLING", reverse: false },
+  { label: "Featured",           key: "COLLECTION_DEFAULT", reverse: false },
+  { label: "Price: Low to High", key: "PRICE",              reverse: false },
+  { label: "Price: High to Low", key: "PRICE",              reverse: true  },
+  { label: "Newest",             key: "CREATED",            reverse: true  },
+  { label: "Best Selling",       key: "BEST_SELLING",       reverse: false },
 ];
 
+const PAGE_SIZE = 24;
+
+// Re-fetch only when the collection handle or sort changes. Pagination uses
+// useFetcher directly so it bypasses shouldRevalidate entirely.
+export function shouldRevalidate({ currentUrl, nextUrl, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
+  const sameHandle = currentUrl.pathname === nextUrl.pathname;
+  const sameSort   = currentUrl.searchParams.get("sort") === nextUrl.searchParams.get("sort");
+  if (sameHandle && sameSort) return false;
+  return defaultShouldRevalidate;
+}
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
   const lang = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
@@ -89,25 +111,33 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
   const { handle } = params;
   if (!handle) throw new Response("Missing handle", { status: 400 });
 
-  const url = new URL(request.url);
+  const url    = new URL(request.url);
   const sortIdx = Math.min(parseInt(url.searchParams.get("sort") ?? "0"), SORT_OPTIONS.length - 1);
+  const after   = url.searchParams.get("after") ?? undefined;
   const { key: sortKey, reverse } = SORT_OPTIONS[sortIdx];
 
   const data = await context.storefront.query(COLLECTION_QUERY, {
     variables: {
       handle,
-      first: 60,
+      first: PAGE_SIZE,
+      after,
       sortKey,
       reverse,
       language,
       country: "AE" as const,
     },
+    cache: context.storefront.CacheLong(),
   });
   if (!data.collection) throw new Response("Not found", { status: 404 });
 
-  return { collection: data.collection, sortIdx };
+  return {
+    collection: data.collection,
+    sortIdx,
+    pageInfo: data.collection.products.pageInfo as { hasNextPage: boolean; endCursor: string | null },
+  };
 }
 
+/* ─── Description ─────────────────────────────────────────────────────────── */
 function CollectionDescription({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
   const [isMultiLine, setIsMultiLine] = useState(false);
@@ -116,17 +146,12 @@ function CollectionDescription({ text }: { text: string }) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    // Measure natural (unclamped) height vs single-line height
-    el.style.webkitLineClamp = "none";
     el.style.overflow = "visible";
-    const full = el.scrollHeight;
-    el.style.webkitLineClamp = "1";
-    el.style.overflow = "hidden";
-    const single = el.scrollHeight;
-    setIsMultiLine(full > single + 2);
-    // Restore
-    el.style.webkitLineClamp = "";
+    el.style.display = "block";
+    const fullH = el.scrollHeight;
     el.style.overflow = "";
+    el.style.display = "";
+    setIsMultiLine(fullH > el.clientHeight + 2);
   }, [text]);
 
   return (
@@ -157,47 +182,77 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
   ];
 };
 
+/* ─── Main route component ────────────────────────────────────────────────── */
 export default function Collection() {
-  const { collection, sortIdx } = useLoaderData<typeof loader>();
-  const products: ShopifyProduct[] = collection.products.edges;
+  const { collection, sortIdx, pageInfo } = useLoaderData<typeof loader>();
 
-  const navigate = useNavigate();
-  const navigation = useNavigation();
-  const isLoading = navigation.state === "loading";
+  const navigate    = useNavigate();
+  const navigation  = useNavigation();
+  const isLoading   = navigation.state === "loading";
+  const fetcher     = useFetcher<typeof loader>();
+
+  // Accumulate all loaded products across pages.
+  // Reset whenever the collection or sort order changes (new loader data).
+  const loaderKey = `${collection.id}|${sortIdx}`;
+  const activeKeyRef = useRef(loaderKey);
+  const [allProducts, setAllProducts] = useState<ShopifyProduct[]>(() => collection.products.edges);
+  const [cursor, setCursor]           = useState<string | null>(() => pageInfo.endCursor ?? null);
+  const [hasMore, setHasMore]         = useState(() => pageInfo.hasNextPage);
+
+  // When collection or sort changes the loader returns fresh data — reset state.
+  if (activeKeyRef.current !== loaderKey) {
+    activeKeyRef.current = loaderKey;
+    setAllProducts(collection.products.edges);
+    setCursor(pageInfo.endCursor ?? null);
+    setHasMore(pageInfo.hasNextPage);
+  }
+
+  // Append products when fetcher returns the next page.
+  useEffect(() => {
+    const fd = fetcher.data as ReturnType<typeof useLoaderData<typeof loader>> | undefined;
+    if (!fd?.collection?.products?.edges) return;
+    setAllProducts((prev) => [...prev, ...fd.collection.products.edges]);
+    setCursor(fd.pageInfo.endCursor ?? null);
+    setHasMore(fd.pageInfo.hasNextPage);
+  }, [fetcher.data]);
+
+  const handleLoadMore = () => {
+    if (!cursor || fetcher.state !== "idle") return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("after", cursor);
+    fetcher.load(url.pathname + url.search);
+  };
+
   const [selectedOrigins, setSelectedOrigins] = useState<string[]>([]);
-  const [selectedCuts, setSelectedCuts] = useState<string[]>([]);
-  const [maxPrice, setMaxPrice] = useState<number | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selectedCuts,    setSelectedCuts]    = useState<string[]>([]);
+  const [maxPrice,        setMaxPrice]        = useState<number | null>(null);
+  const [filtersOpen,     setFiltersOpen]     = useState(false);
 
-  const allPrices = products.map((p) =>
-    parseFloat(p.node.priceRange.minVariantPrice.amount)
-  );
-  const globalMax = Math.ceil(Math.max(...allPrices, 0));
-  const priceMax = maxPrice ?? globalMax;
+  const allPrices  = allProducts.map((p) => parseFloat(p.node.priceRange.minVariantPrice.amount));
+  const globalMax  = Math.ceil(Math.max(...allPrices, 0));
+  const priceMax   = maxPrice ?? globalMax;
 
-  // Build origin counts from actual products in this collection
   const originCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const p of products) {
+    for (const p of allProducts) {
       const o = getOriginFromProduct(p.node.tags, p.node.title);
       if (o && o !== "GRASS-FED") counts[o] = (counts[o] ?? 0) + 1;
     }
     return counts;
-  }, [products]);
+  }, [allProducts]);
 
-  // Build cut counts from actual products in this collection
   const cutCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const p of products) {
+    for (const p of allProducts) {
       for (const cut of getProductCuts(p.node.tags, p.node.title)) {
         counts[cut] = (counts[cut] ?? 0) + 1;
       }
     }
     return counts;
-  }, [products]);
+  }, [allProducts]);
 
   const filtered = useMemo(() => {
-    return products.filter((p) => {
+    return allProducts.filter((p) => {
       const price = parseFloat(p.node.priceRange.minVariantPrice.amount);
       if (price > priceMax) return false;
       const origin = getOriginFromProduct(p.node.tags, p.node.title);
@@ -208,19 +263,15 @@ export default function Collection() {
       }
       return true;
     });
-  }, [products, priceMax, selectedOrigins, selectedCuts]);
+  }, [allProducts, priceMax, selectedOrigins, selectedCuts]);
 
   const toggleOrigin = (o: string) =>
-    setSelectedOrigins((prev) =>
-      prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o]
-    );
-
+    setSelectedOrigins((prev) => prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o]);
   const toggleCut = (c: string) =>
-    setSelectedCuts((prev) =>
-      prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
-    );
-
+    setSelectedCuts((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]);
   const clearAll = () => { setSelectedOrigins([]); setSelectedCuts([]); setMaxPrice(null); };
+
+  const isLoadingMore = fetcher.state !== "idle";
 
   return (
     <div className="bg-background min-h-screen">
@@ -259,7 +310,7 @@ export default function Collection() {
                 )}
               </button>
               <span className="text-sm text-muted-foreground">
-                {filtered.length} of {products.length} products
+                {filtered.length} of {allProducts.length} products{hasMore ? "+" : ""}
               </span>
             </div>
             <div className="relative">
@@ -268,6 +319,7 @@ export default function Collection() {
                 onChange={(e) => {
                   const url = new URL(window.location.href);
                   url.searchParams.set("sort", e.target.value);
+                  url.searchParams.delete("after");
                   navigate(url.pathname + url.search, { replace: true, preventScrollReset: true });
                 }}
                 className="appearance-none rounded-lg border border-border bg-card py-2 pl-3 pr-8 text-sm font-medium"
@@ -299,11 +351,10 @@ export default function Collection() {
             </div>
           )}
 
+          {/* Product grid */}
           {isLoading ? (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
+              {Array.from({ length: PAGE_SIZE }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
@@ -313,14 +364,47 @@ export default function Collection() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
-              {filtered.map((p) => (
-                <ProductCard
-                  key={p.node.id}
-                  product={p}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+                {filtered.map((p) => (
+                  <ProductCard key={p.node.id} product={p} />
+                ))}
+              </div>
+
+              {/* Load-more skeleton rows while fetching */}
+              {isLoadingMore && (
+                <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+                  {Array.from({ length: PAGE_SIZE }).map((_, i) => <SkeletonCard key={i} />)}
+                </div>
+              )}
+
+              {/* Load More button */}
+              {hasMore && !isLoadingMore && (
+                <div className="mt-10 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={handleLoadMore}
+                    className="inline-flex items-center gap-2 rounded-lg border border-crimson px-8 py-3 text-sm font-semibold text-crimson transition-colors hover:bg-crimson hover:text-white"
+                  >
+                    Load More Products
+                  </button>
+                </div>
+              )}
+
+              {/* Spinner during load */}
+              {isLoadingMore && (
+                <div className="mt-6 flex justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-crimson" />
+                </div>
+              )}
+
+              {/* End of results */}
+              {!hasMore && allProducts.length > PAGE_SIZE && (
+                <p className="mt-10 text-center text-sm text-muted-foreground">
+                  All {allProducts.length} products loaded
+                </p>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -368,9 +452,15 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
 
   return (
     <div className="flex flex-col gap-0">
-      {/* Header */}
       <div className="mb-4 flex items-center justify-between">
-        <p className="font-bold">Filters {activeCount > 0 && <span className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-crimson text-[10px] text-white">{activeCount}</span>}</p>
+        <p className="font-bold">
+          Filters{" "}
+          {activeCount > 0 && (
+            <span className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-crimson text-[10px] text-white">
+              {activeCount}
+            </span>
+          )}
+        </p>
         {activeCount > 0 && (
           <button type="button" onClick={onClearAll} className="text-xs text-crimson hover:underline">
             Clear all
@@ -378,7 +468,6 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
         )}
       </div>
 
-      {/* Price */}
       <FilterSection title="Price (AED)">
         <input
           type="range" min={0} max={globalMax} value={priceMax}
@@ -391,12 +480,11 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
         </div>
       </FilterSection>
 
-      {/* Shop by Origin */}
       {sortedOrigins.length > 0 && (
         <FilterSection title="Shop by Origin">
           <div className="flex flex-col gap-1">
             {sortedOrigins.map((code) => {
-              const info = ORIGIN_LABELS[code];
+              const info  = ORIGIN_LABELS[code];
               const label = info?.label ?? code;
               const count = originCounts[code];
               const checked = selectedOrigins.includes(code);
@@ -412,12 +500,11 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
         </FilterSection>
       )}
 
-      {/* Shop by Cuts */}
       {sortedCuts.length > 0 && (
         <FilterSection title="Shop by Cuts">
           <div className="flex flex-col gap-1">
             {sortedCuts.map((cut) => {
-              const count = cutCounts[cut];
+              const count   = cutCounts[cut];
               const checked = selectedCuts.includes(cut);
               return (
                 <label key={cut} className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted ${checked ? "bg-crimson/5 font-medium text-crimson" : ""}`}>

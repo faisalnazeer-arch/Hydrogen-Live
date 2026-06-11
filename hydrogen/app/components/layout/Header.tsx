@@ -256,6 +256,11 @@ function NavItem({
 
   const isMega = mega.length > 1 || (mega.length === 1 && !!mega[0].title);
 
+  const handleLinkClick = () => {
+    if (timer.current) clearTimeout(timer.current);
+    setOpen(false);
+  };
+
   return (
     <div className={isMega ? undefined : "relative"} onMouseEnter={handleOpen} onMouseLeave={handleClose}>
       <button
@@ -270,6 +275,7 @@ function NavItem({
           columns={mega}
           onMouseEnter={handleOpen}
           onMouseLeave={handleClose}
+          onLinkClick={handleLinkClick}
         />
       )}
     </div>
@@ -288,6 +294,7 @@ function NavLink({
   return (
     <Link
       to={to}
+      prefetch="intent"
       className="flex items-center gap-1 text-[13px] font-semibold uppercase tracking-wider transition-colors hover:text-crimson"
     >
       {Icon && <Icon className="h-3.5 w-3.5" />}
@@ -311,6 +318,7 @@ function SecondaryNavItem({
 
   const handleOpen = () => { if (timer.current) clearTimeout(timer.current); setOpen(true); };
   const handleClose = () => { timer.current = setTimeout(() => setOpen(false), 150); };
+  const handleLinkClick = () => { if (timer.current) clearTimeout(timer.current); setOpen(false); };
 
   return (
     <div className={isMega ? undefined : "relative"} onMouseEnter={handleOpen} onMouseLeave={handleClose}>
@@ -320,7 +328,7 @@ function SecondaryNavItem({
         <ChevronDown className={`h-2.5 w-2.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <MegaMenu columns={mega} onMouseEnter={handleOpen} onMouseLeave={handleClose} />
+        <MegaMenu columns={mega} onMouseEnter={handleOpen} onMouseLeave={handleClose} onLinkClick={handleLinkClick} />
       )}
     </div>
   );
@@ -338,6 +346,7 @@ function SecondaryNavLink({
   return (
     <Link
       to={to}
+      prefetch="intent"
       className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:text-crimson"
     >
       {Icon && <Icon className="h-3 w-3" />}

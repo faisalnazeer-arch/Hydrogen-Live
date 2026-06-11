@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, type ReactNode, useRef } from "react";
 import {
   Minus, Plus, Truck, ShieldCheck, RefreshCw, Loader2, ChevronDown,
-  Share2, Copy, Check, Play,
+  Check, Play, MapPin, Phone, Clock, X, Store,
+  FlameKindling, Leaf, PackageOpen,
 } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet";
 import { Link } from "react-router";
 import mlsLogo from "~/assets/mls-logo.png";
 import { OriginBadge } from "~/components/product/OriginBadge";
@@ -30,6 +32,10 @@ export interface PageSettings {
   deliveryContent: string | null;
   supportTitle: string;
   supportContent: string | null;
+  dubaiDeliveryInfo: Array<{ label: string; body: string }> | null;
+  abudhabiDeliveryInfo: Array<{ label: string; body: string }> | null;
+  sharjahDeliveryInfo: Array<{ label: string; body: string }> | null;
+  badgeImage: string | null;
 }
 
 export interface ProductPageShellProps {
@@ -108,41 +114,6 @@ function LinkifyLine({ text }: { text: string }) {
         return <span key={i}>{part}</span>;
       })}
     </>
-  );
-}
-
-// ── Social share ─────────────────────────────────────────────────────────
-function SocialShare({ title }: { title: string }) {
-  const [copied, setCopied] = useState(false);
-  const url = typeof window !== "undefined" ? window.location.href : "";
-  const text = encodeURIComponent(`Check out ${title} from MLS UAE`);
-  const enc = encodeURIComponent(url);
-
-  const copyLink = async () => {
-    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* */ }
-  };
-
-  return (
-    <div className="flex items-center gap-2">
-      <Share2 className="h-4 w-4 text-muted-foreground" />
-      <span className="text-xs font-medium text-muted-foreground">Share:</span>
-      <button type="button" onClick={copyLink} title="Copy link"
-        className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-crimson hover:text-crimson">
-        {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
-      </button>
-      <a href={`https://wa.me/?text=${text}%20${enc}`} target="_blank" rel="noopener noreferrer" title="WhatsApp"
-        className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-green-500 hover:text-green-600">
-        <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-      </a>
-      <a href={`https://twitter.com/intent/tweet?text=${text}&url=${enc}`} target="_blank" rel="noopener noreferrer" title="X"
-        className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-foreground hover:text-foreground">
-        <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.633zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-      </a>
-      <a href={`https://www.facebook.com/sharer/sharer.php?u=${enc}`} target="_blank" rel="noopener noreferrer" title="Facebook"
-        className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-blue-600 hover:text-blue-600">
-        <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-      </a>
-    </div>
   );
 }
 
@@ -234,6 +205,400 @@ function buildMediaItems(images: any[], mediaNodes: any[]): MediaItem[] {
   return images.map((img: any): MediaItem => ({ type: "image", url: img.url ?? "", altText: img.altText ?? null }));
 }
 
+// ── Nutrition helpers ─────────────────────────────────────────────────────
+const NUTRITION_ROWS: Array<{
+  ns: string; key: string; dvKey?: string; label: string; indent?: boolean; noDv?: boolean; separator?: boolean;
+}> = [
+  { ns: "nutrition", key: "total_fat",           dvKey: "total_fat_dv",     label: "Total Fat" },
+  { ns: "nutrition", key: "saturated_fat",       dvKey: "saturated_fat_dv", label: "Saturated Fat",      indent: true },
+  { ns: "nutrition", key: "trans_fat",                                        label: "Trans Fat",          indent: true, noDv: true },
+  { ns: "nutrition", key: "total_cholesterol",   dvKey: "cholesterol_dv",   label: "Cholesterol" },
+  { ns: "nutrition", key: "sodium",              dvKey: "sodium_dv",        label: "Sodium" },
+  { ns: "nutrition", key: "total_carbohydrates", dvKey: "total_carbs_dv",   label: "Total Carbohydrate" },
+  { ns: "nutrition", key: "dietary_fibers",      dvKey: "dietary_fiber_dv", label: "Dietary Fiber",      indent: true },
+  { ns: "nutrition", key: "sugar",                                            label: "Total Sugars",       indent: true, noDv: true },
+  { ns: "nutrition", key: "protein",                                          label: "Protein",            noDv: true },
+  { ns: "nutrition", key: "iron",                dvKey: "iron_dv",          label: "Iron",               separator: true },
+];
+
+function getMF(variant: any, ns: string, key: string): string | null {
+  return variant?.metafields?.find((m: any) => m?.namespace === ns && m?.key === key)?.value ?? null;
+}
+
+function NutritionPanel({ variant }: { variant: any }) {
+  const portion = getMF(variant, "custom", "portion_text") ?? "Per 100g";
+  const caloriesRaw = getMF(variant, "nutrition", "total_energy");
+  const caloriesNum = caloriesRaw?.match(/[\d.]+/)?.[0] ?? caloriesRaw ?? "";
+  const rows = NUTRITION_ROWS.map(r => ({
+    ...r,
+    value: getMF(variant, r.ns, r.key),
+    dv: r.dvKey ? getMF(variant, "nutrition", r.dvKey) : null,
+  })).filter(r => r.value);
+
+  if (!caloriesRaw && rows.length === 0) return (
+    <p className="py-8 text-center text-sm text-muted-foreground">
+      Nutrition information not available for this variant.
+    </p>
+  );
+
+  return (
+    <div className="mx-auto w-full max-w-lg font-sans">
+      <div className="overflow-hidden rounded-2xl border-[3px] border-foreground">
+
+        {/* Header */}
+        <div className="border-b-[10px] border-foreground px-4 pt-3 pb-2">
+          <h2 className="text-[2rem] font-black leading-none tracking-tight">Nutrition Facts</h2>
+          <div className="mt-2 flex items-baseline justify-between gap-2 border-t border-foreground/20 pt-1.5">
+            <span className="text-sm">Serving size</span>
+            <span className="text-sm font-bold">{portion}</span>
+          </div>
+        </div>
+
+        {/* Calories */}
+        {caloriesNum && (
+          <div className="border-b-[5px] border-foreground px-4 py-2">
+            <p className="text-[11px] font-medium text-foreground/70">Amount per serving</p>
+            <div className="flex items-end justify-between">
+              <span className="text-2xl font-black leading-tight">Calories</span>
+              <span className="text-5xl font-black leading-none tabular-nums">{caloriesNum}</span>
+            </div>
+          </div>
+        )}
+
+        {/* % DV header */}
+        <div className="border-b border-foreground/25 px-4 py-0.5">
+          <p className="text-right text-[11px] font-bold">% Daily Value*</p>
+        </div>
+
+        {/* Nutrient rows */}
+        <div>
+          {rows.map((row) => (
+            <div key={row.key}
+              className={`flex items-baseline justify-between border-b border-foreground/15 px-4 py-1 text-sm last:border-b-0 ${row.separator ? "border-t-[5px] border-t-foreground" : ""} ${row.indent ? "ps-8" : ""}`}>
+              <span className="flex-1 leading-snug">
+                {row.indent
+                  ? <span className="text-foreground/80">{row.label} <em className="not-italic text-foreground/60 text-xs">{row.value}</em></span>
+                  : <><strong>{row.label}</strong> <span className="font-normal">{row.value}</span></>
+                }
+              </span>
+              {!row.noDv && (
+                <span className="ml-3 shrink-0 font-bold tabular-nums text-sm">
+                  {row.dv ?? ""}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Footnote */}
+        <div className="border-t-[5px] border-foreground px-4 py-2.5">
+          <p className="text-[10px] leading-snug text-foreground/55">
+            * The % Daily Value (DV) tells you how much a nutrient in a serving of food contributes to a daily diet. 2,000 calories a day is used for general nutrition advice.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── WhatsApp button shared by all city panes ─────────────────────────────
+const WA_SVG = <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>;
+
+const WA_BTN = (
+  <a href="https://wa.me/971504516403" target="_blank" rel="noopener noreferrer"
+    className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90">
+    {WA_SVG} 💬 WhatsApp Us: +971 50 451 6403
+  </a>
+);
+
+function DeliveryRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5 border-b border-border/50 py-3 last:border-b-0 sm:flex-row sm:gap-6">
+      <span className="w-32 shrink-0 text-[13px] font-semibold text-foreground">{label}</span>
+      <span className="text-[13px] leading-relaxed text-muted-foreground">{children}</span>
+    </div>
+  );
+}
+
+type CityTab = "dubai" | "abudhabi" | "sharjah";
+
+function DeliveryTab({ pageSettings }: { pageSettings: PageSettings | undefined }) {
+  const [city, setCity] = useState<CityTab>("dubai");
+
+  const cityTabs: Array<{ id: CityTab; label: string }> = [
+    { id: "dubai",    label: "Dubai" },
+    { id: "abudhabi", label: "Abu Dhabi" },
+    { id: "sharjah",  label: "Sharjah & Ajman" },
+  ];
+
+  type CityBlock = { label: string; body: string };
+
+  const DEFAULT_DUBAI: CityBlock[] = [
+    { label: "Delivery Time",     body: "Delivered within 2 hours between 11:00 AM and 8:30 PM daily." },
+    { label: "Last Order Time",   body: "8:30 PM is our last order cutoff, all days of the week." },
+    { label: "Delivery Fee",      body: "No minimum order value. Standard delivery fee is AED 15." },
+    { label: "Free Returns",      body: "No questions asked — return items up to 30 days from delivery, free of charge." },
+    { label: "Satisfaction",      body: "WhatsApp us within 24 hours and we will fix your experience." },
+    { label: "Tipping",           body: "There's no need to tip — we pay a living wage." },
+  ];
+  const DEFAULT_ABUDHABI: CityBlock[] = [
+    { label: "Delivery Time",   body: "Delivered within 2 hours between 11:00 AM and 8:30 PM daily." },
+    { label: "Last Order Time", body: "8:30 PM is our last order cutoff, all days of the week." },
+    { label: "Delivery Fee",    body: "No minimum order value. Standard delivery fee is AED 20." },
+    { label: "Tipping",         body: "There's no need to tip — we pay a living wage." },
+  ];
+  const DEFAULT_SHARJAH: CityBlock[] = [
+    { label: "Same Day",      body: "Orders confirmed by 1:00 PM are delivered same-day between 4:00 PM and 10:00 PM." },
+    { label: "Next Day",      body: "Orders placed after 1:00 PM are delivered the following day." },
+    { label: "Delivery Fee",  body: "No minimum order value. Standard delivery fee is AED 15." },
+    { label: "Tipping",       body: "There's no need to tip — we pay a living wage." },
+  ];
+
+  const cityContent: Record<CityTab, CityBlock[]> = {
+    dubai:    pageSettings?.dubaiDeliveryInfo    ?? DEFAULT_DUBAI,
+    abudhabi: pageSettings?.abudhabiDeliveryInfo ?? DEFAULT_ABUDHABI,
+    sharjah:  pageSettings?.sharjahDeliveryInfo  ?? DEFAULT_SHARJAH,
+  };
+
+  // unused now but kept in case of metaobject override later
+  const _returnsItems = [
+    "Drop a WhatsApp message or send us an email within 24 hours after delivery.",
+    "We will exchange the product and deliver it again to your door, or you can pick it up if you want.",
+    "You will receive the product or a refund. Refunds will be processed within 14 working days.",
+  ];
+
+  return (
+    <div className="space-y-8">
+
+      {/* Returns */}
+      <section>
+        <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-crimson">
+          <RefreshCw className="h-3.5 w-3.5" />
+          100% Free Replacements &amp; Returns
+        </h3>
+        <div className="divide-y divide-border/50">
+          {[
+            "Drop a WhatsApp message or send us an email within 24 hours after delivery.",
+            "We will exchange the product and deliver it again to your door, or you can pick it up if you want.",
+            "You will receive the product or a refund. Refunds will be processed within 14 working days.",
+          ].map((l, i) => (
+            <p key={i} className="py-2.5 text-[13px] leading-relaxed text-muted-foreground">{l}</p>
+          ))}
+        </div>
+      </section>
+
+      {/* Delivery by city */}
+      <section>
+        <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-crimson">
+          <Truck className="h-3.5 w-3.5" />
+          {pageSettings?.deliveryTitle ?? "Delivery Information"}
+        </h3>
+
+        {/* City tabs — crimson pill active */}
+        <div className="mb-5 overflow-x-auto">
+          <div className="flex min-w-max gap-1 rounded-lg border border-border p-1">
+            {cityTabs.map(({ id, label }) => (
+              <button key={id} type="button" onClick={() => setCity(id)}
+                className={`shrink-0 rounded-md px-3 py-2 text-xs font-semibold transition-all ${
+                  city === id ? "bg-crimson text-crimson-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3 text-sm">
+          {cityContent[city].map(({ label, body }) => (
+            <div key={label} className="rounded-lg border border-border/60 px-4 py-3">
+              <p className="mb-1 font-semibold text-foreground">{label}</p>
+              <p className="whitespace-pre-line text-muted-foreground">{body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// ── InfoTabs — shown below the product grid ────────────────────────────────
+type TabId = "nutrition" | "template" | "delivery";
+
+function InfoTabs({
+  extraSections,
+  extraSectionTitle,
+  pageSettings,
+  variant,
+}: {
+  extraSections: ReactNode | undefined;
+  extraSectionTitle: string;
+  pageSettings: PageSettings | undefined;
+  variant: any;
+}) {
+  const hasNutrition = !!getMF(variant, "nutrition", "total_energy") || NUTRITION_ROWS.some(r => getMF(variant, r.ns, r.key));
+  const hasTemplate  = !!extraSections;
+
+  // Tab order: Understanding Rubs → Nutrition Facts → Delivery Info
+  const tabs: Array<{ id: TabId; label: string; Icon: any }> = [
+    hasTemplate  && { id: "template"  as TabId, label: extraSectionTitle,  Icon: FlameKindling },
+    hasNutrition && { id: "nutrition" as TabId, label: "Nutrition Facts",  Icon: Leaf },
+                    { id: "delivery"  as TabId, label: "Delivery Info",    Icon: PackageOpen },
+  ].filter(Boolean) as Array<{ id: TabId; label: string; Icon: any }>;
+
+  const [active, setActive] = useState<TabId>(tabs[0].id);
+
+  useEffect(() => {
+    if (!tabs.find(t => t.id === active)) setActive(tabs[0].id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variant?.id]);
+
+  return (
+    <div className="border-t border-border bg-card">
+      <div className="container mx-auto px-4">
+        {/* Tab bar */}
+        <div className="flex overflow-x-auto">
+          {tabs.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActive(id)}
+              className={`flex shrink-0 items-center gap-2 border-b-2 px-5 py-4 text-sm font-semibold transition-colors ${
+                active === id
+                  ? "border-crimson text-crimson"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        <div className="py-5">
+          {active === "nutrition" && <NutritionPanel variant={variant} />}
+          {active === "template" && hasTemplate && <div>{extraSections}</div>}
+          {active === "delivery" && <DeliveryTab pageSettings={pageSettings} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Pickup availability drawer ────────────────────────────────────────────
+interface StoreNode {
+  available: boolean;
+  pickUpTime?: string | null;
+  location: {
+    name: string;
+    address?: {
+      address1?: string | null;
+      address2?: string | null;
+      city?: string | null;
+      province?: string | null;
+      country?: string | null;
+      phone?: string | null;
+    } | null;
+  };
+}
+
+function PickupDrawer({
+  open, onClose, productTitle, variantTitle, stores,
+}: {
+  open: boolean;
+  onClose: () => void;
+  productTitle: string;
+  variantTitle: string;
+  stores: StoreNode[];
+}) {
+  const available = stores.filter((s) => s.available);
+  const unavailable = stores.filter((s) => !s.available);
+  const sorted = [...available, ...unavailable];
+
+  return (
+    <Sheet open={open} onOpenChange={onClose}>
+      <SheetContent side="right" className="flex w-full max-w-md flex-col gap-0 overflow-y-auto p-0">
+        <SheetHeader className="sticky top-0 z-10 border-b border-border bg-background px-5 py-4">
+          <div className="flex items-center justify-between">
+            <SheetTitle className="text-base font-bold">Store Availability</SheetTitle>
+            <button type="button" onClick={onClose} className="rounded-full p-1 hover:bg-muted">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mt-2 rounded-lg bg-muted/50 px-3 py-2">
+            <p className="text-sm font-semibold leading-snug">{productTitle}</p>
+            {variantTitle && variantTitle !== "Default Title" && (
+              <p className="text-xs text-muted-foreground">{variantTitle}</p>
+            )}
+          </div>
+        </SheetHeader>
+
+        <div className="flex flex-col gap-3 p-5">
+          {sorted.map((store, i) => (
+            <div
+              key={i}
+              className={`rounded-xl border p-4 transition-colors ${
+                store.available ? "border-green-200 bg-green-50/40" : "border-border bg-muted/20"
+              }`}
+            >
+              {/* Store name + status */}
+              <div className="flex items-start gap-2.5">
+                <Store className={`mt-0.5 h-4 w-4 flex-shrink-0 ${store.available ? "text-green-600" : "text-muted-foreground"}`} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold leading-snug">{store.location.name}</p>
+                  {store.available ? (
+                    <>
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-700">
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                        Pickup available
+                      </span>
+                      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3 flex-shrink-0" />
+                        {store.pickUpTime ?? "Usually ready in 2 hours"}
+                      </div>
+                    </>
+                  ) : (
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                      <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+                      Currently unavailable
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Address */}
+              {store.location.address && (
+                <div className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
+                  <MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                  <div className="leading-relaxed">
+                    {store.location.address.address1 && <p>{store.location.address.address1}</p>}
+                    {store.location.address.address2 && <p>{store.location.address.address2}</p>}
+                    {(store.location.address.city || store.location.address.province) && (
+                      <p>{[store.location.address.city, store.location.address.province].filter(Boolean).join(" ")}</p>
+                    )}
+                    {store.location.address.country && <p>{store.location.address.country}</p>}
+                  </div>
+                </div>
+              )}
+
+              {/* Phone */}
+              {store.location.address?.phone && (
+                <a
+                  href={`tel:${store.location.address.phone.replace(/\s/g, "")}`}
+                  className="mt-2.5 flex items-center gap-2 text-xs font-semibold text-crimson hover:underline"
+                >
+                  <Phone className="h-3.5 w-3.5" />
+                  {store.location.address.phone}
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 // ── Shell ─────────────────────────────────────────────────────────────────
 export function ProductPageShell({
   product,
@@ -269,6 +634,7 @@ export function ProductPageShell({
   const [qty, setQty] = useState(1);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [stickyVisible, setStickyVisible] = useState(false);
+  const [pickupDrawerOpen, setPickupDrawerOpen] = useState(false);
   const atcSentinelRef = useRef<HTMLDivElement>(null);
 
   // Track this product as recently viewed
@@ -365,7 +731,7 @@ export function ProductPageShell({
   // which metafields have values (avoids false-positive when "understanding_rubs"
   // key name contains "rub" but the product is actually a whole-cut).
   const extraSectionTitle =
-    templateSuffix === "whole-cuts"     ? "About This Cut"  :
+    templateSuffix === "whole-cuts"     ? "Understanding Rubs"  :
     templateSuffix === "box-collections"? "About This Box"  :
     "Understanding Rubs"; // all rubs templates
 
@@ -401,9 +767,9 @@ export function ProductPageShell({
         </nav>
       </div>
 
-      <div className="container mx-auto grid gap-8 px-4 pb-8 md:grid-cols-2 md:gap-12">
-        {/* ── Media gallery ── */}
-        <div className="flex flex-col gap-3">
+      <div className="container mx-auto grid gap-6 px-4 pb-4 md:grid-cols-2 md:items-start md:gap-10">
+        {/* ── Media gallery — sticky on desktop so it stays visible while user reads long right col ── */}
+        <div className="flex flex-col gap-3 md:sticky md:top-36 md:self-start">
           <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
             {activeMedia?.type === "video" && activeMedia.mp4Url ? (
               <video src={activeMedia.mp4Url} poster={activeMedia.poster ?? undefined}
@@ -444,7 +810,7 @@ export function ProductPageShell({
         </div>
 
         {/* ── Product info ── */}
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4 sm:gap-5">
           <div>
             <h1 className="font-display text-2xl font-extrabold leading-tight sm:text-3xl">{product.title}</h1>
             {displayRating.average > 0 && (
@@ -480,9 +846,9 @@ export function ProductPageShell({
                 );
               }
 
-              // 2. Custom metafield price_per_kg on the variant
+              // 2. Custom metafield per_kg_price on the variant
               const metaPerKg = (variant as any)?.metafields?.find(
-                (m: any) => m?.key === "price_per_kg"
+                (m: any) => m?.key === "per_kg_price"
               )?.value;
               if (metaPerKg) {
                 const numVal = parseFloat(metaPerKg);
@@ -518,21 +884,6 @@ export function ProductPageShell({
               return null;
             })()}
 
-            {/* Pickup availability */}
-            {(() => {
-              const pickupLocations = ((variant as any)?.storeAvailability?.nodes ?? [])
-                .filter((s: any) => s.available)
-                .map((s: any) => s.location?.name ?? s.location?.address?.city)
-                .filter(Boolean);
-              if (pickupLocations.length === 0) return null;
-              return (
-                <div className="flex items-center gap-2 text-xs font-medium text-green-700">
-                  <span className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
-                  Pickup available at {pickupLocations.slice(0, 2).join(", ")}
-                  {pickupLocations.length > 2 && ` +${pickupLocations.length - 2} more`}
-                </div>
-              );
-            })()}
           </div>
 
           {/* Variants */}
@@ -603,8 +954,43 @@ export function ProductPageShell({
             </div>
           )}
 
+          {/* Trust badge image — editable via product_page_settings metaobject (badge_image field) */}
+          <img
+            src={pageSettings?.badgeImage ?? "https://mlsuae.ae/cdn/shop/files/jm.jpg?v=1778667759"}
+            alt="Trust badges"
+            className="w-full rounded-lg object-contain"
+            loading="lazy"
+          />
+
+          {/* Pickup availability — shown below ATC */}
+          {(() => {
+            const allStores: StoreNode[] = (variant as any)?.storeAvailability?.nodes ?? [];
+            const firstAvailable = allStores.find((s) => s.available);
+            if (!firstAvailable) return null;
+            return (
+              <div className="rounded-lg border border-green-200 bg-green-50/50 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 flex-shrink-0 rounded-full bg-green-500" />
+                  <p className="text-sm font-semibold text-green-800">
+                    Pickup available at {firstAvailable.location.name}
+                  </p>
+                </div>
+                <p className="mt-0.5 ps-4 text-xs text-green-700">
+                  {firstAvailable.pickUpTime ?? "Usually ready in 2 hours"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setPickupDrawerOpen(true)}
+                  className="mt-1.5 ps-4 text-xs font-semibold text-crimson underline-offset-2 hover:underline"
+                >
+                  Check availability at other stores →
+                </button>
+              </div>
+            );
+          })()}
+
           {/* Trust badges */}
-          <div className="grid grid-cols-3 gap-3 rounded-xl border border-border bg-muted/40 p-4">
+          <div className="grid grid-cols-3 gap-3 rounded-xl border border-border p-4">
             {[{ icon: Truck, label: "2-hour delivery" }, { icon: ShieldCheck, label: "100% Halal certified" }, { icon: RefreshCw, label: "Quality guarantee" }].map(({ icon: Icon, label }) => (
               <div key={label} className="flex flex-col items-center gap-1.5 text-center">
                 <Icon className="h-6 w-6 text-crimson" />
@@ -613,39 +999,40 @@ export function ProductPageShell({
             ))}
           </div>
 
-          {/* Social share */}
-          <SocialShare title={product.title} />
-
-          {/* Accordions */}
-          <div className="border-t border-border pt-2">
+          {/* Description + Customer Support */}
+          <div className="border-t border-border">
             <AccordionItem title="Description" defaultOpen>
-              {product.descriptionHtml ? <DescriptionWithToggle html={product.descriptionHtml} /> : <p>No description available.</p>}
-            </AccordionItem>
-            <AccordionItem title={pageSettings?.deliveryTitle ?? "Delivery Info"}>
-              {pageSettings?.deliveryContent ? (
-                <ul className="space-y-2">{pageSettings.deliveryContent.split("\n").filter(Boolean).map((l, i) => <li key={i}>{l}</li>)}</ul>
-              ) : (
-                <ul className="space-y-2">
-                  <li>2-hour delivery available for orders placed before 8 PM.</li>
-                  <li>Orders are packed in insulated boxes to maintain freshness.</li>
-                  <li>All products are delivered chilled (0–4°C).</li>
-                  <li>Delivery available across UAE and major cities.</li>
-                </ul>
-              )}
+              {product.descriptionHtml
+                ? <DescriptionWithToggle html={product.descriptionHtml} />
+                : <p>No description available.</p>}
             </AccordionItem>
             <AccordionItem title={pageSettings?.supportTitle ?? "Customer Support"}>
-              <ul className="space-y-2">
-                {(pageSettings?.supportContent ? pageSettings.supportContent.split("\n").filter(Boolean) : ["Call or WhatsApp: +971504516403", "Support available 9 AM – 9 PM daily.", "Email: contactus@mlsuae.ae", "Hassle-free returns within 24 hours of delivery."]).map((line, i) => (
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                {(pageSettings?.supportContent
+                  ? pageSettings.supportContent.split("\n").filter(Boolean)
+                  : ["Call or WhatsApp: +971504516403", "Support available 9 AM – 9 PM daily.", "Email: contactus@mlsuae.ae", "Hassle-free returns within 24 hours of delivery."]
+                ).map((line, i) => (
                   <li key={i}><LinkifyLine text={line} /></li>
                 ))}
               </ul>
             </AccordionItem>
-            {extraSections && (
-              <AccordionItem title={extraSectionTitle}>{extraSections}</AccordionItem>
-            )}
           </div>
+
+          {/* WhatsApp CTA — below all accordions */}
+          <a href="https://wa.me/971504516403" target="_blank" rel="noopener noreferrer"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3.5 text-sm font-bold text-white transition-opacity hover:opacity-90">
+            {WA_SVG} 💬 Chat with us on WhatsApp
+          </a>
         </div>
       </div>
+
+      {/* ── Info tabs: Understanding Rubs / Nutrition / Delivery & Support ── */}
+      <InfoTabs
+        extraSections={extraSections}
+        extraSectionTitle={extraSectionTitle}
+        pageSettings={pageSettings}
+        variant={variant}
+      />
 
       {/* ── Sticky Add to Cart bar ── */}
       <div className={`fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur transition-transform duration-300 ${stickyVisible ? "translate-y-0" : "translate-y-full"}`}>
@@ -683,11 +1070,6 @@ export function ProductPageShell({
         </div>
       </div>
 
-      {/* Reviews */}
-      <div id="reviews" className="container mx-auto px-4 pb-8">
-        <JudgemeReviews reviews={reviews} rating={rating} totalCount={reviewsTotalCount} handle={product.handle} externalId={externalId ?? undefined} />
-      </div>
-
       {/* Recommended products */}
       {recommendations.length > 0 && (
         <div className="container mx-auto px-4 pb-16">
@@ -705,8 +1087,22 @@ export function ProductPageShell({
         </div>
       )}
 
+      {/* Reviews */}
+      <div id="reviews" className="container mx-auto px-4 pb-8">
+        <JudgemeReviews reviews={reviews} rating={rating} totalCount={reviewsTotalCount} handle={product.handle} externalId={externalId ?? undefined} />
+      </div>
+
       {/* Recently viewed */}
       <RecentlyViewed />
+
+      {/* Store pickup drawer */}
+      <PickupDrawer
+        open={pickupDrawerOpen}
+        onClose={() => setPickupDrawerOpen(false)}
+        productTitle={product.title}
+        variantTitle={variant?.title ?? ""}
+        stores={(variant as any)?.storeAvailability?.nodes ?? []}
+      />
     </div>
   );
 }

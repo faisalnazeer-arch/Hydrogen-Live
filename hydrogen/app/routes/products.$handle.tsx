@@ -1,5 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
-import { useLoaderData } from "react-router";
+import type { ShouldRevalidateFunctionArgs } from "react-router";
+import { useLoaderData, Await } from "react-router";
+import { Suspense } from "react";
 import { type ShopifyProduct } from "~/lib/shopify";
 import { fetchJudgemeReviews, fetchJudgemeRating, buildRatingSummary } from "~/lib/judgeme";
 import { extractGloboOptionsFromHtml, type GloboOptionSet } from "~/lib/globo";
@@ -9,13 +11,38 @@ import { ChickenRubsTemplate } from "~/components/product-templates/ChickenRubsT
 import { LambRubsTemplate } from "~/components/product-templates/LambRubsTemplate";
 import { WholeCutsTemplate } from "~/components/product-templates/WholeCutsTemplate";
 import { BoxCollectionsTemplate } from "~/components/product-templates/BoxCollectionsTemplate";
+import { SeasonedMarinadesTemplate } from "~/components/product-templates/SeasonedMarinadesTemplate";
+import { PicanhaCutTemplate } from "~/components/product-templates/PicanhaCutTemplate";
+import { WholeCarcassTemplate } from "~/components/product-templates/WholeCarcassTemplate";
+import { KebabTemplate } from "~/components/product-templates/KebabTemplate";
 
 const PAGE_SETTINGS_QUERY = `
   query {
     metaobjects(type: "product_page_settings", first: 1) {
-      nodes {
-        fields { key value }
-      }
+      nodes { fields { key value } }
+    }
+  }
+`;
+
+// templateSuffix is not exposed by the Storefront API — fetch it via Admin API instead.
+// We include handle in the result so we can match the exact product even if search
+// returns multiple candidates.
+const ADMIN_TEMPLATE_SUFFIX_QUERY = (handle: string) => `
+  query {
+    products(first: 5, query: "handle:'${handle}'") {
+      edges { node { handle templateSuffix } }
+    }
+  }
+`;
+
+// One metaobject per template suffix (type: "product_template_settings").
+// Each instance must have a "template_suffix" field to identify which template it configures.
+// Optional fields: "section_title", "highlight_text".
+// Create/edit instances in Shopify Admin › Content › Metaobjects.
+const TEMPLATE_SETTINGS_QUERY = `
+  query {
+    metaobjects(type: "product_template_settings", first: 20) {
+      nodes { fields { key value } }
     }
   }
 `;
@@ -89,7 +116,7 @@ const PRODUCT_QUERY = `#graphql
           }
         }
       }
-      variants(first: 50) {
+      variants(first: 30) {
         nodes {
           id title availableForSale quantityAvailable
           price { amount currencyCode }
@@ -97,7 +124,21 @@ const PRODUCT_QUERY = `#graphql
           selectedOptions { name value }
           image { url altText }
           storeAvailability(first: 10) {
-            nodes { available location { name address { city } } }
+            nodes {
+              available
+              pickUpTime
+              location {
+                name
+                address {
+                  address1
+                  address2
+                  city
+                  province
+                  country
+                  phone
+                }
+              }
+            }
           }
           unitPrice { amount currencyCode }
           unitPriceMeasurement {
@@ -108,8 +149,21 @@ const PRODUCT_QUERY = `#graphql
             referenceValue
           }
           metafields(identifiers: [
+            {namespace: "custom", key: "per_kg_price"}
             {namespace: "custom", key: "price_per_kg"}
-          ]) { key value namespace }
+            {namespace: "custom", key: "portion_text"}
+            {namespace: "nutrition", key: "total_energy"}
+            {namespace: "nutrition", key: "total_fat"}
+            {namespace: "nutrition", key: "saturated_fat"}
+            {namespace: "nutrition", key: "trans_fat"}
+            {namespace: "nutrition", key: "total_cholesterol"}
+            {namespace: "nutrition", key: "total_carbohydrates"}
+            {namespace: "nutrition", key: "dietary_fibers"}
+            {namespace: "nutrition", key: "sugar"}
+            {namespace: "nutrition", key: "protein"}
+            {namespace: "nutrition", key: "sodium"}
+            {namespace: "nutrition", key: "iron"}
+          ]) { key namespace value }
           sellingPlanAllocations(first: 10) {
             nodes {
               sellingPlan { id }
@@ -131,6 +185,7 @@ const PRODUCT_QUERY = `#graphql
         {namespace: "custom", key: "flavor_profile"}
         {namespace: "custom", key: "pairing_suggestions"}
         {namespace: "custom", key: "understanding_rubs"}
+        {namespace: "custom", key: "marinade_recipe"}
       ]) { key value }
       collections(first: 30) { nodes { id } }
     }
@@ -171,6 +226,11 @@ function flattenGloboApiOptions(opts: any[]): import("~/lib/globo").GloboOption[
     }));
 }
 
+// Skip re-fetching when navigating back to the same product URL.
+export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFunctionArgs) {
+  return currentUrl.pathname !== nextUrl.pathname;
+}
+
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const { handle } = params;
   if (!handle) throw new Response("Missing handle", { status: 400 });
@@ -185,10 +245,15 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const lang = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
   const language = (lang === "ar" ? "AR" : "EN") as "AR" | "EN";
 
-  const data = await context.storefront.query(PRODUCT_QUERY, {
-    variables: { handle, language, country: "AE" as const },
-    cache: context.storefront.CacheNone(),
-  });
+  // Run storefront query and Admin templateSuffix lookup in parallel.
+  // templateSuffix is not exposed by the Storefront API so we must use the Admin API.
+  const [data, adminProductData] = await Promise.all([
+    context.storefront.query(PRODUCT_QUERY, {
+      variables: { handle, language, country: "AE" as const },
+      cache: context.storefront.CacheShort(),
+    }),
+    context.adminFetch(ADMIN_TEMPLATE_SUFFIX_QUERY(handle)).catch(() => null),
+  ]);
   if (!data.product) throw new Response("Not found", { status: 404 });
 
   const externalId = data.product.id.split("/").pop() ?? undefined;
@@ -198,9 +263,15 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     .map((c: any) => Number(c.id.split("/").pop()))
     .filter(Boolean);
 
-  // Case-insensitive tag detection so "Template:whole-cuts" and "template:whole-cuts" both work
-  const templateTag = data.product.tags?.find((t: string) => t.toLowerCase().startsWith("template:"));
-  const templateSuffix = templateTag ? templateTag.replace(/^template:/i, "").trim() : null as string | null;
+  // templateSuffix from Admin API (exact handle match), falling back to tag-based override.
+  const adminSuffix = ((adminProductData as any)?.products?.edges ?? [])
+    .find((e: any) => e.node?.handle === handle)
+    ?.node?.templateSuffix ?? null;
+  const tagOverride = data.product.tags?.find((t: string) => t.toLowerCase().startsWith("template:"));
+  const templateSuffix: string | null =
+    (tagOverride ? tagOverride.replace(/^template:/i, "").trim() : null)
+    ?? adminSuffix
+    ?? null;
 
   // Strategy 1: scrape Globo config from Shopify theme HTML (proven approach).
   // Strategy 2: try the Globo app-proxy JSON endpoint as fallback.
@@ -212,85 +283,67 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const globoPromise: Promise<GloboOptionSet[]> = externalId
     ? (async () => {
         const numId = Number(externalId);
+        const htmlHeaders = { Accept: "text/html", "User-Agent": "Mozilla/5.0" };
 
-        // 1️⃣  Scrape live custom domain (most reliable)
-        try {
-          const r = await fetch(`https://${liveDomain}/products/${handle}`, {
-            headers: { Accept: "text/html", "User-Agent": "Mozilla/5.0" },
-            redirect: "follow",
-          });
-          if (r.ok) {
-            const html = await r.text();
+        // 1️⃣  Scrape both domains in parallel, 3-second timeout each
+        const htmlUrls = [...new Set([liveDomain, shopDomain])].map(
+          (d) => `https://${d}/products/${handle}`,
+        );
+        const htmlResults = await Promise.allSettled(
+          htmlUrls.map((url) =>
+            fetch(url, { headers: htmlHeaders, redirect: "follow", signal: AbortSignal.timeout(3000) }),
+          ),
+        );
+        for (const res of htmlResults) {
+          if (res.status !== "fulfilled" || !res.value.ok) continue;
+          try {
+            const html = await res.value.text();
             const fromHtml = extractGloboOptionsFromHtml(html, numId, collectionIds);
             if (fromHtml.length > 0) return fromHtml;
-          }
-        } catch { /* try next */ }
-
-        // 2️⃣  Fallback: scrape myshopify domain (in case custom domain same)
-        if (liveDomain !== shopDomain) {
-          try {
-            const r = await fetch(`https://${shopDomain}/products/${handle}`, {
-              headers: { Accept: "text/html", "User-Agent": "Mozilla/5.0" },
-              redirect: "follow",
-            });
-            if (r.ok) {
-              const html = await r.text();
-              const fromHtml = extractGloboOptionsFromHtml(html, numId, collectionIds);
-              if (fromHtml.length > 0) return fromHtml;
-            }
           } catch { /* try next */ }
         }
 
-        // 3️⃣  Fallback: Globo app proxy JSON (try multiple URL patterns on both domains)
+        // 2️⃣  Fallback: all Globo app-proxy JSON endpoints in parallel, 2-second timeout each
         const proxyPaths = [
           `/apps/product-options-by-globo/option_sets.json?product_id=${externalId}`,
           `/apps/globo-product-options/option_sets.json?product_id=${externalId}`,
           `/apps/product-options/api/products/${externalId}/option_sets`,
         ];
-        const domains = [...new Set([shopDomain, liveDomain])];
-        for (const domain of domains) {
-          for (const path of proxyPaths) {
-            try {
-              const apiRes = await fetch(
-                `https://${domain}${path}`,
-                { headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0" }, redirect: "follow" },
-              );
-              if (!apiRes.ok) continue;
-              const d = await apiRes.json() as any;
-              const rawSets: any[] = Array.isArray(d)
-                ? d
-                : (d?.option_sets ?? d?.optionSets ?? d?.data?.option_sets ?? d?.data?.optionSets ?? []);
-              const sets = rawSets
-                .map((set: any) => ({
-                  id: String(set.id ?? Math.random()),
-                  name: set.name ?? "",
-                  options: flattenGloboApiOptions(set.options ?? set.custom_options ?? []),
-                }))
-                .filter((s: GloboOptionSet) => s.options.length > 0);
-              if (sets.length > 0) return sets;
-            } catch { /* try next */ }
-          }
+        const proxyUrls = [...new Set([shopDomain, liveDomain])].flatMap((d) =>
+          proxyPaths.map((p) => `https://${d}${p}`),
+        );
+        const proxyResults = await Promise.allSettled(
+          proxyUrls.map((url) =>
+            fetch(url, {
+              headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0" },
+              redirect: "follow",
+              signal: AbortSignal.timeout(2000),
+            }),
+          ),
+        );
+        for (const res of proxyResults) {
+          if (res.status !== "fulfilled" || !res.value.ok) continue;
+          try {
+            const d = await res.value.json() as any;
+            const rawSets: any[] = Array.isArray(d)
+              ? d
+              : (d?.option_sets ?? d?.optionSets ?? d?.data?.option_sets ?? d?.data?.optionSets ?? []);
+            const sets = rawSets
+              .map((set: any) => ({
+                id: String(set.id ?? Math.random()),
+                name: set.name ?? "",
+                options: flattenGloboApiOptions(set.options ?? set.custom_options ?? []),
+              }))
+              .filter((s: GloboOptionSet) => s.options.length > 0);
+            if (sets.length > 0) return sets;
+          } catch { /* try next */ }
         }
 
         return [];
       })()
     : Promise.resolve([]);
 
-  const [reviewsData, judgemeRating, recsData, settingsData, globoOptionSets] = await Promise.all([
-    fetchJudgemeReviews(handle, shopDomain, judgemeToken, 1, 10, externalId),
-    fetchJudgemeRating(data.product.id, shopDomain, judgemeToken),
-    context.storefront.query(RECOMMENDATIONS_QUERY, {
-      variables: { productId: data.product.id, language, country: "AE" as const },
-    }).catch(() => null),
-    context.adminFetch(PAGE_SETTINGS_QUERY).catch(() => null),
-    globoPromise,
-  ]);
-
-  // Use Judge.me's dedicated product endpoint for rating (most accurate).
-  // Fall back to buildRatingSummary (from reviews) then Shopify metafields in the shell.
-  const reviewsSummary = buildRatingSummary(reviewsData);
-  const rating = judgemeRating.average > 0 ? judgemeRating : reviewsSummary;
-
+  // Compute discount map synchronously from already-fetched product data
   const discountMap: Record<string, number> = {};
   for (const v of data.product.variants?.nodes ?? []) {
     const variantPrice = parseFloat((v as any).price?.amount ?? "0");
@@ -313,33 +366,135 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     }
   }
 
-  const recommendations: ShopifyProduct[] = (recsData?.productRecommendations ?? [])
-    .slice(0, 8)
-    .map((node: any) => ({ node }));
+  // Fire all slow external fetches — NOT awaited, stream in after the page renders
+  const lazyData = Promise.all([
+    fetchJudgemeReviews(handle, shopDomain, judgemeToken, 1, 10, externalId),
+    fetchJudgemeRating(data.product.id, shopDomain, judgemeToken),
+    context.storefront.query(RECOMMENDATIONS_QUERY, {
+      variables: { productId: data.product.id, language, country: "AE" as const },
+    }).catch(() => null),
+    context.adminFetch(PAGE_SETTINGS_QUERY).catch(() => null),
+    context.adminFetch(TEMPLATE_SETTINGS_QUERY).catch(() => null),
+    globoPromise,
+  ]).then(([reviewsData, judgemeRating, recsData, settingsData, templateSettingsData, globoOptionSets]) => {
+    const reviewsSummary = buildRatingSummary(reviewsData);
+    const rating = judgemeRating.average > 0 ? judgemeRating : reviewsSummary;
+    const recommendations: ShopifyProduct[] = (recsData?.productRecommendations ?? [])
+      .slice(0, 8)
+      .map((node: any) => ({ node }));
 
-  const metaobjectFields: Array<{ key: string; value: string }> =
-    (settingsData as any)?.metaobjects?.nodes?.[0]?.fields ?? [];
-  const getMeta = (key: string) => metaobjectFields.find((f) => f.key === key)?.value ?? null;
-  const pageSettings = {
-    deliveryTitle: getMeta("delivery_title") ?? "Delivery Info",
-    deliveryContent: getMeta("delivery_content"),
-    supportTitle: getMeta("support_title") ?? "Customer Support",
-    supportContent: getMeta("support_content"),
-  };
+    // Page-level settings (delivery info, support)
+    const pageFields: Array<{ key: string; value: string }> =
+      (settingsData as any)?.metaobjects?.nodes?.[0]?.fields ?? [];
+    const getPageMeta = (key: string) => pageFields.find((f: any) => f.key === key)?.value ?? null;
 
+    // Per-template settings — keyed by templateSuffix.
+    // Metaobject type: "product_template_settings" in Shopify Admin › Content › Metaobjects.
+    // Fields per instance:
+    //   template_suffix  (single_line_text) — e.g. "whole-cuts"
+    //   section_title    (single_line_text) — accordion heading override
+    //   highlight_text   (multi_line_text)  — callout note shown above accordions
+    //   accordions       (multi_line_text)  — JSON array: [{heading, content (HTML)}]
+    type TemplateAccordion = { heading: string; content: string };
+    type TemplateSetting = {
+      sectionTitle: string | null;
+      highlightText: string | null;
+      accordions: TemplateAccordion[];
+    };
+    const templateSettings: Record<string, TemplateSetting> = {};
+    for (const node of (templateSettingsData as any)?.metaobjects?.nodes ?? []) {
+      const fields: Array<{ key: string; value: string }> = node.fields ?? [];
+      const getField = (k: string) => fields.find((f) => f.key === k)?.value ?? null;
+      const suffix = getField("template_suffix");
+      if (!suffix) continue;
+      let accordions: TemplateAccordion[] = [];
+      try {
+        const raw = getField("accordions");
+        if (raw) accordions = JSON.parse(raw);
+      } catch { /* malformed JSON — treat as empty */ }
+      templateSettings[suffix] = {
+        sectionTitle: getField("section_title"),
+        highlightText: getField("highlight_text"),
+        accordions,
+      };
+    }
+
+    return {
+      reviews: reviewsData.reviews,
+      reviewsTotalCount: reviewsData.total_count ?? 0,
+      rating,
+      recommendations,
+      globoOptionSets,
+      templateSettings,
+      pageSettings: {
+        deliveryTitle: getPageMeta("delivery_title") ?? "Delivery Info",
+        deliveryContent: getPageMeta("delivery_content"),
+        supportTitle: getPageMeta("support_title") ?? "Customer Support",
+        supportContent: getPageMeta("support_content"),
+        dubaiDeliveryInfo:    (() => { try { const v = getPageMeta("dubai_delivery_info");    return v ? JSON.parse(v) : null; } catch { return null; } })(),
+        abudhabiDeliveryInfo: (() => { try { const v = getPageMeta("abudhabi_delivery_info"); return v ? JSON.parse(v) : null; } catch { return null; } })(),
+        sharjahDeliveryInfo:  (() => { try { const v = getPageMeta("sharjah_delivery_info");  return v ? JSON.parse(v) : null; } catch { return null; } })(),
+        badgeImage: getPageMeta("badge_image"),
+      },
+    };
+  });
+
+  // Return critical data immediately; lazyData streams in while the page is already visible
   return {
     product: data.product,
     templateSuffix,
     sellingPlanGroupsRaw: data.product.sellingPlanGroups?.nodes ?? [],
     discountMap,
-    reviews: reviewsData.reviews,
-    reviewsTotalCount: reviewsData.total_count ?? 0,
-    rating,
     externalId: externalId ?? null,
-    recommendations,
-    pageSettings,
-    globoOptionSets,
+    lazyData,
   };
+}
+
+const EMPTY_LAZY = {
+  reviews: [],
+  reviewsTotalCount: 0,
+  rating: { average: 0, count: 0 },
+  recommendations: [],
+  globoOptionSets: [],
+  templateSettings: {} as Record<string, { sectionTitle: string | null; highlightText: string | null; accordions: Array<{heading: string; content: string}> }>,
+  pageSettings: {
+    deliveryTitle: "Delivery Info",
+    deliveryContent: null,
+    supportTitle: "Customer Support",
+    supportContent: null,
+    dubaiDeliveryInfo: null,
+    abudhabiDeliveryInfo: null,
+    sharjahDeliveryInfo: null,
+    badgeImage: null,
+  },
+};
+
+function renderTemplate(suffix: string | null | undefined, props: any) {
+  // Suffixes verified against live Shopify store (807 products, scanned 2026-06-11)
+  switch (suffix) {
+    // ── Existing templates ───────────────────────────────────────────────────
+    case "beef-rubs":           return <BeefRubsTemplate {...props} />;
+    case "chicken-rub":         return <ChickenRubsTemplate {...props} />;
+    case "lamb-rub":            return <LambRubsTemplate {...props} />;
+    case "whole-cuts":
+    case "abu-dhabi-10kg-aus":  return <WholeCutsTemplate {...props} />;
+    case "box-collections":
+    case "prime-signature-box":
+    case "nadeem-s-box":
+    case "prime-steak-box":
+    case "recharge-bundle":
+    case "bundle-builder":      return <BoxCollectionsTemplate {...props} />;
+    // ── New templates ────────────────────────────────────────────────────────
+    case "seasoned-marinades":  return <SeasonedMarinadesTemplate {...props} />;
+    case "picanha":
+    case "picanha_":            return <PicanhaCutTemplate {...props} />;
+    case "whole-carcass":       return <WholeCarcassTemplate {...props} />;
+    case "kebab-1-9kg-marinaded":
+    case "kebab-2-9kg":
+    case "nadeem_bbq":          return <KebabTemplate {...props} />;
+    // ── Default ──────────────────────────────────────────────────────────────
+    default:                    return <DefaultTemplate {...props} />;
+  }
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -347,12 +502,13 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 export default function Product() {
-  const { templateSuffix, ...templateProps } = useLoaderData<typeof loader>();
+  const { templateSuffix, lazyData, ...criticalProps } = useLoaderData<typeof loader>();
 
-  if (templateSuffix === "beef-rubs") return <BeefRubsTemplate {...templateProps} />;
-  if (templateSuffix === "chicken-rubs") return <ChickenRubsTemplate {...templateProps} />;
-  if (templateSuffix === "lamb-rubs") return <LambRubsTemplate {...templateProps} />;
-  if (templateSuffix === "whole-cuts") return <WholeCutsTemplate {...templateProps} />;
-  if (templateSuffix === "box-collections") return <BoxCollectionsTemplate {...templateProps} />;
-  return <DefaultTemplate {...templateProps} />;
+  return (
+    <Suspense fallback={renderTemplate(templateSuffix, { ...criticalProps, ...EMPTY_LAZY })}>
+      <Await resolve={lazyData}>
+        {(lazy) => renderTemplate(templateSuffix, { ...criticalProps, ...lazy })}
+      </Await>
+    </Suspense>
+  );
 }

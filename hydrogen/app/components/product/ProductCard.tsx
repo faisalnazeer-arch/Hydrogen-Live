@@ -70,7 +70,6 @@ export function ProductCard({ product, onQuickView, ratingOverride }: ProductCar
         quantity: 1,
         selectedOptions: firstAvailable.selectedOptions || [],
       });
-      toast.success(t("product.added"), { description: node.title, position: "top-center" });
     } finally {
       setIsAdding(false);
     }
@@ -86,6 +85,7 @@ export function ProductCard({ product, onQuickView, ratingOverride }: ProductCar
       {/* ── Image ── */}
       <Link
         to={`/products/${node.handle}`}
+        prefetch="viewport"
         className="relative block aspect-square overflow-hidden bg-muted"
       >
         {primary && (
@@ -140,6 +140,7 @@ export function ProductCard({ product, onQuickView, ratingOverride }: ProductCar
       <div className="flex flex-1 flex-col p-3">
         <Link
           to={`/products/${node.handle}`}
+          prefetch="viewport"
           className="text-balance text-xs font-medium leading-snug text-foreground transition-colors hover:text-crimson sm:text-sm"
           title={node.title}
         >

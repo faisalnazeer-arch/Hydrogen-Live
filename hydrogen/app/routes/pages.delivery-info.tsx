@@ -42,7 +42,7 @@ const CITIES = [
     cutoff: "8:30 PM",
     window: "2 hours",
     hours: "10 AM – 8:30 PM, all days",
-    fee: "AED 15",
+    fee: "AED 20",
     notes: [
       "Express 2-hour delivery across Abu Dhabi",
       "Order anytime up to 8:30 PM for same-day delivery",
@@ -61,7 +61,7 @@ const CITIES = [
     notes: [
       "Same-day delivery when ordered before 1:00 PM",
       "No minimum order value",
-      "Order after 1:00 PM = next day delivery",
+      "Order after 1:00 PM = next-day delivery",
       "Delivery across Sharjah and Ajman areas",
     ],
   },
@@ -126,12 +126,12 @@ export default function DeliveryInfoPage() {
       </div>
 
       {/* Trust strip */}
-      <div className="border-b border-border bg-muted/40">
+      <div className="border-b border-border">
         <div className="container mx-auto flex flex-wrap items-center justify-center gap-6 px-4 py-4">
           {[
             { icon: Clock, text: "2-hour express delivery" },
             { icon: Package, text: "Insulated cold-chain packaging" },
-            { icon: MapPin, text: "Dubai, Abu Dhabi & more" },
+            { icon: MapPin, text: "Dubai, Abu Dhabi & Sharjah/Ajman" },
           ].map(({ icon: Icon, text }) => (
             <div key={text} className="flex items-center gap-2 text-sm font-medium text-foreground">
               <Icon className="h-4 w-4 text-crimson" />
@@ -144,17 +144,19 @@ export default function DeliveryInfoPage() {
       <div className="container mx-auto px-4 py-10 md:py-14">
 
         {/* City tabs */}
-        <div className="mb-8 flex justify-center gap-2 flex-wrap">
-          {CITIES.map((c) => (
-            <button key={c.id} type="button" onClick={() => setActiveCity(c.id)}
-              className={`rounded-full px-5 py-2 text-sm font-semibold transition-all ${
-                activeCity === c.id
-                  ? "bg-crimson text-white shadow-md"
-                  : "border border-border bg-card text-foreground hover:border-crimson hover:text-crimson"
-              }`}>
-              {c.emoji} {c.label}
-            </button>
-          ))}
+        <div className="mb-8 flex justify-center overflow-x-auto">
+          <div className="flex min-w-max gap-1 rounded-xl border border-border p-1">
+            {CITIES.map((c) => (
+              <button key={c.id} type="button" onClick={() => setActiveCity(c.id)}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+                  activeCity === c.id
+                    ? "bg-crimson text-white shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}>
+                {c.emoji} {c.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* City card */}
@@ -173,7 +175,7 @@ export default function DeliveryInfoPage() {
               { label: "Order by", value: city.cutoff },
               { label: "Delivery fee", value: city.fee },
             ].map(({ label, value }) => (
-              <div key={label} className="rounded-xl border border-border bg-muted/40 p-3 text-center">
+              <div key={label} className="rounded-xl border border-border p-3 text-center">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
                 <p className="mt-1 font-display text-base font-bold text-foreground">{value}</p>
               </div>

@@ -2,32 +2,29 @@ import { ProductPageShell, type ProductPageShellProps } from "./ProductPageShell
 import { MetafieldSubTabs, SubAccordion, type TemplateSetting } from "./SubAccordion";
 
 const METAFIELD_TITLES: Record<string, string> = {
-  usage_guide:          "What's Inside",
-  pairing_suggestions:  "Serving Suggestions",
-  flavor_profile:       "Flavor Profiles",
-  ingredients:          "Box Contents",
-  understanding_rubs:   "About This Box",
-  mls_rub:              "MLS Notes",
-  beef_rubs:            "Additional Info",
+  understanding_rubs:   "About These Kebabs",
+  marinade_recipe:      "Marinade Details",
+  ingredients:          "Ingredients",
+  usage_guide:          "Grilling Instructions",
+  flavor_profile:       "Flavor Profile",
+  pairing_suggestions:  "Best Served With",
+  mls_rub:              "Chef's Notes",
 };
 
 interface Props extends ProductPageShellProps {
   templateSettings?: Record<string, TemplateSetting>;
 }
 
-export function BoxCollectionsTemplate({ templateSettings, ...props }: Props) {
-  const suffix = props.templateSuffix ?? "box-collections";
+export function KebabTemplate({ templateSettings, ...props }: Props) {
+  const suffix = props.templateSuffix ?? "kebab-1-9kg-marinaded";
   const settings =
-    templateSettings?.[suffix] ?? templateSettings?.["box-collections"];
-
+    templateSettings?.[suffix] ?? templateSettings?.["kebab-1-9kg-marinaded"];
   const titlesWithOverride = settings?.sectionTitle
     ? { ...METAFIELD_TITLES, understanding_rubs: settings.sectionTitle }
     : METAFIELD_TITLES;
-
   const hasMetaContent = Object.keys(titlesWithOverride).some(
     (key) => props.product.metafields?.find((m: any) => m?.key === key)?.value ?? null,
   );
-
   const hasExtraContent =
     hasMetaContent || !!settings?.highlightText || (settings?.accordions?.length ?? 0) > 0;
 
@@ -48,7 +45,7 @@ export function BoxCollectionsTemplate({ templateSettings, ...props }: Props) {
             <MetafieldSubTabs
               product={props.product}
               metafieldTitles={titlesWithOverride}
-              flavorTagClass="bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300"
+              flavorTagClass="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300"
             />
           )}
           {(settings?.accordions ?? []).length > 0 && (

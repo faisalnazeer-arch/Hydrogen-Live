@@ -2,41 +2,36 @@ import { ProductPageShell, type ProductPageShellProps } from "./ProductPageShell
 import { MetafieldSubTabs, SubAccordion, type TemplateSetting } from "./SubAccordion";
 
 const METAFIELD_TITLES: Record<string, string> = {
-  usage_guide:          "What's Inside",
-  pairing_suggestions:  "Serving Suggestions",
-  flavor_profile:       "Flavor Profiles",
-  ingredients:          "Box Contents",
-  understanding_rubs:   "About This Box",
-  mls_rub:              "MLS Notes",
-  beef_rubs:            "Additional Info",
+  understanding_rubs:   "About This Marinade",
+  marinade_recipe:      "Marinade Details",
+  ingredients:          "Ingredients",
+  usage_guide:          "Preparation & Cooking",
+  flavor_profile:       "Flavor Profile",
+  pairing_suggestions:  "Pairs Well With",
+  mls_rub:              "Chef's Notes",
 };
 
 interface Props extends ProductPageShellProps {
   templateSettings?: Record<string, TemplateSetting>;
 }
 
-export function BoxCollectionsTemplate({ templateSettings, ...props }: Props) {
-  const suffix = props.templateSuffix ?? "box-collections";
-  const settings =
-    templateSettings?.[suffix] ?? templateSettings?.["box-collections"];
-
+export function SeasonedMarinadesTemplate({ templateSettings, ...props }: Props) {
+  const settings = templateSettings?.["seasoned-marinades"];
   const titlesWithOverride = settings?.sectionTitle
     ? { ...METAFIELD_TITLES, understanding_rubs: settings.sectionTitle }
     : METAFIELD_TITLES;
-
   const hasMetaContent = Object.keys(titlesWithOverride).some(
     (key) => props.product.metafields?.find((m: any) => m?.key === key)?.value ?? null,
   );
-
   const hasExtraContent =
     hasMetaContent || !!settings?.highlightText || (settings?.accordions?.length ?? 0) > 0;
 
-  if (!hasExtraContent) return <ProductPageShell {...props} templateSuffix={suffix} />;
+  if (!hasExtraContent) return <ProductPageShell {...props} templateSuffix="seasoned-marinades" />;
 
   return (
     <ProductPageShell
       {...props}
-      templateSuffix={suffix}
+      templateSuffix="seasoned-marinades"
       extraSections={
         <>
           {settings?.highlightText && (
@@ -48,7 +43,7 @@ export function BoxCollectionsTemplate({ templateSettings, ...props }: Props) {
             <MetafieldSubTabs
               product={props.product}
               metafieldTitles={titlesWithOverride}
-              flavorTagClass="bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300"
+              flavorTagClass="bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300"
             />
           )}
           {(settings?.accordions ?? []).length > 0 && (

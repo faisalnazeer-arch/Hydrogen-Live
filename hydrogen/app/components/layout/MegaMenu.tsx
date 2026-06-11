@@ -9,9 +9,10 @@ interface MegaMenuProps {
   columns: MegaColumn[];
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+  onLinkClick?: () => void;
 }
 
-export function MegaMenu({ columns, onMouseEnter, onMouseLeave }: MegaMenuProps) {
+export function MegaMenu({ columns, onMouseEnter, onMouseLeave, onLinkClick }: MegaMenuProps) {
   const isSimple = columns.length === 1 && !columns[0].title;
 
   if (isSimple) {
@@ -28,6 +29,8 @@ export function MegaMenu({ columns, onMouseEnter, onMouseLeave }: MegaMenuProps)
               <li key={l.url + l.label}>
                 <Link
                   to={l.url}
+                  prefetch="intent"
+                  onClick={onLinkClick}
                   className="block px-4 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-crimson"
                 >
                   {l.label}
@@ -64,6 +67,8 @@ export function MegaMenu({ columns, onMouseEnter, onMouseLeave }: MegaMenuProps)
                     <li key={l.url + l.label}>
                       <Link
                         to={l.url}
+                        prefetch="intent"
+                        onClick={onLinkClick}
                         className="block py-[3px] text-[13px] text-foreground/75 transition-colors hover:text-crimson"
                       >
                         {l.label}
