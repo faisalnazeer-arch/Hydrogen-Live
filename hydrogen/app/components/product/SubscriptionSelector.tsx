@@ -91,9 +91,16 @@ export function SubscriptionSelector({
             : "cursor-pointer border-border hover:border-muted-foreground",
         )}
       >
+        {/* Badge — centred on top border */}
+        {bestDiscount > 0 && (
+          <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-crimson px-4 py-1 text-xs font-bold text-white whitespace-nowrap">
+            {t("subscription.save_up_to")} {bestDiscount}%
+          </span>
+        )}
+
         {/* Header row */}
-        <div className="flex items-center gap-3 px-4 pb-3 pt-4">
-          <label className="flex flex-1 cursor-pointer items-center gap-3">
+        <div className={cn("flex items-center justify-between px-4 pb-3", bestDiscount > 0 ? "pt-5" : "pt-4")}>
+          <label className="flex cursor-pointer items-center gap-3">
             <input
               type="radio"
               name="purchase-type"
@@ -103,13 +110,7 @@ export function SubscriptionSelector({
             />
             <span className="text-base font-bold">{t("subscription.subscribe_save")}</span>
           </label>
-          {/* Badge + prices stacked on the right */}
           <div className="flex shrink-0 flex-col items-end gap-0.5">
-            {bestDiscount > 0 && (
-              <span className="rounded-full bg-crimson px-3 py-0.5 text-[11px] font-bold text-white whitespace-nowrap">
-                {t("subscription.save_up_to")} {bestDiscount}%
-              </span>
-            )}
             {subscriptionPriceNum < regularPriceNum && (
               <span className="text-xs text-muted-foreground line-through">
                 {fmt(regularPriceNum)}
