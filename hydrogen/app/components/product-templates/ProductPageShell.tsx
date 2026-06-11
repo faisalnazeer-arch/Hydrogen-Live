@@ -958,7 +958,7 @@ export function ProductPageShell({
           <img
             src={pageSettings?.badgeImage ?? "https://mlsuae.ae/cdn/shop/files/jm.jpg?v=1778667759"}
             alt="Trust badges"
-            className="w-full rounded-lg object-contain"
+            className="mx-auto h-14 w-auto object-contain"
             loading="lazy"
           />
 
