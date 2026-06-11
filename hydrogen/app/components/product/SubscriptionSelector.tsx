@@ -92,7 +92,7 @@ export function SubscriptionSelector({
         )}
       >
         {/* Header row */}
-        <div className="flex items-start gap-3 px-4 pb-3 pt-4">
+        <div className="flex items-center gap-3 px-4 pb-3 pt-4">
           <label className="flex flex-1 cursor-pointer items-center gap-3">
             <input
               type="radio"
