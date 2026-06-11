@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, type ReactNode, useRef } from "react";
 import {
-  Minus, Plus, Truck, ShieldCheck, RefreshCw, Loader2, ChevronDown,
+  Minus, Plus, Truck, ShieldCheck, RefreshCw, Loader2, ChevronDown, ChevronUp,
   Check, Play, MapPin, Phone, Clock, X, Store,
   FlameKindling, Leaf, PackageOpen,
 } from "lucide-react";
@@ -634,6 +634,7 @@ export function ProductPageShell({
   const [qty, setQty] = useState(1);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [stickyVisible, setStickyVisible] = useState(false);
+  const [stickyExpanded, setStickyExpanded] = useState(false);
   const [pickupDrawerOpen, setPickupDrawerOpen] = useState(false);
   const atcSentinelRef = useRef<HTMLDivElement>(null);
 
@@ -1037,6 +1038,53 @@ export function ProductPageShell({
 
       {/* ── Sticky Add to Cart bar ── */}
       <div className={`fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur transition-transform duration-300 ${stickyVisible ? "translate-y-0" : "translate-y-full"}`}>
+
+        {/* ── Expandable panel: variants + subscription ── */}
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${stickyExpanded ? "max-h-[60vh]" : "max-h-0"}`}>
+          <div className="container mx-auto space-y-4 overflow-y-auto px-4 pb-4 pt-4" style={{ maxHeight: "60vh" }}>
+
+            {/* Variant options */}
+            {hasOptions && (
+              <div className="space-y-3">
+                {product.options.map((option: any) => {
+                  if (option.values.length === 1 && option.values[0] === "Default Title") return null;
+                  return (
+                    <div key={option.name}>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{option.name}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {option.values.map((value: any) => {
+                          const mv = variants.find((v: any) => v.selectedOptions.some((o: any) => o.name === option.name && o.value === value));
+                          const active = variant?.selectedOptions.some((o: any) => o.name === option.name && o.value === value);
+                          return (
+                            <button key={value} type="button"
+                              onClick={() => { mv && setSelectedVariantId(mv.id); }}
+                              disabled={!mv?.availableForSale}
+                              className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${active ? "border-crimson bg-crimson text-crimson-foreground" : "border-border bg-card hover:border-crimson"} disabled:opacity-40`}>
+                              {value}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Subscription selector */}
+            {sellingPlanGroups.length > 0 && (
+              <SubscriptionSelector
+                groups={sellingPlanGroups}
+                selectedPlanId={selectedPlanId}
+                onSelect={setSelectedPlanId}
+                regularPrice={variant?.price.amount ?? "0"}
+                currency={currency}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* ── Main sticky row ── */}
         <div className="container mx-auto flex items-center gap-3 px-4 py-3">
           {images[0] && (
             <img src={shopifyImageUrl(images[0].url, 80)} alt={product.title} className="h-12 w-12 flex-shrink-0 rounded-lg object-cover" />
@@ -1053,8 +1101,21 @@ export function ProductPageShell({
             )}
             <p className="text-sm font-bold text-crimson">{formatPrice(displayPrice?.amount ?? "0", currency)}</p>
           </div>
+
+          {/* Expand toggle — shown when product has options or subscription */}
+          {(hasOptions || sellingPlanGroups.length > 0) && (
+            <button
+              type="button"
+              onClick={() => setStickyExpanded((e) => !e)}
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-crimson hover:text-crimson"
+              aria-label="Toggle options"
+            >
+              {stickyExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            </button>
+          )}
+
           {variant?.availableForSale ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <div className="flex items-center rounded-lg border border-border">
                 <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid h-10 w-10 place-items-center text-muted-foreground hover:text-foreground"><Minus className="h-3.5 w-3.5" /></button>
                 <span className="w-7 text-center text-sm font-semibold">{qty}</span>
