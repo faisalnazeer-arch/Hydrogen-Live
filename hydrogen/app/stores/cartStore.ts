@@ -239,6 +239,106 @@ const EMPTY: Pick<CartStore,
   orderNote: "",
 };
 
+// ── Free gift helpers ──────────────────────────────────────────────────────
+
+function getEnvGiftId(key: string): string {
+  if (typeof window === "undefined") return "";
+  return (window as any).ENV?.[key] ?? "";
+}
+
+function makeGiftItem(variantId: string): CartItem {
+  return {
+    lineId: null,
+    product: {
+      node: {
+        id: "", title: "Free Gift", handle: "", description: "",
+        descriptionHtml: "", tags: [], vendor: "", productType: "",
+        availableForSale: true,
+        priceRange: {
+          minVariantPrice: { amount: "0", currencyCode: "AED" },
+          maxVariantPrice: { amount: "0", currencyCode: "AED" },
+        },
+        images: { edges: [] },
+        variants: { edges: [] },
+        options: [],
+      },
+    } as ShopifyProduct,
+    variantId,
+    variantTitle: "Free Gift",
+    price: { amount: "0.00", currencyCode: "AED" },
+    quantity: 1,
+    selectedOptions: [],
+    isPending: false,
+  };
+}
+
+let _giftSyncing = false;
+
+async function syncFreeGifts(
+  get: () => CartStore,
+  set: (p: Partial<CartStore> | ((s: CartStore) => Partial<CartStore>)) => void,
+) {
+  if (_giftSyncing) return;
+  _giftSyncing = true;
+  try {
+    const subId = getEnvGiftId("PUBLIC_FREE_GIFT_SUBSCRIPTION_VARIANT_ID");
+    const carId = getEnvGiftId("PUBLIC_FREE_GIFT_CARCASS_VARIANT_ID");
+    if (!subId && !carId) return;
+
+    const { items, cartId } = get();
+    if (!cartId) return;
+
+    // Only user items (exclude the gifts themselves) drive the logic
+    const userItems = items.filter((i) => i.variantId !== subId && i.variantId !== carId);
+
+    const wantSub = !!subId && userItems.some((i) => !!i.sellingPlanId);
+    const wantCar = !!carId && userItems.some(
+      (i) => i.product.node.title.toLowerCase().includes("carcass"),
+    );
+
+    const hasSub = items.find((i) => i.variantId === subId);
+    const hasCar = items.find((i) => i.variantId === carId);
+
+    // ── Subscription gift ──────────────────────────────────────────────────
+    if (subId) {
+      if (wantSub && !hasSub) {
+        const gift = makeGiftItem(subId);
+        set((s) => ({ items: [...s.items, { ...gift, isPending: true }] }));
+        const res = await addLineToShopifyCart(cartId, gift);
+        set((s) => ({
+          items: res.success
+            ? s.items.map((i) => i.variantId === subId && i.isPending
+                ? { ...i, lineId: res.lineId ?? null, isPending: false } : i)
+            : s.items.filter((i) => !(i.variantId === subId && i.isPending)),
+        }));
+      } else if (!wantSub && hasSub?.lineId) {
+        set((s) => ({ items: s.items.filter((i) => i.variantId !== subId) }));
+        await removeLineFromShopifyCart(cartId, hasSub.lineId);
+      }
+    }
+
+    // ── Carcass gift ───────────────────────────────────────────────────────
+    if (carId) {
+      if (wantCar && !hasCar) {
+        const gift = makeGiftItem(carId);
+        set((s) => ({ items: [...s.items, { ...gift, isPending: true }] }));
+        const res = await addLineToShopifyCart(cartId, gift);
+        set((s) => ({
+          items: res.success
+            ? s.items.map((i) => i.variantId === carId && i.isPending
+                ? { ...i, lineId: res.lineId ?? null, isPending: false } : i)
+            : s.items.filter((i) => !(i.variantId === carId && i.isPending)),
+        }));
+      } else if (!wantCar && hasCar?.lineId) {
+        set((s) => ({ items: s.items.filter((i) => i.variantId !== carId) }));
+        await removeLineFromShopifyCart(cartId, hasCar.lineId);
+      }
+    }
+  } finally {
+    _giftSyncing = false;
+  }
+}
+
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
@@ -339,6 +439,7 @@ export const useCartStore = create<CartStore>()(
           set({ items: get().items.filter((i) => !i.isPending) });
         } finally {
           set({ isLoading: false });
+          void syncFreeGifts(get, set);
         }
       },
 
@@ -360,6 +461,7 @@ export const useCartStore = create<CartStore>()(
           }
         } finally {
           set({ isLoading: false });
+          void syncFreeGifts(get, set);
         }
       },
 
@@ -379,6 +481,7 @@ export const useCartStore = create<CartStore>()(
           }
         } finally {
           set({ isLoading: false });
+          void syncFreeGifts(get, set);
         }
       },
 

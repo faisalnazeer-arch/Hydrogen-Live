@@ -68,6 +68,9 @@ export function CartDrawer() {
   useEffect(() => { if (isOpen) syncCart(); }, [isOpen, syncCart]);
   useEffect(() => { setNoteValue(orderNote); }, [orderNote]);
 
+  const subGiftId     = typeof window !== "undefined" ? ((window as any).ENV?.PUBLIC_FREE_GIFT_SUBSCRIPTION_VARIANT_ID ?? "") : "";
+  const carcassGiftId = typeof window !== "undefined" ? ((window as any).ENV?.PUBLIC_FREE_GIFT_CARCASS_VARIANT_ID     ?? "") : "";
+
   const totalItems = items.reduce((n, i) => n + i.quantity, 0);
   const subtotal = items.reduce((n, i) => n + parseFloat(i.price.amount) * i.quantity, 0);
   const currency = items[0]?.price.currencyCode ?? "AED";
@@ -232,6 +235,8 @@ export function CartDrawer() {
                 {items.map((item) => {
                   const img = item.product.node.images.edges[0]?.node;
                   const pending = !!item.isPending;
+                  const isGift = !!(subGiftId && item.variantId === subGiftId) ||
+                                 !!(carcassGiftId && item.variantId === carcassGiftId);
                   return (
                     <li
                       key={`${item.variantId}-${item.sellingPlanId ?? "none"}`}
@@ -297,28 +302,35 @@ export function CartDrawer() {
                         })()}
 
                           <div className="mt-auto flex items-center justify-between pt-1">
-                          {/* Quantity + delete side by side */}
-                          <div className="flex items-center gap-2">
-                            <QuantitySelector
-                              size="sm"
-                              value={item.quantity}
-                              onChange={(qty) => updateQuantity(item.variantId, qty)}
-                              min={0}
-                              className={pending || isLoading ? "pointer-events-none opacity-50" : ""}
-                            />
-                            <button
-                              type="button"
-                              aria-label="Remove"
-                              disabled={pending}
-                              onClick={() => removeItem(item.variantId)}
-                              className={`rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-crimson ${pending ? "cursor-not-allowed opacity-30" : ""}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
+                          {isGift ? (
+                            /* Free gift — no qty selector or remove button */
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                              🎁 Free Gift
+                            </span>
+                          ) : (
+                            /* Normal item controls */
+                            <div className="flex items-center gap-2">
+                              <QuantitySelector
+                                size="sm"
+                                value={item.quantity}
+                                onChange={(qty) => updateQuantity(item.variantId, qty)}
+                                min={0}
+                                className={pending || isLoading ? "pointer-events-none opacity-50" : ""}
+                              />
+                              <button
+                                type="button"
+                                aria-label="Remove"
+                                disabled={pending}
+                                onClick={() => removeItem(item.variantId)}
+                                className={`rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-crimson ${pending ? "cursor-not-allowed opacity-30" : ""}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          )}
 
                           <div className="flex flex-col items-end gap-0">
-                            {item.compareAtPrice && item.compareAtPrice.amount !== item.price.amount && (
+                            {!isGift && item.compareAtPrice && item.compareAtPrice.amount !== item.price.amount && (
                               <span className="text-xs text-muted-foreground line-through">
                                 {formatPrice(
                                   parseFloat(item.compareAtPrice.amount) * item.quantity,
@@ -326,8 +338,8 @@ export function CartDrawer() {
                                 )}
                               </span>
                             )}
-                            <span className="font-bold text-crimson">
-                              {formatPrice(
+                            <span className={`font-bold ${isGift ? "text-emerald-600 text-xs" : "text-crimson"}`}>
+                              {isGift ? "FREE" : formatPrice(
                                 parseFloat(item.price.amount) * item.quantity,
                                 item.price.currencyCode,
                               )}
