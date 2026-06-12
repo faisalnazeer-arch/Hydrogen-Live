@@ -762,15 +762,30 @@ export function ProductPageShell({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       {/* Breadcrumb */}
-      <div className="container mx-auto px-4 py-3">
-        <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Link to="/" className="transition-colors hover:text-foreground">Home</Link>
-          <span>/</span>
-          <Link to="/collections/all" className="transition-colors hover:text-foreground">{product.vendor || "Products"}</Link>
-          <span>/</span>
-          <span className="max-w-[220px] truncate font-medium text-foreground">{product.title}</span>
-        </nav>
-      </div>
+      {(() => {
+        const category = (product.collections?.nodes ?? []).find(
+          (c: any) => c.handle && c.handle !== "all" && c.handle !== "frontpage"
+        );
+        return (
+          <div className="container mx-auto px-4 py-3">
+            <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Link to="/" className="transition-colors hover:text-foreground">Home</Link>
+              <span>/</span>
+              {category ? (
+                <Link to={`/collections/${category.handle}`} className="transition-colors hover:text-foreground">
+                  {category.title}
+                </Link>
+              ) : (
+                <Link to="/collections/all" className="transition-colors hover:text-foreground">
+                  {product.vendor || "Products"}
+                </Link>
+              )}
+              <span>/</span>
+              <span className="max-w-[220px] truncate font-medium text-foreground">{product.title}</span>
+            </nav>
+          </div>
+        );
+      })()}
 
       <div className="container mx-auto grid gap-6 px-4 pb-4 md:grid-cols-2 md:items-start md:gap-10">
         {/* ── Media gallery — sticky on desktop so it stays visible while user reads long right col ── */}

@@ -187,7 +187,7 @@ const PRODUCT_QUERY = `#graphql
         {namespace: "custom", key: "understanding_rubs"}
         {namespace: "custom", key: "marinade_recipe"}
       ]) { key value }
-      collections(first: 30) { nodes { id } }
+      collections(first: 30) { nodes { id title handle } }
     }
   }
 ` as const;
