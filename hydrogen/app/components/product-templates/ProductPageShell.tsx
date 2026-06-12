@@ -847,7 +847,8 @@ export function ProductPageShell({
 
           {/* Thumbnail row — below main image, native scroll + overlay arrows */}
           {allMedia.length > 1 && (
-            <div className="relative">
+            /* h-[80px]+overflow-hidden clips the native scrollbar pushed into pb-4 zone */
+            <div className="relative h-[80px] w-full overflow-hidden">
               {/* Left arrow — only visible when scrolled right */}
               <button type="button" aria-label="Previous images"
                 onClick={() => thumbTrackRef.current?.scrollBy({ left: -THUMB_SCROLL, behavior: 'smooth' })}
@@ -855,9 +856,9 @@ export function ProductPageShell({
                 <ChevronLeft className="h-4 w-4" />
               </button>
 
-              {/* Scrollable track — hides scrollbar, fills full width */}
+              {/* Scrollable track — pb-4 pushes scrollbar into clipped zone, always fills full width */}
               <div ref={thumbTrackRef}
-                className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                className="flex h-[96px] w-full gap-2 overflow-x-auto pb-4">
                 {allMedia.map((media, i) => {
                   const thumb = media.type === "image" ? shopifyImageUrl(media.url, 200) : media.type === "video" ? (media.poster ?? "") : (media as any).poster ?? "";
                   const isActive = i === activeMediaIdx;
