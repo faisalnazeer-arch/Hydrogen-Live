@@ -809,7 +809,7 @@ export function ProductPageShell({
 
             {/* ── Vertical thumbnails — desktop only, left column ── */}
             {allMedia.length > 1 && (
-              <div className="hidden md:flex md:flex-col md:gap-1.5">
+              <div className="hidden md:flex md:flex-col md:gap-1.5 md:overflow-hidden">
                 {/* Up arrow */}
                 <button
                   type="button"
@@ -821,7 +821,7 @@ export function ProductPageShell({
                 </button>
 
                 {/* Scrollable clip — grows to fill remaining height between arrows */}
-                <div className="flex-1 overflow-hidden">
+                <div className="min-h-0 flex-1 overflow-hidden">
                   <div
                     className="flex flex-col gap-1.5 transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
                     style={{ transform: `translateY(-${thumbStart * VERT_STEP}px)` }}
@@ -836,8 +836,8 @@ export function ProductPageShell({
                           onClick={() => setActiveMediaIdx(i)}
                           className={`relative h-[80px] w-full flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 ${
                             isActive
-                              ? "scale-[1.04] border-crimson shadow-[0_0_0_2px_rgba(180,0,0,0.12)]"
-                              : "border-transparent opacity-55 hover:scale-[1.02] hover:border-border hover:opacity-90"
+                              ? "border-crimson shadow-[inset_0_0_0_1px_rgba(180,0,0,0.25)]"
+                              : "border-transparent opacity-55 hover:border-border/60 hover:opacity-90"
                           }`}
                         >
                           {thumb && <img src={thumb} alt="" className="h-full w-full object-cover" />}
@@ -906,8 +906,8 @@ export function ProductPageShell({
                         onClick={() => setActiveMediaIdx(i)}
                         className={`relative h-[80px] w-[80px] flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 ${
                           isActive
-                            ? "scale-105 border-crimson shadow-[0_0_0_2px_rgba(180,0,0,0.12)]"
-                            : "border-transparent opacity-60 hover:opacity-100 hover:border-border hover:scale-[1.02]"
+                            ? "border-crimson shadow-[inset_0_0_0_1px_rgba(180,0,0,0.25)]"
+                            : "border-transparent opacity-60 hover:opacity-100 hover:border-border/60"
                         }`}
                       >
                         {thumb && <img src={thumb} alt="" className="h-full w-full object-cover" />}
