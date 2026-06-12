@@ -60,10 +60,14 @@ export async function fetchJudgemeReviews(
       return emptyResponse(page, perPage);
     }
 
-    // Normalise: if total_count is still null/undefined, fall back to the
-    // length of the reviews array so the UI never silently hides real reviews.
+    // Normalise total_count when Judge.me omits it (plan-dependent).
+    // If a full page came back there are likely more reviews — set count
+    // to signal the UI to show a Load More button. If a partial page came
+    // back this is the last page, so count = what we have so far.
     if (data.total_count == null) {
-      data.total_count = data.reviews?.length ?? 0;
+      const loaded = (page - 1) * perPage + (data.reviews?.length ?? 0);
+      const fullPage = (data.reviews?.length ?? 0) >= perPage;
+      data.total_count = fullPage ? loaded + 1 : loaded;
     }
 
     return data;
