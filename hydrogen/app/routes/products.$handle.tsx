@@ -351,14 +351,20 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   }
 
   // ── Reviews — awaited in the critical path (fast ~200ms, must not be deferred) ──────────
-  // Previously inside lazyData, but any slow co-fetch (recommendations, admin, Globo)
-  // could hit the 3 500 ms race timeout and wipe out reviews. Fetching them here
-  // guarantees they are always present in the initial response.
+  // Reviews fetched in the critical path with a 2.5s budget.
+  // If Judge.me is slow (cold TCP ~4s) the timeout fires → empty reviews returned →
+  // the client-side fallback in JudgemeReviews fetches them after hydration (~500ms warm).
+  const emptyReviews = { reviews: [] as any[], total_count: 0, current_page: 1, per_page: 10 };
+  const emptyRating  = { average: 0, count: 0, histogram: [0, 0, 0, 0, 0] as [number,number,number,number,number] };
   const [reviewsFetchResult, ratingFetchResult] = await Promise.all([
-    fetchJudgemeReviews(handle, shopDomain, judgemeToken, 1, 10, externalId)
-      .catch(() => ({ reviews: [] as any[], total_count: 0, current_page: 1, per_page: 10 })),
-    fetchJudgemeRating(data.product.id, shopDomain, judgemeToken)
-      .catch(() => ({ average: 0, count: 0, histogram: [0, 0, 0, 0, 0] as [number,number,number,number,number] })),
+    Promise.race([
+      fetchJudgemeReviews(handle, shopDomain, judgemeToken, 1, 10, externalId).catch(() => emptyReviews),
+      new Promise<typeof emptyReviews>((r) => setTimeout(() => r(emptyReviews), 2500)),
+    ]),
+    Promise.race([
+      fetchJudgemeRating(data.product.id, shopDomain, judgemeToken).catch(() => emptyRating),
+      new Promise<typeof emptyRating>((r) => setTimeout(() => r(emptyRating), 2500)),
+    ]),
   ]);
   const reviewsSummary = buildRatingSummary(reviewsFetchResult as any);
   const initialRating = (ratingFetchResult as any).average > 0 ? ratingFetchResult : reviewsSummary;
