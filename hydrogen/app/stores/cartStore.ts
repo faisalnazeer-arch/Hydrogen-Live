@@ -414,6 +414,8 @@ export const useCartStore = create<CartStore>()(
       setOpen: (open) => set({ isOpen: open }),
 
       addItem: async (item) => {
+        // Silently block manual addition of zero-price (free-gift) products
+        if (parseFloat(item.price.amount) === 0) return;
         const { items, cartId, clearCart } = get();
         const existing = items.find(
           (i) => i.variantId === item.variantId && i.sellingPlanId === item.sellingPlanId

@@ -151,6 +151,324 @@
   --ring: var(--rich-red);
 }
 
+/* ── Judge.me widget — MLS brand ─────────────────────────────────────────── */
+
+/* Shimmer animation — used by skeleton loader before widget content loads */
+@keyframes mls-shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+.mls-skel-box {
+  background: linear-gradient(90deg,
+    oklch(0.93 0.006 80)  0px,
+    oklch(0.97 0.003 80) 200px,
+    oklch(0.93 0.006 80) 400px
+  );
+  background-size: 600px 100%;
+  animation: mls-shimmer 1.6s infinite linear;
+  border-radius: 0.25rem;
+}
+
+/* Card entrance — new cards fade+slide in after load-more */
+@keyframes mls-rev-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.jdgm-widget,
+.jdgm-widget * { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important; box-sizing: border-box !important; }
+/* overflow-x:hidden clips masonry's transient inline-widths before our !important overrides land */
+.jdgm-widget { overflow-x: hidden !important; }
+
+/* ── Stars ───────────────────────────────────────────────────────────────── */
+.jdgm--on, .jdgm--half { color: oklch(0.74 0.11 80) !important; }
+.jdgm--off              { color: oklch(0.88 0.03 80) !important; }
+
+/* ── Summary / header panel ─────────────────────────────────────────────── */
+/* Card frame only — no layout overrides. Judge.me controls the internal     */
+/* flex/grid; overriding flex-direction here breaks it across screen sizes.  */
+.jdgm-rev-widg__header {
+  background: #fff !important;
+  border: 1px solid oklch(0.91 0.007 80) !important;
+  border-radius: 0.875rem !important;
+  padding: 1rem 1.25rem !important;
+  margin-bottom: 1rem !important;
+  flex-wrap: wrap !important;       /* let items wrap on narrow viewports    */
+  gap: 0.75rem !important;          /* consistent spacing between JM blocks  */
+  align-items: center !important;   /* vertical centre across all columns    */
+}
+
+/* Rating number & review count — colors/typography only */
+.jdgm-rev-widg__summary-rating {
+  font-size: 2rem !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  color: oklch(0.18 0.005 240) !important;
+  letter-spacing: -0.02em !important;
+}
+.jdgm-rev-widg__summary-rec {
+  font-size: 0.75rem !important;
+  color: oklch(0.55 0.01 60) !important;
+}
+
+/* Histogram label / count — typography only, no width overrides */
+.jdgm-histogram-label, .jdgm-histogram__label {
+  font-size: 0.7rem !important;
+  color: oklch(0.48 0.01 60) !important;
+}
+.jdgm-histogram-count, .jdgm-histogram__count {
+  font-size: 0.7rem !important;
+  color: oklch(0.55 0.01 60) !important;
+}
+
+/* Histogram bar track & fill */
+.jdgm-histogram-bar, .jdgm-histogram__bar {
+  height: 6px !important;
+  background-color: oklch(0.92 0.006 80) !important;
+  border-radius: 9999px !important;
+  overflow: hidden !important;
+}
+.jdgm-histogram-bar .jdgm-histogram-bar-inner,
+.jdgm-histogram-bar-inner,
+.jdgm-histogram__bar-inner {
+  background-color: oklch(0.36 0.18 27) !important;
+  border-radius: 9999px !important;
+  height: 100% !important;
+  transition: width 0.6s ease !important;
+}
+
+/* Write a Review button */
+.jdgm-write-rev-link, a.jdgm-write-rev-link {
+  background-color: oklch(0.36 0.18 27) !important;
+  border: none !important;
+  border-radius: 9999px !important;
+  color: #fff !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  padding: 0.5rem 1.25rem !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s, transform 0.1s !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  white-space: nowrap !important;
+  letter-spacing: 0.01em !important;
+}
+.jdgm-write-rev-link:hover, a.jdgm-write-rev-link:hover {
+  background-color: oklch(0.52 0.21 28) !important;
+  transform: translateY(-1px) !important;
+  color: #fff !important;
+}
+
+/* ── Reviews grid — capped at 3 columns ─────────────────────────────────── */
+/* auto-fill would create 5+ columns on wide screens; explicit breakpoints
+   cap it at 3 and guarantee 1 col on mobile.                               */
+.jdgm-reviews-container,
+.jdgm-all-reviews-body,
+.jdgm-rev-widg__reviews {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 0.75rem !important;
+  position: relative !important;
+  height: auto !important;
+  width: 100% !important;
+  min-height: 80px !important;
+  transition: opacity 0.25s ease !important;
+}
+@media (min-width: 640px) {
+  .jdgm-reviews-container,
+  .jdgm-all-reviews-body,
+  .jdgm-rev-widg__reviews { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (min-width: 1024px) {
+  .jdgm-reviews-container,
+  .jdgm-all-reviews-body,
+  .jdgm-rev-widg__reviews { grid-template-columns: repeat(3, 1fr) !important; }
+}
+
+/* ── Review cards ────────────────────────────────────────────────────────── */
+/* width:100% + min-width:0 prevent masonry's inline-width from expanding
+   the card past its grid column even for the brief paint before !important lands */
+.jdgm-rev {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  float: none !important;
+  background: #fff !important;
+  border: 1px solid oklch(0.91 0.007 80) !important;
+  border-radius: 0.75rem !important;
+  padding: 1rem !important;
+  box-shadow: none !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+  margin-bottom: 0 !important;
+  break-inside: avoid !important;
+  animation: mls-rev-in 0.35s ease both !important;
+}
+.jdgm-rev:hover {
+  border-color: oklch(0.82 0.01 80) !important;
+  box-shadow: 0 4px 16px -6px oklch(0.18 0.005 240 / 0.12) !important;
+}
+.jdgm-rev__separator { display: none !important; }
+
+/* ── Card internals ──────────────────────────────────────────────────────── */
+.jdgm-rev__author    { font-weight: 600 !important; font-size: 0.825rem !important; color: oklch(0.18 0.005 240) !important; }
+.jdgm-rev__timestamp { font-size: 0.72rem !important; color: oklch(0.55 0.01 60) !important; }
+.jdgm-rev__title     { font-weight: 600 !important; font-size: 0.875rem !important; color: oklch(0.18 0.005 240) !important; display: block !important; margin-bottom: 0.25rem !important; }
+.jdgm-rev__body p, .jdgm-rev__body { font-size: 0.825rem !important; line-height: 1.55 !important; color: oklch(0.38 0.008 60) !important; }
+
+/* Avatar initials circle */
+.jdgm-rev__icon {
+  width: 32px !important; height: 32px !important; border-radius: 50% !important;
+  background-color: oklch(0.36 0.18 27) !important; color: #fff !important;
+  font-size: 0.75rem !important; font-weight: 700 !important;
+  display: flex !important; align-items: center !important; justify-content: center !important; flex-shrink: 0 !important;
+}
+
+/* Verified / gold badge */
+.jdgm-verified-badge, .jdgm-badge-icon, .jdgm-rev__verified-badge { color: oklch(0.74 0.11 80) !important; }
+
+/* ── Other-language reviews section ─────────────────────────────────────── */
+/* display:block prevents any stray Judge.me class from collapsing this section */
+.jdgm-other-reviews-section {
+  display: block !important;
+  margin-top: 1.75rem !important;
+  visibility: visible !important;
+}
+
+/* Smooth fade while loading more — opacity only, no pointer-events override.
+   pointer-events:none blocked Judge.me's JS callbacks and caused the
+   "Reviews in Other Languages" section to disappear after Load More.        */
+.jdgm-loading > .jdgm-reviews-container,
+.jdgm-loading > .jdgm-all-reviews-body,
+.jdgm-reviews-container.jdgm-loading,
+.jdgm-all-reviews-body.jdgm-loading {
+  opacity: 0.45 !important;
+}
+
+/* ── Photo gallery — horizontal scroll strip ─────────────────────────────── */
+.jdgm-media-gallery, .jdgm-gallery {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 0.375rem !important;
+  margin-bottom: 1rem !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  padding-bottom: 2px !important;
+}
+.jdgm-media-gallery::-webkit-scrollbar, .jdgm-gallery::-webkit-scrollbar { display: none !important; }
+.jdgm-media-gallery__thumb, .jdgm-media-item, .jdgm-gallery-item, .jdgm-media-thumb {
+  width: 64px !important; height: 64px !important; border-radius: 0.5rem !important;
+  overflow: hidden !important; border: 2px solid transparent !important;
+  transition: border-color 0.15s, transform 0.15s !important; cursor: pointer !important; flex-shrink: 0 !important;
+}
+.jdgm-media-gallery__thumb:hover, .jdgm-media-item:hover, .jdgm-gallery-item:hover, .jdgm-media-thumb:hover {
+  border-color: oklch(0.36 0.18 27) !important; transform: scale(1.05) !important;
+}
+.jdgm-media-gallery__thumb img, .jdgm-media-item img, .jdgm-gallery-item img, .jdgm-media-thumb img {
+  width: 100% !important; height: 100% !important; object-fit: cover !important; display: block !important;
+}
+a.jdgm-gallery__more-link, .jdgm-gallery-more {
+  width: 64px !important; height: 64px !important; border-radius: 0.5rem !important;
+  background-color: oklch(0.94 0.005 80) !important; border: 1.5px solid oklch(0.9 0.008 80) !important;
+  display: inline-flex !important; align-items: center !important; justify-content: center !important;
+  color: oklch(0.36 0.18 27) !important; font-weight: 700 !important; font-size: 0.73rem !important;
+  text-decoration: none !important; transition: background-color 0.15s !important; flex-shrink: 0 !important;
+}
+a.jdgm-gallery__more-link:hover, .jdgm-gallery-more:hover { background-color: oklch(0.91 0.007 80) !important; }
+
+/* ── Toolbar (sort + search) ─────────────────────────────────────────────── */
+.jdgm-all-reviews__toolbar, .jdgm-rev-widg__toolbar {
+  display: flex !important;
+  gap: 0.5rem !important;
+  margin-bottom: 0.875rem !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+}
+.jdgm-sort-button, select.jdgm-sort-button, .jdgm-all-reviews__sort {
+  border: 1px solid oklch(0.9 0.008 80) !important; border-radius: 0.5rem !important;
+  padding: 0.35rem 0.625rem !important; font-size: 0.8rem !important;
+  background-color: #fff !important; color: oklch(0.18 0.005 240) !important; cursor: pointer !important;
+}
+.jdgm-search-input, input.jdgm-search-input {
+  border: 1px solid oklch(0.9 0.008 80) !important; border-radius: 9999px !important;
+  padding: 0.35rem 0.875rem !important; font-size: 0.8rem !important;
+  background-color: #fff !important; color: oklch(0.18 0.005 240) !important;
+  flex: 1 !important; min-width: 0 !important;
+}
+.jdgm-search-input:focus, input.jdgm-search-input:focus {
+  outline: 2px solid oklch(0.36 0.18 27) !important; border-color: oklch(0.36 0.18 27) !important;
+}
+
+/* ── Pagination ──────────────────────────────────────────────────────────── */
+.jdgm-paginate {
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  gap: 0.3rem !important; margin-top: 1.25rem !important; flex-wrap: wrap !important;
+}
+.jdgm-paginate a, .jdgm-paginate span {
+  display: inline-flex !important; align-items: center !important; justify-content: center !important;
+  min-width: 32px !important; height: 32px !important; border-radius: 0.375rem !important;
+  border: 1px solid oklch(0.9 0.008 80) !important; font-size: 0.8rem !important;
+  color: oklch(0.35 0.008 60) !important; background: #fff !important;
+  cursor: pointer !important; transition: background-color 0.15s, color 0.15s, border-color 0.15s !important;
+  text-decoration: none !important; padding: 0 0.4rem !important;
+}
+.jdgm-paginate a:hover { background-color: oklch(0.36 0.18 27) !important; border-color: oklch(0.36 0.18 27) !important; color: #fff !important; }
+.jdgm-paginate .jdgm--active { background-color: oklch(0.36 0.18 27) !important; border-color: oklch(0.36 0.18 27) !important; color: #fff !important; font-weight: 600 !important; }
+
+/* Load More — outlined pill (fills crimson on hover) */
+.jdgm-paginate__load-more, a.jdgm-paginate__load-more {
+  background-color: transparent !important;
+  border: 1.5px solid oklch(0.36 0.18 27) !important;
+  border-radius: 9999px !important;
+  color: oklch(0.36 0.18 27) !important;
+  font-weight: 600 !important;
+  padding: 0.5rem 1.875rem !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s, color 0.15s, transform 0.1s !important;
+  text-decoration: none !important;
+  font-size: 0.825rem !important;
+  letter-spacing: 0.01em !important;
+  min-width: 0 !important;
+  height: auto !important;
+}
+.jdgm-paginate__load-more:hover, a.jdgm-paginate__load-more:hover {
+  background-color: oklch(0.36 0.18 27) !important; color: #fff !important; transform: translateY(-1px) !important;
+}
+
+/* ── Widget title ────────────────────────────────────────────────────────── */
+.jdgm-widget-title, .jdgm-all-reviews-text {
+  font-size: 1.1rem !important; font-weight: 700 !important;
+  color: oklch(0.18 0.005 240) !important; letter-spacing: -0.01em !important; margin-bottom: 0.875rem !important;
+}
+
+/* ── Write-review form ───────────────────────────────────────────────────── */
+.jdgm-form input, .jdgm-form textarea, .jdgm-form select {
+  border: 1px solid oklch(0.9 0.008 80) !important; border-radius: 0.5rem !important;
+  padding: 0.45rem 0.625rem !important; font-size: 0.85rem !important;
+  background: #fff !important; color: oklch(0.18 0.005 240) !important; width: 100% !important;
+}
+.jdgm-form input:focus, .jdgm-form textarea:focus {
+  outline: 2px solid oklch(0.36 0.18 27) !important; border-color: oklch(0.36 0.18 27) !important;
+}
+button.jdgm-submit-rev, .jdgm-form__submit {
+  background-color: oklch(0.36 0.18 27) !important; border: none !important;
+  border-radius: 9999px !important; color: #fff !important; font-weight: 600 !important;
+  padding: 0.5rem 1.75rem !important; cursor: pointer !important; transition: background-color 0.15s !important;
+}
+button.jdgm-submit-rev:hover, .jdgm-form__submit:hover { background-color: oklch(0.52 0.21 28) !important; }
+
+/* ── Links ───────────────────────────────────────────────────────────────── */
+.jdgm-widget a:not(.jdgm-write-rev-link):not(.jdgm-branding):not(.jdgm-paginate__load-more) {
+  color: oklch(0.36 0.18 27) !important; text-decoration: none !important;
+}
+.jdgm-widget a:not(.jdgm-write-rev-link):not(.jdgm-branding):not(.jdgm-paginate__load-more):hover {
+  color: oklch(0.52 0.21 28) !important;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);

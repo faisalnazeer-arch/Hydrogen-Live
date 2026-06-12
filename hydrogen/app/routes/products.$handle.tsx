@@ -1,4 +1,5 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
+import { redirect } from "@shopify/remix-oxygen";
 import type { ShouldRevalidateFunctionArgs } from "react-router";
 import { useLoaderData, Await } from "react-router";
 import { Suspense } from "react";
@@ -273,6 +274,9 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     context.adminFetch(ADMIN_TEMPLATE_SUFFIX_QUERY(handle)).catch(() => null),
   ]);
   if (!data.product) throw new Response("Not found", { status: 404 });
+  // Zero-price products are internal free-gift items — redirect to home instead of 404
+  if (parseFloat(data.product.priceRange?.minVariantPrice?.amount ?? "1") === 0)
+    throw redirect("/");
 
   const externalId = data.product.id.split("/").pop() ?? undefined;
 
@@ -380,6 +384,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
       globoPromise,
     ]).then(([recsData, settingsData, templateSettingsData, globoOptionSets]) => {
     const recommendations: ShopifyProduct[] = (recsData?.productRecommendations ?? [])
+      .filter((node: any) => parseFloat(node.priceRange?.minVariantPrice?.amount ?? "0") > 0)
       .slice(0, 8)
       .map((node: any) => ({ node }));
 

@@ -82,7 +82,9 @@ export function SearchAutosuggest({
     navigate(`/search?q=${encodeURIComponent(value.trim())}`);
   };
 
-  const products = data ?? [];
+  const products = (data ?? []).filter(
+    (p: PredictiveProduct) => parseFloat(p.priceRange.minVariantPrice.amount) > 0
+  );
 
   return (
     <div ref={ref} className="relative w-full">

@@ -20,7 +20,8 @@ export function RecentlyViewed() {
         first: handles.length,
         query,
       });
-      const products: ShopifyProduct[] = res?.data?.products?.edges ?? [];
+      const products: ShopifyProduct[] = (res?.data?.products?.edges ?? [])
+        .filter((p: ShopifyProduct) => parseFloat(p.node.priceRange.minVariantPrice.amount) > 0);
       // preserve order
       return handles
         .map((h) => products.find((p) => p.node.handle === h))

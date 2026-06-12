@@ -254,6 +254,7 @@ export default function Collection() {
   const filtered = useMemo(() => {
     return allProducts.filter((p) => {
       const price = parseFloat(p.node.priceRange.minVariantPrice.amount);
+      if (price === 0) return false;
       if (price > priceMax) return false;
       const origin = getOriginFromProduct(p.node.tags, p.node.title);
       if (selectedOrigins.length > 0 && (!origin || !selectedOrigins.includes(origin))) return false;

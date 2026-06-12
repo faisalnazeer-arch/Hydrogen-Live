@@ -19,6 +19,7 @@ import {
 import { useCartStore } from "~/stores/cartStore";
 import { useRecentlyViewed } from "~/stores/recentlyViewedStore";
 import { JudgemeReviews } from "~/components/reviews/JudgemeReviews";
+import { JudgemeWidgetEmbed } from "~/components/reviews/JudgemeWidgetEmbed";
 import { StarRating } from "~/components/reviews/StarRating";
 import { SubscriptionSelector, parseSellingPlanGroups } from "~/components/product/SubscriptionSelector";
 import { ProductCard } from "~/components/product/ProductCard";
@@ -632,6 +633,7 @@ export function ProductPageShell({
   const [selectedVariantId, setSelectedVariantId] = useState(variants[0]?.id ?? "");
   const [activeMediaIdx, setActiveMediaIdx] = useState(0);
   const [qty, setQty] = useState(1);
+  const [specialRequest, setSpecialRequest] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [stickyVisible, setStickyVisible] = useState(false);
   const [stickyExpanded, setStickyExpanded] = useState(false);
@@ -756,12 +758,16 @@ export function ProductPageShell({
     const selectedPlan = selectedPlanId
       ? sellingPlanGroups.flatMap((g) => g.plans).find((p) => p.id === selectedPlanId)
       : null;
+    const attributes: Array<{ key: string; value: string }> = [
+      ...globoAttributes,
+      ...(specialRequest.trim() ? [{ key: "Special Request", value: specialRequest.trim() }] : []),
+    ];
     await addItem({
       product: shopifyProduct, variantId: variant.id, variantTitle: variant.title,
       price: displayPrice, quantity: qty, selectedOptions: variant.selectedOptions,
       sellingPlanId: selectedPlanId ?? undefined,
       sellingPlanName: selectedPlan?.name ?? null,
-      attributes: globoAttributes.length ? globoAttributes : undefined,
+      attributes: attributes.length ? attributes : undefined,
     });
   };
 
@@ -1006,6 +1012,23 @@ export function ProductPageShell({
               regularPrice={variant?.price.amount ?? "0"} currency={currency} />
           )}
 
+          {/* Special Request — default template only */}
+          {!templateSuffix && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="special-request" className="text-sm font-semibold text-foreground">
+                Special Request
+              </label>
+              <textarea
+                id="special-request"
+                rows={2}
+                value={specialRequest}
+                onChange={(e) => setSpecialRequest(e.target.value)}
+                placeholder="Any special instructions for your order…"
+                className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-crimson focus:outline-none focus:ring-2 focus:ring-crimson/20"
+              />
+            </div>
+          )}
+
           {/* ATC sentinel — IntersectionObserver watches this */}
           <div ref={atcSentinelRef} aria-hidden />
 
@@ -1220,9 +1243,16 @@ export function ProductPageShell({
         </div>
       )}
 
-      {/* Reviews */}
+      {/* Reviews — Judge.me CDN widget (shows all reviews including historical ones) */}
       <div id="reviews" className="container mx-auto px-4 pb-8">
-        <JudgemeReviews reviews={reviews} rating={rating} totalCount={reviewsTotalCount} handle={product.handle} externalId={externalId ?? undefined} />
+        {externalId ? (
+          <JudgemeWidgetEmbed
+            externalId={externalId}
+            shopDomain="mls-uae.myshopify.com"
+          />
+        ) : (
+          <JudgemeReviews reviews={reviews} rating={rating} totalCount={reviewsTotalCount} handle={product.handle} externalId={undefined} />
+        )}
       </div>
 
       {/* Recently viewed */}

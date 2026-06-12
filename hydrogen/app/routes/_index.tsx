@@ -360,7 +360,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     await Promise.all(allHandles.map(async (handle) => {
       try {
         const res = await context.storefront.query(COLLECTION_PRODUCTS_QUERY, { variables: { handle, first: 20 } });
-        productsByHandle.set(handle, res?.collection?.products?.edges ?? []);
+        productsByHandle.set(handle, (res?.collection?.products?.edges ?? [])
+          .filter((e: any) => parseFloat(e.node?.priceRange?.minVariantPrice?.amount ?? "0") > 0));
       } catch { /* ignore missing collection */ }
     }));
   }
