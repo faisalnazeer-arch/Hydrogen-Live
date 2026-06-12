@@ -37,6 +37,8 @@ export interface NavLink {
 
 export interface NavColumn {
   title: string;
+  url?: string | null;
+  imageUrl?: string | null;
   links: NavLink[];
 }
 
@@ -148,6 +150,8 @@ function parseShopifyMenu(menu: any, menuName = "main"): NavEntry[] {
     if (hasColumns) {
       columns = item.items.map((col: any) => ({
         title: col.title,
+        url: toPath(col.url) || null,
+        imageUrl: col.resource?.image?.url ?? col.resource?.featuredImage?.url ?? null,
         links: (col.items ?? []).map((lk: any): NavLink => ({
           label: lk.title,
           url: toPath(lk.url),
@@ -155,7 +159,7 @@ function parseShopifyMenu(menu: any, menuName = "main"): NavEntry[] {
         })),
       }));
     } else if (item.items?.length > 0) {
-      columns = [{ title: "", links: item.items.map((lk: any): NavLink => ({
+      columns = [{ title: "", url: null, imageUrl: null, links: item.items.map((lk: any): NavLink => ({
         label: lk.title,
         url: toPath(lk.url),
         imageUrl: lk.resource?.image?.url ?? lk.resource?.featuredImage?.url ?? null,

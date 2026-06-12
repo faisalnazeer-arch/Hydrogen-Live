@@ -340,17 +340,35 @@ function MobileMenuDrawer({
   onClose: () => void;
 }) {
   const [activeTabIdx, setActiveTabIdx] = useState(0);
+  // Set of column indexes that are expanded (accordion)
+  const [openCols, setOpenCols] = useState<Set<number>>(new Set());
 
-  // Top-level entries with sub-links → tabs
   const tabbedEntries = mainMenu.filter((e) => e.columns.length > 0);
-  // Top-level entries without sub-links → shown in secondary section
   const flatMainEntries = mainMenu.filter((e) => e.columns.length === 0);
 
   const activeEntry = tabbedEntries[activeTabIdx];
-  // Flatten all columns of the active tab into one ordered list
-  const activeLinks = activeEntry?.columns.flatMap((col) => col.links) ?? [];
+  const activeColumns = activeEntry?.columns ?? [];
 
-  // Secondary links: flat main entries + secondary menu entries
+  // Multi-column = each column is an accordion row (e.g. CATEGORIES > All Beef > sub-links)
+  // Single untitled column = flat list (e.g. BEEF > Steaks, Bone-in Cubes, ...)
+  const isAccordion = activeColumns.length > 1 || (activeColumns.length === 1 && !!activeColumns[0].title);
+  // Flat mode links (single un-titled column)
+  const flatLinks = !isAccordion ? (activeColumns[0]?.links ?? []) : [];
+
+  const handleTabSwitch = (i: number) => {
+    setActiveTabIdx(i);
+    setOpenCols(new Set()); // collapse all accordion items on tab change
+  };
+
+  const toggleCol = (i: number) => {
+    setOpenCols((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  };
+
   const secondaryLinks = [
     ...flatMainEntries.map((e) => ({ id: e.id, label: e.label, url: e.url ?? "/" })),
     ...secondaryMenu.map((e) => ({ id: e.id, label: e.label, url: e.url ?? "/" })),
@@ -358,10 +376,9 @@ function MobileMenuDrawer({
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background">
-      {/* Accessible title (visually hidden) */}
       <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
 
-      {/* ── Top header with logo ── */}
+      {/* ── Header ── */}
       <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
         <button
           type="button"
@@ -375,18 +392,18 @@ function MobileMenuDrawer({
         <div className="w-8" />
       </div>
 
-      {/* ── Tab bar ── */}
+      {/* ── Tabs ── */}
       {tabbedEntries.length > 0 && (
         <div className="flex shrink-0 border-b border-border">
           {tabbedEntries.map((entry, i) => (
             <button
               key={entry.id}
               type="button"
-              onClick={() => setActiveTabIdx(i)}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleTabSwitch(i); }}
               className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-wider transition-all ${
                 i === activeTabIdx
                   ? "bg-crimson text-white"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
               }`}
             >
               {entry.label}
@@ -395,46 +412,103 @@ function MobileMenuDrawer({
         </div>
       )}
 
-      {/* ── Scrollable content ── */}
+      {/* ── Scrollable body ── */}
       <div className="flex-1 overflow-y-auto">
-        {/* Tab link rows */}
-        {activeLinks.map((link) => {
-          const Icon = pickIcon(link.label, link.url);
-          return (
-            <Link
-              key={link.url + link.label}
-              to={link.url}
-              onClick={onClose}
-              prefetch="intent"
-              className="flex items-center gap-3 border-b border-border/50 px-4 py-3 transition-colors hover:bg-muted/60"
-            >
-              {/* Thumbnail or icon fallback */}
-              <div className="h-12 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
-                {link.imageUrl ? (
-                  <img
-                    src={`${link.imageUrl}&width=120`}
-                    alt={link.label}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-crimson/10 to-bone">
-                    <Icon className="h-5 w-5 text-crimson/50" />
+
+        {isAccordion ? (
+          /* ── Accordion mode: column = header with image, sub-links expand below ── */
+          activeColumns.map((col, colIdx) => {
+            const isOpen = openCols.has(colIdx);
+            const ColIcon = pickIcon(col.title, col.url ?? "");
+            return (
+              <div key={col.title + colIdx}>
+                {/* Accordion header row */}
+                <button
+                  type="button"
+                  onClick={() => toggleCol(colIdx)}
+                  className="flex w-full items-center gap-3 border-b border-border/50 px-4 py-3 transition-colors hover:bg-muted/50"
+                >
+                  <div className="h-12 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
+                    {col.imageUrl ? (
+                      <img
+                        src={`${col.imageUrl}&width=120`}
+                        alt={col.title}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-crimson/10 to-bone">
+                        <ColIcon className="h-5 w-5 text-crimson/40" />
+                      </div>
+                    )}
+                  </div>
+                  <span className="flex-1 text-left text-sm font-semibold text-foreground">
+                    {col.title}
+                  </span>
+                  <span className="text-xl font-light leading-none text-muted-foreground">
+                    {isOpen ? "−" : "+"}
+                  </span>
+                </button>
+
+                {/* Accordion sub-links */}
+                {isOpen && (
+                  <div className="bg-muted/30">
+                    {col.links.map((link) => (
+                      <Link
+                        key={link.url + link.label}
+                        to={link.url}
+                        onClick={onClose}
+                        prefetch="intent"
+                        className="flex items-center gap-2 border-b border-border/30 py-2.5 pl-[76px] pr-4 text-sm text-foreground/75 transition-colors hover:bg-muted/60 hover:text-crimson"
+                      >
+                        <ChevronRight className="h-3 w-3 shrink-0 text-crimson/50" />
+                        <span>{link.label}</span>
+                      </Link>
+                    ))}
                   </div>
                 )}
               </div>
-              <span className="flex-1 text-sm font-semibold text-foreground">{link.label}</span>
-              <span className="text-lg font-light text-muted-foreground">+</span>
-            </Link>
-          );
-        })}
+            );
+          })
+        ) : (
+          /* ── Flat list mode: single column, all links shown directly ── */
+          flatLinks.map((link) => {
+            const Icon = pickIcon(link.label, link.url);
+            return (
+              <Link
+                key={link.url + link.label}
+                to={link.url}
+                onClick={onClose}
+                prefetch="intent"
+                className="flex items-center gap-3 border-b border-border/50 px-4 py-3 transition-colors hover:bg-muted/60"
+              >
+                <div className="h-12 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
+                  {link.imageUrl ? (
+                    <img
+                      src={`${link.imageUrl}&width=120`}
+                      alt={link.label}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-crimson/10 to-bone">
+                      <Icon className="h-5 w-5 text-crimson/40" />
+                    </div>
+                  )}
+                </div>
+                <span className="flex-1 text-sm font-semibold text-foreground">{link.label}</span>
+                <span className="text-xl font-light leading-none text-muted-foreground">+</span>
+              </Link>
+            );
+          })
+        )}
 
-        {/* ── Divider before secondary links ── */}
+        {/* ── Divider ── */}
         {secondaryLinks.length > 0 && (
           <div className="mx-4 my-3 border-t border-border" />
         )}
 
-        {/* Secondary / flat links */}
+        {/* ── Secondary / info links ── */}
         {secondaryLinks.map(({ id, label, url }) => {
           const Icon = pickIcon(label, url);
           return (
@@ -449,7 +523,7 @@ function MobileMenuDrawer({
                 <Icon className="h-4 w-4" />
               </div>
               <span className="flex-1 text-sm font-semibold">{label}</span>
-              <span className="text-lg font-light text-muted-foreground">+</span>
+              <span className="text-xl font-light leading-none text-muted-foreground">+</span>
             </Link>
           );
         })}
