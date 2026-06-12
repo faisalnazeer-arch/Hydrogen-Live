@@ -243,46 +243,46 @@ function NutritionPanel({ variant }: { variant: any }) {
 
   return (
     <div className="mx-auto w-full max-w-lg font-sans">
-      <div className="overflow-hidden rounded-2xl border-[3px] border-foreground">
+      <div className="overflow-hidden rounded-xl border-[2px] border-foreground sm:rounded-2xl sm:border-[3px]">
 
         {/* Header */}
-        <div className="border-b-[10px] border-foreground px-4 pt-3 pb-2">
-          <h2 className="text-[2rem] font-black leading-none tracking-tight">Nutrition Facts</h2>
-          <div className="mt-2 flex items-baseline justify-between gap-2 border-t border-foreground/20 pt-1.5">
-            <span className="text-sm">Serving size</span>
-            <span className="text-sm font-bold">{portion}</span>
+        <div className="border-b-[6px] border-foreground px-3 pt-2.5 pb-1.5 sm:border-b-[10px] sm:px-4 sm:pt-3 sm:pb-2">
+          <h2 className="text-2xl font-black leading-none tracking-tight sm:text-[2rem]">Nutrition Facts</h2>
+          <div className="mt-1.5 flex items-baseline justify-between gap-2 border-t border-foreground/20 pt-1 sm:mt-2 sm:pt-1.5">
+            <span className="text-xs sm:text-sm">Serving size</span>
+            <span className="text-xs font-bold sm:text-sm">{portion}</span>
           </div>
         </div>
 
         {/* Calories */}
         {caloriesNum && (
-          <div className="border-b-[5px] border-foreground px-4 py-2">
-            <p className="text-[11px] font-medium text-foreground/70">Amount per serving</p>
+          <div className="border-b-[4px] border-foreground px-3 py-1.5 sm:border-b-[5px] sm:px-4 sm:py-2">
+            <p className="text-[10px] font-medium text-foreground/70 sm:text-[11px]">Amount per serving</p>
             <div className="flex items-end justify-between">
-              <span className="text-2xl font-black leading-tight">Calories</span>
-              <span className="text-5xl font-black leading-none tabular-nums">{caloriesNum}</span>
+              <span className="text-lg font-black leading-tight sm:text-2xl">Calories</span>
+              <span className="text-[2.25rem] font-black leading-none tabular-nums sm:text-5xl">{caloriesNum}</span>
             </div>
           </div>
         )}
 
         {/* % DV header */}
-        <div className="border-b border-foreground/25 px-4 py-0.5">
-          <p className="text-right text-[11px] font-bold">% Daily Value*</p>
+        <div className="border-b border-foreground/25 px-3 py-0.5 sm:px-4">
+          <p className="text-right text-[10px] font-bold sm:text-[11px]">% Daily Value*</p>
         </div>
 
         {/* Nutrient rows */}
         <div>
           {rows.map((row) => (
             <div key={row.key}
-              className={`flex items-baseline justify-between border-b border-foreground/15 px-4 py-1 text-sm last:border-b-0 ${row.separator ? "border-t-[5px] border-t-foreground" : ""} ${row.indent ? "ps-8" : ""}`}>
+              className={`flex items-baseline justify-between border-b border-foreground/15 px-3 py-0.5 text-[11px] last:border-b-0 sm:px-4 sm:py-1 sm:text-sm ${row.separator ? "border-t-[3px] border-t-foreground sm:border-t-[5px]" : ""} ${row.indent ? "ps-5 sm:ps-8" : ""}`}>
               <span className="flex-1 leading-snug">
                 {row.indent
-                  ? <span className="text-foreground/80">{row.label} <em className="not-italic text-foreground/60 text-xs">{row.value}</em></span>
+                  ? <span className="text-foreground/80">{row.label} <em className="not-italic text-foreground/60 text-[10px] sm:text-xs">{row.value}</em></span>
                   : <><strong>{row.label}</strong> <span className="font-normal">{row.value}</span></>
                 }
               </span>
               {!row.noDv && (
-                <span className="ml-3 shrink-0 font-bold tabular-nums text-sm">
+                <span className="ml-2 shrink-0 font-bold tabular-nums text-[11px] sm:ml-3 sm:text-sm">
                   {row.dv ?? ""}
                 </span>
               )}
@@ -291,8 +291,8 @@ function NutritionPanel({ variant }: { variant: any }) {
         </div>
 
         {/* Footnote */}
-        <div className="border-t-[5px] border-foreground px-4 py-2.5">
-          <p className="text-[10px] leading-snug text-foreground/55">
+        <div className="border-t-[3px] border-foreground px-3 py-2 sm:border-t-[5px] sm:px-4 sm:py-2.5">
+          <p className="text-[9px] leading-snug text-foreground/55 sm:text-[10px]">
             * The % Daily Value (DV) tells you how much a nutrient in a serving of food contributes to a daily diet. 2,000 calories a day is used for general nutrition advice.
           </p>
         </div>
@@ -382,7 +382,7 @@ function DeliveryTab({ pageSettings }: { pageSettings: PageSettings | undefined 
             "We will exchange the product and deliver it again to your door, or you can pick it up if you want.",
             "You will receive the product or a refund. Refunds will be processed within 14 working days.",
           ].map((l, i) => (
-            <p key={i} className="py-2.5 text-[13px] leading-relaxed text-muted-foreground">{l}</p>
+            <p key={i} className="py-2 text-xs leading-relaxed text-muted-foreground sm:py-2.5 sm:text-[13px]">{l}</p>
           ))}
         </div>
       </section>
@@ -395,11 +395,11 @@ function DeliveryTab({ pageSettings }: { pageSettings: PageSettings | undefined 
         </h3>
 
         {/* City tabs — crimson pill active */}
-        <div className="mb-5 overflow-x-auto">
-          <div className="flex min-w-max gap-1 rounded-lg border border-border p-1">
+        <div className="mb-4 overflow-x-auto sm:mb-5">
+          <div className="flex min-w-max gap-1 rounded-lg border border-border p-0.5 sm:p-1">
             {cityTabs.map(({ id, label }) => (
               <button key={id} type="button" onClick={() => setCity(id)}
-                className={`shrink-0 rounded-md px-3 py-2 text-xs font-semibold transition-all ${
+                className={`shrink-0 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-all sm:px-3 sm:py-2 ${
                   city === id ? "bg-crimson text-crimson-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}>
                 {label}
@@ -408,11 +408,11 @@ function DeliveryTab({ pageSettings }: { pageSettings: PageSettings | undefined 
           </div>
         </div>
 
-        <div className="space-y-3 text-sm">
+        <div className="space-y-2 sm:space-y-3">
           {cityContent[city].map(({ label, body }) => (
-            <div key={label} className="rounded-lg border border-border/60 px-4 py-3">
-              <p className="mb-1 font-semibold text-foreground">{label}</p>
-              <p className="whitespace-pre-line text-muted-foreground">{body}</p>
+            <div key={label} className="rounded-lg border border-border/60 px-3 py-2.5 sm:px-4 sm:py-3">
+              <p className="mb-0.5 text-xs font-semibold text-foreground sm:mb-1 sm:text-sm">{label}</p>
+              <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground sm:text-sm">{body}</p>
             </div>
           ))}
         </div>
@@ -475,7 +475,7 @@ function InfoTabs({
         </div>
 
         {/* Tab content */}
-        <div className="py-5">
+        <div className="py-4 sm:py-5">
           {active === "nutrition" && <NutritionPanel variant={variant} />}
           {active === "template" && hasTemplate && <div>{extraSections}</div>}
           {active === "delivery" && <DeliveryTab pageSettings={pageSettings} />}
@@ -832,15 +832,15 @@ export function ProductPageShell({
           {/* Price */}
           <div className="flex flex-col gap-1">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="font-display text-2xl font-bold text-crimson">{formatPrice(displayPrice?.amount ?? "0", currency)}</span>
-              {displayCompareAt && <span className="text-base text-muted-foreground line-through">{formatPrice(displayCompareAt.amount, currency)}</span>}
+              <span className="font-display text-xl font-bold text-crimson sm:text-2xl">{formatPrice(displayPrice?.amount ?? "0", currency)}</span>
+              {displayCompareAt && <span className="text-sm text-muted-foreground line-through sm:text-base">{formatPrice(displayCompareAt.amount, currency)}</span>}
               <StockBadge available={variant?.availableForSale ?? false} qty={variant?.quantityAvailable ?? null} />
             </div>
 
             {/* Price per kg — updates on every variant change */}
             {(() => {
               const pricePerKgLine = (label: string) => (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground sm:text-sm">
                   <span className="font-medium text-foreground">Price per kg:</span>{" "}
                   {label}
                 </p>
@@ -893,14 +893,14 @@ export function ProductPageShell({
                 if (option.values.length === 1 && option.values[0] === "Default Title") return null;
                 return (
                   <div key={option.name}>
-                    <p className="mb-2 text-sm font-semibold">{option.name}</p>
-                    <div className="flex flex-wrap gap-2">
+                    <p className="mb-1.5 text-xs font-semibold sm:mb-2 sm:text-sm">{option.name}</p>
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {option.values.map((value: any) => {
                         const mv = variants.find((v: any) => v.selectedOptions.some((o: any) => o.name === option.name && o.value === value));
                         const active = variant?.selectedOptions.some((o: any) => o.name === option.name && o.value === value);
                         return (
                           <button key={value} type="button" onClick={() => mv && setSelectedVariantId(mv.id)} disabled={!mv?.availableForSale}
-                            className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${active ? "border-crimson bg-crimson text-crimson-foreground" : "border-border bg-card hover:border-crimson"} disabled:opacity-40`}>
+                            className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors sm:px-3 sm:py-1.5 sm:text-sm ${active ? "border-crimson bg-crimson text-crimson-foreground" : "border-border bg-card hover:border-crimson"} disabled:opacity-40`}>
                             {value}
                           </button>
                         );
@@ -943,7 +943,7 @@ export function ProductPageShell({
                 <button type="button" onClick={() => setQty((q) => q + 1)} className="grid h-10 w-10 place-items-center text-muted-foreground transition-colors hover:text-foreground"><Plus className="h-4 w-4" /></button>
               </div>
               <button type="button" onClick={handleAddToCart} disabled={isLoading}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-crimson px-6 py-3 text-sm font-bold uppercase tracking-wide text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-50">
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-crimson px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-50 sm:px-6 sm:py-3 sm:text-sm">
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add to Cart"}
               </button>
             </div>
@@ -1009,7 +1009,7 @@ export function ProductPageShell({
                 : <p>No description available.</p>}
             </AccordionItem>
             <AccordionItem title={pageSettings?.supportTitle ?? "Customer Support"}>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <ul className="space-y-1.5 text-xs text-muted-foreground sm:space-y-2 sm:text-sm">
                 {(pageSettings?.supportContent
                   ? pageSettings.supportContent.split("\n").filter(Boolean)
                   : ["Call or WhatsApp: +971504516403", "Support available 9 AM – 9 PM daily.", "Email: contactus@mlsuae.ae", "Hassle-free returns within 24 hours of delivery."]
