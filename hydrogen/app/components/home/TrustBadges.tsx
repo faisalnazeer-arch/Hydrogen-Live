@@ -1,7 +1,5 @@
 import { Truck, RefreshCw, ShieldCheck, Award } from "lucide-react";
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
 interface TrustBadge {
   id: string;
   handle: string | null;
@@ -20,9 +18,7 @@ interface RawMetaobjectNode {
   }>;
 }
 
-const DEFAULT_ICONS = [RefreshCw, Truck, ShieldCheck, Award];
-
-// ── Parser ─────────────────────────────────────────────────────────────────
+const DEFAULT_ICONS = [Truck, ShieldCheck, Award, RefreshCw];
 
 function parseBadges(nodes: RawMetaobjectNode[]): TrustBadge[] {
   return nodes
@@ -30,9 +26,7 @@ function parseBadges(nodes: RawMetaobjectNode[]): TrustBadge[] {
       const fieldMap = Object.fromEntries(node.fields.map((f) => [f.key, f]));
       const heading = fieldMap["heading"]?.value ?? null;
       const subTitle = fieldMap["sub_title"]?.value ?? null;
-
       if (!heading && !subTitle) return null;
-
       return {
         id: node.id,
         handle: node.handle ?? null,
@@ -44,51 +38,69 @@ function parseBadges(nodes: RawMetaobjectNode[]): TrustBadge[] {
     .filter((b): b is TrustBadge => b !== null);
 }
 
-// ── Component ──────────────────────────────────────────────────────────────
-
 interface TrustBadgesProps {
   badges?: RawMetaobjectNode[];
 }
 
 export function TrustBadges({ badges: rawBadges = [] }: TrustBadgesProps) {
   const parsed = parseBadges(rawBadges);
+  if (parsed.length === 0) return null;
 
   return (
-    <section className="border-b border-border bg-bone">
-      <div className="container mx-auto grid grid-cols-2 gap-3 px-4 py-6 md:grid-cols-4 md:gap-6 md:py-8">
-        {parsed.map((badge, i) => (
-          <DynamicBadge key={badge.id} badge={badge} index={i} />
-        ))}
+    <section className="border-b border-border bg-background py-6 md:py-8">
+      <div className="container mx-auto px-4">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4 md:gap-x-8">
+          {parsed.map((badge, i) => (
+            <BadgeItem key={badge.id} badge={badge} index={i} total={parsed.length} />
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
-// ── Dynamic badge — text from Shopify API (T Lab syncs translations here) ─
-
-function DynamicBadge({ badge, index }: { badge: TrustBadge; index: number }) {
+function BadgeItem({
+  badge,
+  index,
+  total,
+}: {
+  badge: TrustBadge;
+  index: number;
+  total: number;
+}) {
   const FallbackIcon = DEFAULT_ICONS[index % DEFAULT_ICONS.length];
+  const showDivider = index < total - 1;
+
   return (
-    <div className="flex flex-col items-center gap-2 rounded-lg bg-background/60 p-4 text-center md:flex-row md:gap-3 md:bg-transparent md:p-0 md:text-start">
-      <div className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-full bg-crimson/10 text-crimson md:h-12 md:w-12">
+    <div className="relative flex items-center gap-4">
+      {/* Icon */}
+      <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-crimson/10 text-crimson shadow-sm">
         {badge.iconUrl ? (
-          <img src={badge.iconUrl} alt={badge.heading ?? ""} className="h-6 w-6 object-contain" />
+          <img
+            src={badge.iconUrl}
+            alt={badge.heading ?? ""}
+            className="h-6 w-6 object-contain"
+            style={{ filter: "invert(15%) sepia(80%) saturate(400%) hue-rotate(340deg)" }}
+          />
         ) : (
-          <FallbackIcon className="h-5 w-5" />
+          <FallbackIcon className="h-6 w-6" />
         )}
       </div>
+
+      {/* Text */}
       <div className="min-w-0">
         {badge.heading && (
-          <div className="font-display text-[13px] font-bold leading-tight md:text-sm">
-            {badge.heading}
-          </div>
+          <div className="text-sm font-bold leading-tight text-foreground">{badge.heading}</div>
         )}
         {badge.subTitle && (
-          <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground md:text-xs">
-            {badge.subTitle}
-          </div>
+          <div className="mt-0.5 text-xs leading-snug text-muted-foreground">{badge.subTitle}</div>
         )}
       </div>
+
+      {/* Vertical divider — desktop only */}
+      {showDivider && (
+        <span className="absolute -right-3 top-1/2 hidden h-8 w-px -translate-y-1/2 bg-border md:block" />
+      )}
     </div>
   );
 }

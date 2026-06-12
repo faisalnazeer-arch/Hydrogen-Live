@@ -34,9 +34,11 @@ export function ValueBoxesBanner({ banner }: Props) {
         <div className="relative grid min-h-[280px] items-center px-8 py-12 md:grid-cols-2 md:px-12">
           <div>
             {banner.eyebrow && (
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-gold">{banner.eyebrow}</span>
+              <span className="inline-block rounded-full bg-gold/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-gold">
+                {banner.eyebrow}
+              </span>
             )}
-            <h3 className="mt-2 font-display text-3xl font-extrabold leading-tight md:text-4xl">{banner.heading}</h3>
+            <h3 className="mt-3 font-display text-3xl font-extrabold leading-tight tracking-tight md:text-4xl">{banner.heading}</h3>
             {banner.body && <p className="mt-3 max-w-md text-off-white/85">{banner.body}</p>}
             <div className="mt-6 flex flex-wrap gap-3">
               {banner.btn1Label && banner.btn1Link && (

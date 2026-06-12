@@ -5,6 +5,7 @@ import {
   User,
   Menu,
   ChevronDown,
+  ChevronRight,
   Beef,
   Drumstick,
   Star,
@@ -16,13 +17,18 @@ import {
   Info,
   Compass,
   Globe,
+  MapPin,
+  Crown,
+  Gift,
+  Percent,
+  X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { Button } from "@/components/ui/button";
 import { MegaMenu } from "./MegaMenu";
 import { SearchAutosuggest } from "./SearchAutosuggest";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { useLocaleStore, dirFor } from "@/stores/localeStore";
 import { useT } from "@/i18n/strings";
 import logo from "@/assets/mls-logo.png";
@@ -33,12 +39,15 @@ function pickIcon(title: string, url: string): LucideIcon {
   if (/beef|steak|wagyu|angus/.test(s)) return Beef;
   if (/lamb|mutton/.test(s)) return Drumstick;
   if (/review/.test(s)) return Star;
-  if (/offer|sale|deal|redeem/.test(s)) return Tag;
+  if (/offer|sale|deal|redeem/.test(s)) return Percent;
   if (/bbq|grill|mishkak/.test(s)) return Flame;
   if (/burger|sandwich/.test(s)) return Sandwich;
   if (/box|bundle/.test(s)) return Boxes;
   if (/build|package/.test(s)) return Package;
   if (/about|info/.test(s)) return Info;
+  if (/location|store/.test(s)) return MapPin;
+  if (/subscription|subscribe/.test(s)) return Crown;
+  if (/reward|loyalty/.test(s)) return Gift;
   return Compass;
 }
 
@@ -59,20 +68,6 @@ export function Header({ mainMenu = [], secondaryMenu = [] }: HeaderProps) {
   const drawerSide = dirFor(locale) === "rtl" ? "right" : "left";
   const closeMobile = () => setMobileNavOpen(false);
 
-  const mobileLinks: Array<{ label: string; url: string; Icon: LucideIcon }> =
-    mainMenu.flatMap((entry) => {
-      if (entry.columns.length > 0) {
-        return entry.columns.flatMap((col) =>
-          col.links.map((lk) => ({
-            label: lk.label,
-            url: lk.url,
-            Icon: pickIcon(lk.label, lk.url),
-          }))
-        );
-      }
-      return [{ label: entry.label, url: entry.url ?? "/", Icon: pickIcon(entry.label, entry.url ?? "") }];
-    });
-
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
       {/* Top bar */}
@@ -84,34 +79,12 @@ export function Header({ mainMenu = [], secondaryMenu = [] }: HeaderProps) {
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side={drawerSide} className="w-80">
-            <SheetHeader>
-              <SheetTitle className="font-display text-crimson">{t("nav.menu")}</SheetTitle>
-            </SheetHeader>
-            <div className="mt-3">
-              <SearchAutosuggest onNavigate={closeMobile} />
-            </div>
-            <nav className="mt-6 flex flex-col gap-1 text-sm">
-              {mobileLinks.map(({ label, url, Icon }) => (
-                <Link
-                  key={url + label}
-                  to={url}
-                  onClick={closeMobile}
-                  className="flex items-center gap-3 rounded-sm px-3 py-2 hover:bg-muted"
-                >
-                  <Icon className="h-4 w-4 text-crimson" />
-                  <span>{label}</span>
-                </Link>
-              ))}
-              <a
-                href="https://mlsuae.ae/customer_authentication/redirect?locale=en&region_country=AE"
-                onClick={closeMobile}
-                className="mt-3 flex items-center gap-3 rounded-sm border-t border-border px-3 py-2 pt-4 hover:bg-muted"
-              >
-                <User className="h-4 w-4 text-crimson" />
-                <span>{t("nav.account")}</span>
-              </a>
-            </nav>
+          <SheetContent side={drawerSide} className="w-[320px] p-0 flex flex-col">
+            <MobileMenuDrawer
+              mainMenu={mainMenu}
+              secondaryMenu={secondaryMenu}
+              onClose={closeMobile}
+            />
           </SheetContent>
         </Sheet>
 
@@ -352,5 +325,151 @@ function SecondaryNavLink({
       {Icon && <Icon className="h-3 w-3" />}
       <span>{label}</span>
     </Link>
+  );
+}
+
+// ── Mobile drawer ──────────────────────────────────────────────────────────────
+
+function MobileMenuDrawer({
+  mainMenu,
+  secondaryMenu,
+  onClose,
+}: {
+  mainMenu: NavEntry[];
+  secondaryMenu: NavEntry[];
+  onClose: () => void;
+}) {
+  const [activeTabIdx, setActiveTabIdx] = useState(0);
+
+  // Top-level entries with sub-links → tabs
+  const tabbedEntries = mainMenu.filter((e) => e.columns.length > 0);
+  // Top-level entries without sub-links → shown in secondary section
+  const flatMainEntries = mainMenu.filter((e) => e.columns.length === 0);
+
+  const activeEntry = tabbedEntries[activeTabIdx];
+  // Flatten all columns of the active tab into one ordered list
+  const activeLinks = activeEntry?.columns.flatMap((col) => col.links) ?? [];
+
+  // Secondary links: flat main entries + secondary menu entries
+  const secondaryLinks = [
+    ...flatMainEntries.map((e) => ({ id: e.id, label: e.label, url: e.url ?? "/" })),
+    ...secondaryMenu.map((e) => ({ id: e.id, label: e.label, url: e.url ?? "/" })),
+  ];
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden bg-background">
+      {/* Accessible title (visually hidden) */}
+      <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+
+      {/* ── Top header with logo ── */}
+      <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close menu"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <img src={logo} alt="MLS" className="h-9 w-auto" />
+        <div className="w-8" />
+      </div>
+
+      {/* ── Tab bar ── */}
+      {tabbedEntries.length > 0 && (
+        <div className="flex shrink-0 border-b border-border">
+          {tabbedEntries.map((entry, i) => (
+            <button
+              key={entry.id}
+              type="button"
+              onClick={() => setActiveTabIdx(i)}
+              className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-wider transition-all ${
+                i === activeTabIdx
+                  ? "bg-crimson text-white"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Scrollable content ── */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Tab link rows */}
+        {activeLinks.map((link) => {
+          const Icon = pickIcon(link.label, link.url);
+          return (
+            <Link
+              key={link.url + link.label}
+              to={link.url}
+              onClick={onClose}
+              prefetch="intent"
+              className="flex items-center gap-3 border-b border-border/50 px-4 py-3 transition-colors hover:bg-muted/60"
+            >
+              {/* Thumbnail or icon fallback */}
+              <div className="h-12 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
+                {link.imageUrl ? (
+                  <img
+                    src={`${link.imageUrl}&width=120`}
+                    alt={link.label}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-crimson/10 to-bone">
+                    <Icon className="h-5 w-5 text-crimson/50" />
+                  </div>
+                )}
+              </div>
+              <span className="flex-1 text-sm font-semibold text-foreground">{link.label}</span>
+              <span className="text-lg font-light text-muted-foreground">+</span>
+            </Link>
+          );
+        })}
+
+        {/* ── Divider before secondary links ── */}
+        {secondaryLinks.length > 0 && (
+          <div className="mx-4 my-3 border-t border-border" />
+        )}
+
+        {/* Secondary / flat links */}
+        {secondaryLinks.map(({ id, label, url }) => {
+          const Icon = pickIcon(label, url);
+          return (
+            <Link
+              key={id + url}
+              to={url}
+              onClick={onClose}
+              prefetch="intent"
+              className="flex items-center gap-3.5 border-b border-border/40 px-4 py-3.5 transition-colors hover:bg-muted/60"
+            >
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-crimson/10 text-crimson">
+                <Icon className="h-4 w-4" />
+              </div>
+              <span className="flex-1 text-sm font-semibold">{label}</span>
+              <span className="text-lg font-light text-muted-foreground">+</span>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* ── Bottom: Login + Sign Up ── */}
+      <div className="flex shrink-0 gap-2.5 border-t border-border p-4">
+        <a
+          href="https://mlsuae.ae/customer_authentication/redirect?locale=en&region_country=AE"
+          className="flex flex-1 items-center justify-center rounded-lg border-2 border-crimson py-3 text-sm font-bold uppercase tracking-wider text-crimson transition-colors hover:bg-crimson hover:text-white"
+        >
+          Login
+        </a>
+        <a
+          href="https://mlsuae.ae/customer_authentication/redirect?locale=en&region_country=AE&flow=register"
+          className="flex flex-1 items-center justify-center rounded-lg bg-charcoal py-3 text-sm font-bold uppercase tracking-wider text-white transition-colors hover:bg-charcoal/80"
+        >
+          Sign Up
+        </a>
+      </div>
+    </div>
   );
 }

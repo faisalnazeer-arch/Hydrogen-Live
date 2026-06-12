@@ -69,7 +69,7 @@ export function PriceRangeShop({ section, tiles = [] }: PriceRangeShopProps) {
   const subHeading = section?.subHeading ?? "Every budget, premium quality";
 
   return (
-    <section className="container mx-auto px-4 py-6 md:py-12">
+    <section className="container mx-auto px-4 py-10 md:py-14">
       <SectionHeader title={heading} subtitle={subHeading} />
       <div className="flex gap-3 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] md:grid md:grid-cols-6">
         {tiles.map((tile) => (
@@ -86,28 +86,28 @@ function PriceTileCard({ tile }: { tile: PriceTile }) {
   return (
     <Link
       to={tile.linkUrl}
-      className="group relative flex aspect-square w-[40vw] flex-shrink-0 flex-col items-center justify-center overflow-hidden rounded-md border border-border text-crimson-foreground transition-transform hover:-translate-y-1 hover:shadow-[var(--shadow-elegant)] md:w-auto"
+      className="group relative flex aspect-[4/5] w-[40vw] flex-shrink-0 flex-col items-center justify-center overflow-hidden rounded-2xl border border-border text-crimson-foreground transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-elegant)] md:w-auto"
     >
-      {/* Background: image if set, else default gradient */}
+      {/* Background */}
       {tile.backgroundImageUrl ? (
         <>
           <img
             src={tile.backgroundImageUrl}
             alt={tile.backgroundImageAlt ?? tile.priceAmount}
-            className="absolute inset-0 h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
-          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/35 to-black/10" />
         </>
       ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-crimson to-rich-red" />
+        <div className="absolute inset-0 bg-gradient-to-br from-crimson via-rich-red to-charcoal" />
       )}
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col items-center">
-        <div className="font-display text-xl font-extrabold md:text-3xl">
+      <div className="relative z-10 flex flex-col items-center gap-0.5">
+        <div className="font-display text-2xl font-extrabold leading-none text-white md:text-4xl">
           {tile.priceAmount}
         </div>
-        <div className="text-[10px] uppercase tracking-[0.2em] opacity-90">
+        <div className="text-[10px] uppercase tracking-[0.2em] text-white/80 md:text-xs">
           {tile.priceLabel}
         </div>
       </div>

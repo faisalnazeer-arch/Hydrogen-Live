@@ -80,11 +80,15 @@ export function ShopByOrigin({ section }: Props) {
     <section className="bg-bone py-10 md:py-16">
       <div className="container mx-auto px-4">
         {/* Header */}
-        <div className="mb-6 text-center">
-          <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">
-            {section.eyebrow}
+        <div className="mb-6 text-center md:mb-10">
+          <div className="mb-1.5 flex items-center justify-center gap-2">
+            <span className="h-px w-5 rounded-full bg-crimson" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">
+              {section.eyebrow}
+            </span>
+            <span className="h-px w-5 rounded-full bg-crimson" />
           </div>
-          <h2 className="font-display text-2xl font-extrabold md:text-3xl">
+          <h2 className="font-display text-xl font-extrabold tracking-tight md:text-4xl">
             {section.heading}
           </h2>
         </div>
@@ -123,7 +127,7 @@ export function ShopByOrigin({ section }: Props) {
             <Link
               key={item.id}
               to={item.link}
-              className="group flex min-w-[140px] shrink-0 snap-start flex-col items-center gap-3 rounded-xl border border-border bg-card p-5 transition-all hover:-translate-y-1 hover:border-crimson hover:shadow-md"
+              className="group flex min-w-[140px] shrink-0 snap-start flex-col items-center gap-3 rounded-2xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-1 hover:border-crimson hover:shadow-[var(--shadow-card)]"
             >
               <OriginFlag
                 imageUrl={item.imageUrl}

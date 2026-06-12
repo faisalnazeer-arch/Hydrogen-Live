@@ -21,26 +21,38 @@ export function FeaturedCollections({ cards, title, subtitle }: FeaturedCollecti
   if (!cards || cards.length === 0) return null;
 
   return (
-    <section className="container mx-auto px-4 py-12">
+    <section className="container mx-auto px-4 py-10 md:py-14">
       {(title || subtitle) && <SectionHeader title={title ?? ""} subtitle={subtitle} />}
       <HScroller>
         {cards.map((c) => (
           <Link
             key={c.id}
             to={c.url}
-            className="group flex w-40 flex-shrink-0 snap-start flex-col items-center gap-3 rounded-lg border border-border bg-card p-5 text-center transition-shadow hover:shadow-[var(--shadow-elegant)] sm:w-48"
+            className="group relative aspect-[3/4] w-40 flex-shrink-0 snap-start overflow-hidden rounded-2xl bg-charcoal sm:w-52"
           >
-            <div className="grid h-16 w-16 place-items-center rounded-full bg-crimson/10 transition-transform group-hover:scale-110 overflow-hidden">
-              {c.imageUrl ? (
-                <img src={c.imageUrl} alt={c.imageAlt ?? c.heading} className="h-full w-full object-contain" />
-              ) : (
-                <span className="text-3xl">{c.emoji ?? "🛒"}</span>
+            {c.imageUrl ? (
+              <img
+                src={c.imageUrl}
+                alt={c.imageAlt ?? c.heading}
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-crimson/30 to-charcoal">
+                <span className="text-5xl">{c.emoji ?? "🛒"}</span>
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-charcoal/85 via-charcoal/20 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">
+              <div className="font-display text-sm font-bold leading-tight text-off-white sm:text-[15px]">
+                {c.heading}
+              </div>
+              {c.subHeading && (
+                <div className="mt-0.5 text-[10px] uppercase tracking-wider text-off-white/60">
+                  {c.subHeading}
+                </div>
               )}
             </div>
-            <div>
-              <div className="font-display text-sm font-bold">{c.heading}</div>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{c.subHeading}</div>
-            </div>
+            <div className="absolute inset-0 ring-1 ring-inset ring-white/0 transition-all duration-300 group-hover:ring-crimson/60 rounded-2xl" />
           </Link>
         ))}
       </HScroller>
@@ -60,15 +72,23 @@ export function SectionHeader({
   actionLabel?: string;
 }) {
   return (
-    <div className="mb-3 flex items-end justify-between gap-4 md:mb-6">
+    <div className="mb-5 flex items-end justify-between gap-4 md:mb-8">
       <div>
         {subtitle && (
-          <div className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-crimson md:mb-1 md:text-[11px]">{subtitle}</div>
+          <div className="mb-1.5 flex items-center gap-2">
+            <span className="h-px w-5 rounded-full bg-crimson" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">
+              {subtitle}
+            </span>
+          </div>
         )}
-        <h2 className="font-display text-lg font-extrabold tracking-tight md:text-3xl">{title}</h2>
+        <h2 className="font-display text-xl font-extrabold tracking-tight md:text-4xl">{title}</h2>
       </div>
       {actionHref && (
-        <a href={actionHref} className="hidden text-sm font-semibold text-crimson hover:underline sm:inline">
+        <a
+          href={actionHref}
+          className="hidden shrink-0 text-sm font-semibold text-crimson hover:underline underline-offset-2 sm:inline"
+        >
           {actionLabel ?? "View all →"}
         </a>
       )}

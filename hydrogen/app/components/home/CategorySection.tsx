@@ -33,53 +33,57 @@ export function CategorySection({
   const viewAllHandle = activeTab ? activeTab.handle : handle;
 
   return (
-    <section className="container mx-auto px-4 py-6 md:py-12">
+    <section className="container mx-auto px-4 py-10 md:py-14">
       {/* Header */}
-      <div className="mb-3 text-center">
+      <div className="mb-5 text-center md:mb-8">
         {subtitle && (
-          <div className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-crimson md:mb-1 md:text-[11px]">
-            {subtitle}
+          <div className="mb-1.5 flex items-center justify-center gap-2">
+            <span className="h-px w-5 rounded-full bg-crimson" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">
+              {subtitle}
+            </span>
+            <span className="h-px w-5 rounded-full bg-crimson" />
           </div>
         )}
-        <h2 className="font-display text-lg font-extrabold tracking-tight md:text-3xl">
-          {title}
-        </h2>
+        <h2 className="font-display text-xl font-extrabold tracking-tight md:text-4xl">{title}</h2>
       </div>
 
-      {/* Collection tabs */}
+      {/* Pill tabs */}
       {hasTabs && (
-        <div className="relative mb-3">
-          {/* Right fade — hints that more tabs are scrollable */}
-          <div className="pointer-events-none absolute right-0 top-0 h-full w-12 z-10 bg-gradient-to-l from-background to-transparent" />
-          <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-            <div className="flex min-w-max border-b border-border mx-auto w-fit">
-              {tabs.map((tab, idx) => (
-                <TabButton
-                  key={tab.handle}
-                  active={idx === activeIdx}
-                  onClick={() => setActiveIdx(idx)}
-                >
-                  {tab.label}
-                </TabButton>
-              ))}
-            </div>
+        <div className="relative mb-5 md:mb-6">
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-10 z-10 bg-gradient-to-l from-background to-transparent" />
+          <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] justify-start md:justify-center">
+            {tabs.map((tab, idx) => (
+              <button
+                key={tab.handle}
+                type="button"
+                onClick={() => setActiveIdx(idx)}
+                className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-semibold transition-all duration-200 ${
+                  idx === activeIdx
+                    ? "bg-crimson text-white shadow-sm"
+                    : "border border-border bg-card text-muted-foreground hover:border-crimson/50 hover:text-foreground"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
       )}
 
       {/* View all */}
-      <div className="mb-3 text-center">
+      <div className="mb-4 text-center">
         <Link
           to={`/collections/${viewAllHandle}`}
-          className="text-xs font-semibold text-crimson underline-offset-2 hover:underline md:text-sm"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-crimson underline-offset-2 hover:underline md:text-sm"
         >
-          View all
+          View all →
         </Link>
       </div>
 
       {/* Products */}
       {visibleProducts.length === 0 ? (
-        <div className="rounded-md border border-dashed border-border bg-card/50 px-6 py-12 text-center text-muted-foreground">
+        <div className="rounded-xl border border-dashed border-border bg-card/50 px-6 py-12 text-center text-muted-foreground">
           No products in this tab.
         </div>
       ) : (
@@ -95,30 +99,5 @@ export function CategorySection({
         </HScroller>
       )}
     </section>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`relative whitespace-nowrap px-5 py-2.5 text-sm font-semibold capitalize transition-colors ${
-        active ? "text-crimson" : "text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      {children}
-      {active && (
-        <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-crimson" />
-      )}
-    </button>
   );
 }

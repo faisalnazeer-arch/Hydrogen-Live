@@ -176,7 +176,7 @@ function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
 
   return (
     <div
-      className="relative w-full min-h-[420px] sm:min-h-[380px] md:min-h-[420px] lg:min-h-[500px]"
+      className="relative w-full min-h-[480px] sm:min-h-[500px] md:min-h-[560px] lg:min-h-[640px]"
       style={{ flexShrink: 0 }}
     >
       {slide.mobileImage && (
@@ -220,28 +220,57 @@ function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
 // ── Dynamic metaobject content ─────────────────────────────────────────────
 
 function DynamicContent({ slide, active }: { slide: HeroSlide; active: boolean }) {
+  // Split on "—" so "Australian Wagyu — Butcher's Cut Series" renders as eyebrow + headline
+  const parts = slide.content?.split(/\s*—\s*/) ?? [];
+  const eyebrow = parts.length > 1 ? parts[0] : null;
+  const headline = parts.length > 1 ? parts.slice(1).join(" — ") : parts[0] ?? null;
+
   return (
     <div className="flex h-full items-center">
       <div className="container mx-auto px-4">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-          transition={{ duration: 0.55, ease: "easeOut" }}
-          className="max-w-xl"
+          initial={{ opacity: 0, y: 28 }}
+          animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 28 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="max-w-2xl"
         >
-          {slide.content && (
-            <p className="text-base font-medium leading-relaxed text-off-white drop-shadow md:text-lg">
-              {slide.content}
-            </p>
+          {eyebrow && (
+            <motion.span
+              initial={{ opacity: 0, y: 10 }}
+              animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+              transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
+              className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-off-white backdrop-blur-sm"
+            >
+              <span className="h-1 w-1 rounded-full bg-crimson" />
+              {eyebrow}
+            </motion.span>
+          )}
+          {headline && (
+            <motion.h1
+              initial={{ opacity: 0, y: 16 }}
+              animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+              transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+              className="font-display text-3xl font-black leading-[1.1] tracking-tight text-off-white drop-shadow-lg md:text-5xl lg:text-6xl"
+            >
+              {headline}
+            </motion.h1>
           )}
           {slide.buttonText && slide.buttonUrl && (
-            <div className="pointer-events-auto mt-6">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+              transition={{ duration: 0.5, delay: 0.25, ease: "easeOut" }}
+              className="pointer-events-auto mt-8"
+            >
               <Link to={slide.buttonUrl}>
-                <Button size="lg" className="bg-crimson text-crimson-foreground hover:bg-rich-red">
+                <Button
+                  size="lg"
+                  className="h-12 rounded-full bg-crimson px-8 text-base font-bold text-crimson-foreground shadow-lg transition-all duration-200 hover:bg-rich-red hover:scale-105 hover:shadow-xl"
+                >
                   {slide.buttonText}
                 </Button>
               </Link>
-            </div>
+            </motion.div>
           )}
         </motion.div>
       </div>

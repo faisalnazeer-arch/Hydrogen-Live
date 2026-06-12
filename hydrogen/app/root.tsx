@@ -32,6 +32,7 @@ export const links: LinksFunction = () => [
 export interface NavLink {
   label: string;
   url: string;
+  imageUrl?: string | null;
 }
 
 export interface NavColumn {
@@ -72,8 +73,24 @@ const LAYOUT_QUERY = `#graphql
     id title url type
     items {
       id title url type
+      resource {
+        ... on Collection {
+          image { url altText }
+        }
+        ... on Product {
+          featuredImage { url altText }
+        }
+      }
       items {
         id title url type
+        resource {
+          ... on Collection {
+            image { url altText }
+          }
+          ... on Product {
+            featuredImage { url altText }
+          }
+        }
       }
     }
   }
@@ -134,10 +151,15 @@ function parseShopifyMenu(menu: any, menuName = "main"): NavEntry[] {
         links: (col.items ?? []).map((lk: any): NavLink => ({
           label: lk.title,
           url: toPath(lk.url),
+          imageUrl: lk.resource?.image?.url ?? lk.resource?.featuredImage?.url ?? null,
         })),
       }));
     } else if (item.items?.length > 0) {
-      columns = [{ title: "", links: item.items.map((lk: any): NavLink => ({ label: lk.title, url: toPath(lk.url) })) }];
+      columns = [{ title: "", links: item.items.map((lk: any): NavLink => ({
+        label: lk.title,
+        url: toPath(lk.url),
+        imageUrl: lk.resource?.image?.url ?? lk.resource?.featuredImage?.url ?? null,
+      })) }];
     }
     return { id: item.id, label: item.title, url: toPath(item.url), menu: menuName, position: idx, columns };
   });

@@ -22,29 +22,53 @@ export function ShopByCategory({ section }: Props) {
   if (!section || section.items.length === 0) return null;
 
   return (
-    <section className="bg-bone py-6 md:py-12">
+    <section className="bg-bone py-10 md:py-16">
       <div className="container mx-auto px-4">
-        <div className="mb-3 text-center md:mb-6">
-          <div className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-crimson md:mb-1 md:text-[11px]">{section.eyebrow}</div>
-          <h2 className="font-display text-lg font-extrabold md:text-3xl">{section.heading}</h2>
+        <div className="mb-7 text-center md:mb-10">
+          <div className="mb-1.5 flex items-center justify-center gap-2">
+            <span className="h-px w-5 rounded-full bg-crimson" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">
+              {section.eyebrow}
+            </span>
+            <span className="h-px w-5 rounded-full bg-crimson" />
+          </div>
+          <h2 className="font-display text-xl font-extrabold tracking-tight md:text-4xl">
+            {section.heading}
+          </h2>
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] md:grid md:grid-cols-8">
+
+        <div className="grid grid-cols-4 gap-2.5 md:grid-cols-8 md:gap-3">
           {section.items.map((item) => (
             <Link
               key={item.id}
               to={item.link}
-              className="group flex w-[72px] flex-shrink-0 flex-col items-center gap-2 rounded-lg border border-border bg-card p-3 transition-all hover:-translate-y-1 hover:border-crimson hover:shadow-[var(--shadow-card)] md:w-auto md:p-4"
+              className="group relative overflow-hidden rounded-xl bg-charcoal"
+              style={{ aspectRatio: "3/4" }}
             >
               {item.imageUrl ? (
                 <img
                   src={item.imageUrl}
                   alt={item.imageAlt || item.heading}
-                  className="h-9 w-9 rounded-full object-cover transition-transform group-hover:scale-110 md:h-10 md:w-10"
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
               ) : (
-                <span className="text-2xl transition-transform group-hover:scale-110 md:text-3xl">🥩</span>
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-crimson/20 to-charcoal">
+                  <span className="text-4xl">🥩</span>
+                </div>
               )}
-              <span className="text-[10px] font-semibold uppercase leading-tight tracking-wider md:text-xs">{item.heading}</span>
+
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+
+              {/* Hover highlight ring */}
+              <div className="absolute inset-0 rounded-xl ring-2 ring-inset ring-transparent transition-all duration-300 group-hover:ring-crimson/70" />
+
+              {/* Label */}
+              <div className="absolute inset-x-0 bottom-0 p-2 text-center md:p-3">
+                <span className="block text-[10px] font-bold uppercase leading-tight tracking-wide text-white md:text-[11px]">
+                  {item.heading}
+                </span>
+              </div>
             </Link>
           ))}
         </div>
