@@ -702,6 +702,9 @@ export function ProductPageShell({
     if (idx !== -1) setActiveMediaIdx(idx);
   }, [selectedVariantId]); // eslint-disable-line
 
+  const allMedia = buildMediaItems(images, mediaNodes);
+  const activeMedia = allMedia[activeMediaIdx];
+
   // Update left/right arrow visibility whenever media list size or scroll position changes
   useEffect(() => {
     const el = thumbTrackRef.current;
@@ -761,9 +764,6 @@ export function ProductPageShell({
       attributes: globoAttributes.length ? globoAttributes : undefined,
     });
   };
-
-  const allMedia = buildMediaItems(images, mediaNodes);
-  const activeMedia = allMedia[activeMediaIdx];
 
   // Extra-sections accordion label — determined entirely by template, not by
   // which metafields have values (avoids false-positive when "understanding_rubs"
