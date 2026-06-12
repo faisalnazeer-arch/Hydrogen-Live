@@ -203,7 +203,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const [data, adminData] = await Promise.all([
       context.storefront.query(LAYOUT_QUERY, {
         variables: { language, country: "AE" as const },
-        cache: context.storefront.CacheLong(),
+        cache: context.storefront.CacheShort(),
       }),
       context.adminFetch(ADMIN_FOOTER_QUERY),
     ]);
