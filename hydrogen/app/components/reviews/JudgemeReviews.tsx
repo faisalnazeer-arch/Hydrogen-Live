@@ -170,13 +170,30 @@ function WriteReviewModal({ handle, externalId, onClose }: { handle: string; ext
 // ── Main component ────────────────────────────────────────────────────────
 export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, handle, externalId, metaAverage, metaCount }: JudgemeReviewsProps) {
   const [allReviews, setAllReviews] = useState<JudgemeReview[]>(initialReviews);
+  const [clientTotal, setClientTotal] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [showWriteReview, setShowWriteReview] = useState(false);
   const fetcher = useFetcher<{ reviews: JudgemeReview[]; totalCount: number }>();
 
-  useEffect(() => { setAllReviews(initialReviews); setPage(1); }, [handle]); // eslint-disable-line
+  useEffect(() => { setAllReviews(initialReviews); setPage(1); setClientTotal(null); }, [handle]); // eslint-disable-line
 
-  const effectiveTotal = totalCount > 0 ? totalCount : (metaCount ?? 0);
+  // Client-side fallback: if server returned no reviews (cold-start timeout hit the
+  // 3 500 ms race before Judge.me responded), fetch them after page load.
+  useEffect(() => {
+    if (initialReviews.length > 0) return; // server already provided reviews
+    const eid = externalId ? `&eid=${encodeURIComponent(externalId)}` : "";
+    fetch(`/api/reviews/${handle}?page=1${eid}`)
+      .then((r) => r.json())
+      .then((data: any) => {
+        if (data?.reviews?.length > 0) {
+          setAllReviews(data.reviews);
+          setClientTotal(data.totalCount ?? data.reviews.length);
+        }
+      })
+      .catch(() => {});
+  }, [handle, externalId]); // eslint-disable-line
+
+  const effectiveTotal = clientTotal ?? (totalCount > 0 ? totalCount : (metaCount ?? 0));
   const effectiveAvg = rating.average > 0 ? rating.average : (metaAverage ?? 0);
   const effectiveRating: JudgemeRatingSummary = rating.average > 0
     ? rating
