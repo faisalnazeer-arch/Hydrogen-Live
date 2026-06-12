@@ -758,7 +758,7 @@ export function ProductPageShell({
   }
 
   return (
-    <div className="bg-background min-h-screen overflow-x-hidden pb-20">
+    <div className="bg-background min-h-screen pb-20">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       {/* Breadcrumb */}
