@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router";
 import {
   ShoppingBag,
@@ -366,22 +366,6 @@ function MobileMenuDrawer({
   const tabs = mobileMenu.length > 0 ? mobileMenu : [];
   const activeItems = tabs[activeTabIdx]?.items ?? [];
 
-  // Build title → flat sub-links from desktop mainMenu columns
-  const subLinksMap = useMemo(() => {
-    const map: Record<string, { label: string; url: string }[]> = {};
-    for (const entry of mainMenu) {
-      const links = entry.columns.flatMap((col) =>
-        col.links.length > 0
-          ? col.links.map((l) => ({ label: l.label, url: l.url }))
-          : col.url
-          ? [{ label: col.title, url: col.url }]
-          : []
-      );
-      if (links.length > 0) map[entry.label.toLowerCase()] = links;
-    }
-    return map;
-  }, [mainMenu]);
-
   // Close accordion when tab changes
   const handleTabChange = (i: number) => {
     setActiveTabIdx(i);
@@ -456,7 +440,7 @@ function MobileMenuDrawer({
         {/* Category / collection image rows */}
         {activeItems.map((item) => {
           const initial = (item.title[0] ?? "•").toUpperCase();
-          const subLinks = subLinksMap[item.title.toLowerCase()] ?? [];
+          const subLinks = item.subItems;
           const hasSubLinks = subLinks.length > 0;
           const isOpen = openItemId === item.id;
           // metaobject image takes priority over collection image
@@ -501,14 +485,14 @@ function MobileMenuDrawer({
                 <div className="border-b border-border/40 bg-muted/20">
                   {subLinks.map((link) => (
                     <Link
-                      key={link.url + link.label}
+                      key={link.id}
                       to={link.url}
                       onClick={onClose}
                       prefetch="intent"
                       className="flex items-center gap-2 border-b border-border/20 py-2.5 pl-[4.5rem] pr-4 text-[12px] font-medium text-foreground/70 last:border-0 transition-colors hover:text-crimson"
                     >
                       <span className="h-1 w-1 shrink-0 rounded-full bg-crimson/50" />
-                      {link.label}
+                      {link.title}
                     </Link>
                   ))}
                 </div>

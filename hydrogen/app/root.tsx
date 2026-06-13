@@ -257,11 +257,18 @@ function parseAnnouncementMessages(nodes: any[]): string[] {
   ].filter((m): m is string => typeof m === "string" && m.trim().length > 0);
 }
 
+export interface MobileMenuSubItem {
+  id: string;
+  title: string;
+  url: string;
+}
+
 export interface MobileMenuItem {
   id: string;
   title: string;
   url: string;
   imageUrl: string | null;
+  subItems: MobileMenuSubItem[];
 }
 
 export interface MobileMenuTab {
@@ -278,6 +285,11 @@ function parseMobileMenu(menuData: any): MobileMenuTab[] {
       title: item.title as string,
       url: toPath(item.url),
       imageUrl: (item.resource?.image?.url ?? null) as string | null,
+      subItems: (item.items ?? []).map((sub: any) => ({
+        id: sub.id as string,
+        title: sub.title as string,
+        url: toPath(sub.url),
+      })),
     })),
   }));
 }
