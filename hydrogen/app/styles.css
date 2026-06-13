@@ -499,6 +499,12 @@ button.jdgm-submit-rev:hover, .jdgm-form__submit:hover { background-color: oklch
     letter-spacing: -0.01em;
   }
 
+  /* Reset anchor color so <Link className="..."> never flashes browser-default blue */
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
   a,
   button,
   [role="button"],
