@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { Link } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -219,50 +218,40 @@ function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
 }
 
 // ── Dynamic metaobject content ─────────────────────────────────────────────
+// Uses CSS keyframe animations instead of framer-motion to avoid SSR inline-style
+// mismatches that cause React hydration errors.
 
 function DynamicContent({ slide, active }: { slide: HeroSlide; active: boolean }) {
-  // Split on "—" so "Australian Wagyu — Butcher's Cut Series" renders as eyebrow + headline
   const parts = slide.content?.split(/\s*—\s*/) ?? [];
   const eyebrow = parts.length > 1 ? parts[0] : null;
   const headline = parts.length > 1 ? parts.slice(1).join(" — ") : parts[0] ?? null;
 
   return (
     <div className="flex h-full items-center">
+      <style>{`
+        @keyframes hero-in { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes hero-out { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(28px); } }
+        .hero-active { animation: hero-in 0.6s cubic-bezier(0.22,1,0.36,1) both; }
+        .hero-active .hero-eyebrow { animation: hero-in 0.5s ease-out 0.1s both; }
+        .hero-active .hero-headline { animation: hero-in 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both; }
+        .hero-active .hero-cta { animation: hero-in 0.5s ease-out 0.25s both; }
+        .hero-inactive { opacity:0; transform:translateY(28px); }
+      `}</style>
       <div className="container mx-auto px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 28 }}
-          animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 28 }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="max-w-2xl"
-        >
+        <div className={cn("max-w-2xl", active ? "hero-active" : "hero-inactive")}>
           {eyebrow && (
-            <motion.span
-              initial={{ opacity: 0, y: 10 }}
-              animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-              transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
-              className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-off-white backdrop-blur-sm"
-            >
+            <span className="hero-eyebrow mb-3 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-off-white backdrop-blur-sm">
               <span className="h-1 w-1 rounded-full bg-crimson" />
               {eyebrow}
-            </motion.span>
+            </span>
           )}
           {headline && (
-            <motion.h1
-              initial={{ opacity: 0, y: 16 }}
-              animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
-              transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-              className="font-display text-3xl font-black leading-[1.1] tracking-tight text-off-white drop-shadow-lg md:text-5xl lg:text-6xl"
-            >
+            <h1 className="hero-headline font-display text-3xl font-black leading-[1.1] tracking-tight text-off-white drop-shadow-lg md:text-5xl lg:text-6xl">
               {headline}
-            </motion.h1>
+            </h1>
           )}
           {slide.buttonText && slide.buttonUrl && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
-              transition={{ duration: 0.5, delay: 0.25, ease: "easeOut" }}
-              className="pointer-events-auto mt-8"
-            >
+            <div className="hero-cta pointer-events-auto mt-8">
               <Link to={slide.buttonUrl}>
                 <Button
                   size="lg"
@@ -271,9 +260,9 @@ function DynamicContent({ slide, active }: { slide: HeroSlide; active: boolean }
                   {slide.buttonText}
                 </Button>
               </Link>
-            </motion.div>
+            </div>
           )}
-        </motion.div>
+        </div>
       </div>
     </div>
   );

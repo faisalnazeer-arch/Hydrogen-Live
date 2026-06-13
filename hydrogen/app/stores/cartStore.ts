@@ -694,6 +694,7 @@ export const useCartStore = create<CartStore>()(
       name: "mls-shopify-cart",
       version: 4,
       storage: createJSONStorage(() => localStorage),
+      skipHydration: true, // Prevent auto-rehydrate during SSR — we call rehydrate() manually in useEffect
       partialize: (s) => ({
         items: s.items.filter((i) => !i.isPending),
         cartId: s.cartId,

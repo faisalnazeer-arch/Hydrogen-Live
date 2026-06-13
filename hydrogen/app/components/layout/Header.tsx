@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router";
 import {
   ShoppingBag,
@@ -59,10 +59,13 @@ interface HeaderProps {
 }
 
 export function Header({ mainMenu = [], secondaryMenu = [], navItemImages = {}, mobileBanners = [] }: HeaderProps) {
-  const totalItems = useCartStore((s) =>
-    s.items.reduce((n, i) => n + i.quantity, 0)
-  );
+  const rawTotal = useCartStore((s) => s.items.reduce((n, i) => n + i.quantity, 0));
   const setCartOpen = useCartStore((s) => s.setOpen);
+  // Defer cart count display until after client hydration so SSR (always 0)
+  // matches the initial client render, preventing React hydration errors.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+  const totalItems = hydrated ? rawTotal : 0;
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const locale = useLocaleStore((s) => s.locale);
   const setLocale = useLocaleStore((s) => s.setLocale);
