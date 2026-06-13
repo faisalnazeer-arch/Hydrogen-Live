@@ -349,6 +349,7 @@ function cdnImg(url: string, w = 120) {
 function MobileMenuDrawer({
   mainMenu,
   secondaryMenu,
+  navItemImages,
   mobileBanners,
   mobileMenu,
   onClose,
@@ -409,7 +410,21 @@ function MobileMenuDrawer({
         <div className="flex shrink-0 gap-2 border-b border-border bg-background px-3 py-2.5">
           {mobileBanners.map((banner) => (
             <Link key={banner.id} to={banner.url} onClick={onClose} prefetch="intent" className="relative flex-1 overflow-hidden rounded-xl">
-              <img src={cdnImg(banner.imageUrl, 300)} alt={banner.altText} className="h-20 w-full object-cover" loading="eager" />
+              <img src={cdnImg(banner.imageUrl, 300)} alt={banner.altText} className="h-24 w-full object-cover" loading="eager" />
+              {/* Text overlay — shown when heading/highlight are set in metaobject */}
+              {(banner.heading || banner.highlight) && (
+                <div className="absolute inset-0 flex flex-col justify-center pl-3 pr-1">
+                  {banner.heading && (
+                    <span className="text-[11px] font-black leading-tight text-white drop-shadow">{banner.heading}</span>
+                  )}
+                  {banner.highlight && (
+                    <span className="text-[13px] font-black leading-tight text-crimson drop-shadow">{banner.highlight}</span>
+                  )}
+                  {banner.ctaText && (
+                    <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/80 drop-shadow">{banner.ctaText}</span>
+                  )}
+                </div>
+              )}
             </Link>
           ))}
         </div>
@@ -444,6 +459,8 @@ function MobileMenuDrawer({
           const subLinks = subLinksMap[item.title.toLowerCase()] ?? [];
           const hasSubLinks = subLinks.length > 0;
           const isOpen = openItemId === item.id;
+          // metaobject image takes priority over collection image
+          const thumbUrl = navItemImages[item.title] ?? item.imageUrl;
 
           return (
             <div key={item.id}>
@@ -451,8 +468,8 @@ function MobileMenuDrawer({
               <div className={`flex items-center gap-3 border-b px-4 py-2.5 transition-colors ${isOpen ? "border-border bg-muted/30" : "border-border/50 hover:bg-muted/40"}`}>
                 {/* Thumbnail — navigates to collection */}
                 <Link to={item.url} onClick={onClose} prefetch="intent" className="h-12 w-[3.25rem] shrink-0 overflow-hidden rounded-lg">
-                  {item.imageUrl ? (
-                    <img src={cdnImg(item.imageUrl, 120)} alt={item.title} className="h-full w-full object-cover" loading="lazy" />
+                  {thumbUrl ? (
+                    <img src={cdnImg(thumbUrl, 120)} alt={item.title} className="h-full w-full object-cover" loading="lazy" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-crimson/15 to-crimson/5">
                       <span className="text-sm font-black text-crimson">{initial}</span>

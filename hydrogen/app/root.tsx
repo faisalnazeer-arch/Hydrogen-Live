@@ -287,6 +287,9 @@ export interface MobileBanner {
   imageUrl: string;
   url: string;
   altText: string;
+  heading: string;
+  highlight: string;
+  ctaText: string;
 }
 
 function parseMobileBanners(nodes: any[]): MobileBanner[] {
@@ -300,6 +303,9 @@ function parseMobileBanners(nodes: any[]): MobileBanner[] {
         imageUrl,
         url: (f.url?.value ?? "/") as string,
         altText: (f.image?.reference?.image?.altText ?? "") as string,
+        heading: (f.heading?.value ?? "") as string,
+        highlight: (f.highlight?.value ?? "") as string,
+        ctaText: (f.cta_text?.value ?? "Shop Now") as string,
       };
     })
     .filter((b): b is MobileBanner => b !== null);
