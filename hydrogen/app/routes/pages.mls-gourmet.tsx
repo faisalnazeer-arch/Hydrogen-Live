@@ -156,7 +156,7 @@ export default function MlsGourmetPage() {
               <div className="flex flex-wrap gap-3">
                 {current.mapsUrl && (
                   <a href={current.mapsUrl} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-lg bg-crimson px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-rich-red">
+                    className="inline-flex items-center gap-2 rounded-lg bg-crimson px-5 py-2.5 text-sm font-bold transition-colors hover:bg-rich-red" style={{ color: '#fff' }}>
                     <Navigation className="h-4 w-4" /> Get Directions
                   </a>
                 )}

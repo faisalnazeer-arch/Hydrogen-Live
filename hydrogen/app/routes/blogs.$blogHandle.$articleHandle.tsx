@@ -130,7 +130,8 @@ export default function ArticlePage() {
             </Link>
             <Link
               to="/collections/all"
-              className="inline-flex items-center gap-2 rounded-lg bg-crimson px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-rich-red"
+              className="inline-flex items-center gap-2 rounded-lg bg-crimson px-5 py-2.5 text-sm font-bold transition-all hover:bg-rich-red"
+              style={{ color: '#fff' }}
             >
               Shop Now
             </Link>

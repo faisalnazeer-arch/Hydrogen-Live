@@ -608,11 +608,15 @@ button.jdgm-submit-rev:hover, .jdgm-form__submit:hover { background-color: oklch
     letter-spacing: -0.01em;
   }
 
-  /* Reset anchor color so <Link className="..."> never flashes browser-default blue.
-     :where() has zero specificity so any Tailwind text-* class wins without !important. */
+  /* Strip underline from all anchors. */
   :where(a) {
-    color: inherit;
     text-decoration: none;
+  }
+  /* Prevent browser-default blue on plain text links only.
+     Button-style links (those with px-* padding classes) are excluded so their
+     own text-* color classes are never overridden by inheritance. */
+  :where(a:not([class*="px-"])) {
+    color: inherit;
   }
 
   a,
