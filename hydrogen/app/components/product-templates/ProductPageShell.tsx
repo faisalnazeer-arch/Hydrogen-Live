@@ -409,7 +409,7 @@ function InfoTabs({
   const tabs: Array<{ id: TabId; label: string; Icon: any }> = [
     hasTemplate  && { id: "template"  as TabId, label: extraSectionTitle,              Icon: FlameKindling },
     hasNutrition && { id: "nutrition" as TabId, label: "Nutrition Facts",              Icon: Leaf },
-                    { id: "returns"   as TabId, label: "Free Returns",                 Icon: RefreshCw },
+                    { id: "returns"   as TabId, label: "100% Free Returns",            Icon: RefreshCw },
                     { id: "delivery"  as TabId, label: "Delivery Info",                Icon: PackageOpen },
   ].filter(Boolean) as Array<{ id: TabId; label: string; Icon: any }>;
 
@@ -1100,12 +1100,25 @@ export function ProductPageShell({
             ))}
           </div>
 
-          {/* Description + Customer Support */}
+          {/* Description + Free Returns + Customer Support */}
           <div className="border-t border-border">
             <AccordionItem title="Description" defaultOpen>
               {product.descriptionHtml
                 ? <DescriptionWithToggle html={product.descriptionHtml} />
                 : <p>No description available.</p>}
+            </AccordionItem>
+            <AccordionItem title="100% Free Returns">
+              <div className="divide-y divide-border/50">
+                {[
+                  "Drop a WhatsApp message or send us an email within 24 hours after delivery.",
+                  "We will exchange the product and deliver it again to your door, or you can pick it up if you want.",
+                  "You will receive the product or a refund. Refunds will be processed within 14 working days.",
+                ].map((line, i) => (
+                  <p key={i} className="py-2 text-xs leading-relaxed text-muted-foreground sm:py-2.5 sm:text-[13px]">
+                    {line}
+                  </p>
+                ))}
+              </div>
             </AccordionItem>
             <AccordionItem title={pageSettings?.supportTitle ?? "Customer Support"}>
               <ul className="space-y-1.5 text-xs text-muted-foreground sm:space-y-2 sm:text-sm">
