@@ -55,7 +55,7 @@ export function ValueBoxesBanner({ banner }: Props) {
             {banner.eyebrow && (
               <div className="flex items-center gap-2">
                 <span className="h-px w-5 rounded-full bg-gold/70" />
-                <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold/90">
+                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-gold/90">
                   {banner.eyebrow}
                 </span>
               </div>

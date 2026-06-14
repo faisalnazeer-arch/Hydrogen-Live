@@ -48,20 +48,20 @@ export function FirstOrderGift({ data }: Props) {
   if (!data || data.items.length === 0) return null;
 
   return (
-    <section className="bg-background py-5 md:py-12">
+    <section className="bg-background py-10 md:py-14">
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-5xl">
 
           {/* ── Header ── */}
-          <div className="mb-4 text-center md:mb-10">
-            <div className="mb-1.5 flex items-center justify-center gap-3 md:mb-2">
+          <div className="mb-8 text-center md:mb-10">
+            <div className="mb-2 flex items-center justify-center gap-3">
               <span className="h-px w-6 rounded-full bg-crimson" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-crimson md:text-[11px]">
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">
                 {data.eyebrow}
               </span>
               <span className="h-px w-6 rounded-full bg-crimson" />
             </div>
-            <h2 className="font-display text-lg font-extrabold tracking-tight text-foreground md:text-4xl">
+            <h2 className="font-display text-2xl font-extrabold tracking-tight text-foreground md:text-4xl">
               {data.heading}
             </h2>
             {data.description && (

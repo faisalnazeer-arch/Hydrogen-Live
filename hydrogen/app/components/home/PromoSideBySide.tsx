@@ -36,7 +36,7 @@ export function PromoSideBySide({ promo }: PromoSideBySideProps) {
   if (!promo) return null;
 
   return (
-    <section className="container mx-auto px-4 py-8 md:py-10">
+    <section className="container mx-auto px-4 py-10 md:py-14">
       <div className="grid overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)] md:grid-cols-2">
         {/* Text side */}
         <div className="flex flex-col justify-center gap-4 p-7 md:gap-5 md:p-14">
@@ -45,9 +45,9 @@ export function PromoSideBySide({ promo }: PromoSideBySideProps) {
               {promo.badgeText}
             </span>
           )}
-          <h3 className="font-display text-2xl font-extrabold leading-tight tracking-tight md:text-4xl">
+          <h2 className="font-display text-2xl font-extrabold leading-tight tracking-tight md:text-4xl">
             {promo.heading}
-          </h3>
+          </h2>
           {promo.bodyText && (
             <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
               {promo.bodyText}

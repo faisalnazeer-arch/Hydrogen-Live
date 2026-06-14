@@ -68,7 +68,7 @@ export function PriceRangeShop({ section, tiles = [] }: PriceRangeShopProps) {
   const subHeading = section?.subHeading ?? "Every Budget · Premier Quality";
 
   return (
-    <section className="border-t border-border/50 bg-bone py-8 md:py-12">
+    <section className="border-t border-border/50 bg-bone py-10 md:py-14">
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-6xl">
 
