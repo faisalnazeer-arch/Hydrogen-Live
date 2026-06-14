@@ -47,17 +47,26 @@ export default function RewardsPage() {
   const { heroImage, heroTitle, heroSubtitle } = useLoaderData<typeof loader>();
 
   useEffect(() => {
-    // Load Yotpo Loyalty widget script
-    if (document.getElementById("yotpo-loyalty-script")) return;
-    const script = document.createElement("script");
-    script.id = "yotpo-loyalty-script";
-    script.src = `https://cdn-loyalty.yotpo.com/loader/${YOTPO_GUID}.js`;
-    script.async = true;
-    document.head.appendChild(script);
-    return () => {
-      const s = document.getElementById("yotpo-loyalty-script");
-      if (s) s.remove();
-    };
+    const SCRIPT_ID = "yotpo-loyalty-script";
+    if (!document.getElementById(SCRIPT_ID)) {
+      // First visit — inject script; it will auto-scan for widget instances on load
+      const script = document.createElement("script");
+      script.id = SCRIPT_ID;
+      script.src = `https://cdn-loyalty.yotpo.com/loader/${YOTPO_GUID}.js`;
+      script.async = true;
+      document.head.appendChild(script);
+    } else {
+      // SPA navigation back to this page — script already loaded, trigger rescan
+      try {
+        const w = window as any;
+        if (w.yotpo?.initWidgets) {
+          w.yotpo.initWidgets();
+        } else if (Array.isArray(w.yotpoQ)) {
+          w.yotpoQ.push(["initWidgets"]);
+        }
+      } catch {}
+    }
+    // No cleanup — keep script alive across navigations so Yotpo state is preserved
   }, []);
 
   return (
