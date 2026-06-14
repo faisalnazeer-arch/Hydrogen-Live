@@ -39,6 +39,8 @@ export interface PageSettings {
   badgeImage: string | null;
 }
 
+export type AccordionSection = { value: string; label: string; content: ReactNode };
+
 export interface ProductPageShellProps {
   product: any;
   sellingPlanGroupsRaw: any[];
@@ -49,6 +51,7 @@ export interface ProductPageShellProps {
   externalId?: string | null;
   templateSuffix?: string | null;
   extraSections?: ReactNode;
+  accordionSections?: AccordionSection[];
   recommendations?: ShopifyProduct[];
   pageSettings?: PageSettings;
   globoOptionSets?: GloboOptionSet[];
@@ -602,6 +605,7 @@ export function ProductPageShell({
   externalId,
   templateSuffix,
   extraSections,
+  accordionSections = [],
   recommendations = [],
   pageSettings,
   globoOptionSets = [],
@@ -1137,7 +1141,11 @@ export function ProductPageShell({
 
       {/* ── Info tabs: Understanding Rubs / Nutrition / Delivery & Support ── */}
       <InfoTabs
-        extraSections={extraSections}
+        extraSections={
+          accordionSections.length > 0
+            ? <>{accordionSections.map(s => <AccordionItem key={s.value} title={s.label}>{s.content}</AccordionItem>)}{extraSections}</>
+            : extraSections
+        }
         extraSectionTitle={extraSectionTitle}
         pageSettings={pageSettings}
         variant={variant}

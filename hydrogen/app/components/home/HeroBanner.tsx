@@ -118,7 +118,7 @@ export function HeroBanner({ slides: rawSlides = [] }: HeroBannerProps) {
           }}
         >
           {slides.map((slide, i) => (
-            <SlideItem key={slide.id} slide={slide} active={i === current} />
+            <SlideItem key={slide.id} slide={slide} active={i === current} priority={i === 0} />
           ))}
         </div>
       </div>
@@ -170,7 +170,7 @@ export function HeroBanner({ slides: rawSlides = [] }: HeroBannerProps) {
 
 // ── Slide ──────────────────────────────────────────────────────────────────
 
-function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
+function SlideItem({ slide, active, priority }: { slide: HeroSlide; active: boolean; priority?: boolean }) {
   const hasContent = slide.content || slide.buttonText;
 
   return (
@@ -181,6 +181,8 @@ function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
           src={slide.mobileImage.url}
           alt={slide.mobileImage.altText ?? ""}
           draggable={false}
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "low"}
           className={cn(
             "pointer-events-none block w-full select-none",
             slide.desktopImage ? "md:hidden" : "",
@@ -192,6 +194,8 @@ function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
           src={slide.desktopImage.url}
           alt={slide.desktopImage.altText ?? ""}
           draggable={false}
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "low"}
           className={cn(
             "pointer-events-none w-full select-none",
             slide.mobileImage ? "hidden md:block" : "block",
