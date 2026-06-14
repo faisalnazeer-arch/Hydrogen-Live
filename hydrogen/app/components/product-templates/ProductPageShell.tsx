@@ -893,7 +893,7 @@ export function ProductPageShell({
         {/* ── Product info ── */}
         <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
           <div>
-            <h1 className="font-display text-lg font-bold leading-snug tracking-tight sm:text-xl md:text-2xl">{product.title}</h1>
+            <h1 className="font-display text-xl font-bold leading-snug tracking-tight sm:text-2xl">{product.title}</h1>
             {displayRating.average > 0 && (
               <button type="button" onClick={() => document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth" })}
                 className="mt-2 flex items-center gap-2 transition-opacity hover:opacity-80">

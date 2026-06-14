@@ -21,7 +21,7 @@ export function ShopByCuts({ section }: Props) {
             </span>
             <span className="h-px w-6 rounded-full bg-crimson" />
           </div>
-          <h2 className="font-display text-xl font-bold leading-snug tracking-tight text-foreground md:text-3xl">
+          <h2 className="font-display text-2xl font-bold leading-snug tracking-tight text-foreground md:text-3xl">
             {section.heading}
           </h2>
         </div>

@@ -45,7 +45,7 @@ export function PromoSideBySide({ promo }: PromoSideBySideProps) {
               {promo.badgeText}
             </span>
           )}
-          <h2 className="font-display text-xl font-bold leading-snug tracking-tight md:text-3xl">
+          <h2 className="font-display text-2xl font-bold leading-snug tracking-tight md:text-3xl">
             {promo.heading}
           </h2>
           {promo.bodyText && (
