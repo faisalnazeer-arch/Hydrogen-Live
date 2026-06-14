@@ -21,7 +21,7 @@ export function FeaturedCollections({ cards, title, subtitle }: FeaturedCollecti
   if (!cards || cards.length === 0) return null;
 
   return (
-    <section className="container mx-auto px-4 py-8 md:py-10">
+    <section className="container mx-auto px-4 py-6 md:py-8">
       {(title || subtitle) && <SectionHeader title={title ?? ""} subtitle={subtitle} />}
       <HScroller>
         {cards.map((c) => (

@@ -34,7 +34,7 @@ export function ShopByCategory({ section }: Props) {
   if (!section || section.items.length === 0) return null;
 
   return (
-    <section className="py-8 md:py-10">
+    <section className="py-6 md:py-8">
       <div className="container mx-auto px-4">
 
         <div className="mb-6 text-center md:mb-7">

@@ -77,7 +77,7 @@ export function ShopByOrigin({ section }: Props) {
       : section.items;
 
   return (
-    <section className="bg-bone py-8 md:py-10">
+    <section className="bg-bone py-6 md:py-8">
       <div className="container mx-auto px-4">
 
         {/* Header */}
