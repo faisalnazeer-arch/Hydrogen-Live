@@ -380,32 +380,35 @@ a.jdgm-gallery__more-link, .jdgm-gallery-more {
 }
 a.jdgm-gallery__more-link:hover, .jdgm-gallery-more:hover { background-color: oklch(0.91 0.007 80) !important; }
 
-/* ── Review card large in-card photos — consistent fixed height ──────────── */
-/* Judge.me renders full-width photos inside cards via .jdgm-rev__pics /      */
-/* .jdgm-rev__pic. Cap to 200px tall so all cards have a consistent image area*/
+/* ── Review card large in-card photos — slider wrapper ───────────────────── */
 .jdgm-rev__pics,
 .jdgm-rev__pic-section {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 0.375rem !important;
+  position: relative !important;
+  display: block !important;
   margin-top: 0.625rem !important;
+  overflow: hidden !important;
+  border-radius: 0.625rem !important;
+  height: 200px !important;
+  border: 1.5px solid oklch(0.9 0.008 80) !important;
 }
+/* kill any scroll Judge.me injects */
+.jdgm-rev__pics *,
+.jdgm-rev__pic-section * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.jdgm-rev__pics *::-webkit-scrollbar,
+.jdgm-rev__pic-section *::-webkit-scrollbar { display: none !important; }
+
 .jdgm-rev__pic,
 .jdgm-rev__pic-link,
 .jdgm-rev__pic-section a {
   display: block !important;
-  flex: 1 1 auto !important;
-  min-width: 0 !important;
+  width: 100% !important;
   height: 200px !important;
   overflow: hidden !important;
-  border-radius: 0.625rem !important;
-  border: 1.5px solid oklch(0.9 0.008 80) !important;
-  transition: border-color 0.15s, transform 0.15s !important;
-}
-.jdgm-rev__pic:hover,
-.jdgm-rev__pic-link:hover {
-  border-color: oklch(0.36 0.18 27) !important;
-  transform: scale(1.01) !important;
+  border-radius: 0 !important;
+  border: none !important;
 }
 .jdgm-rev__pic img,
 .jdgm-rev__pic-link img,
@@ -415,6 +418,31 @@ a.jdgm-gallery__more-link:hover, .jdgm-gallery-more:hover { background-color: ok
   object-fit: cover !important;
   object-position: center !important;
   display: block !important;
+  pointer-events: none !important;
+}
+/* slider dots injected by JS */
+.mls-rev-dots {
+  position: absolute !important;
+  bottom: 6px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  display: flex !important;
+  gap: 5px !important;
+  z-index: 2 !important;
+}
+.mls-rev-dot {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  background: rgba(255,255,255,0.5) !important;
+  border: none !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+  transition: background 0.2s !important;
+}
+.mls-rev-dot.on {
+  background: #fff !important;
+  transform: scale(1.25) !important;
 }
 
 /* ── Review card photo thumbnails — consistent 72×72 squares ────────────── */

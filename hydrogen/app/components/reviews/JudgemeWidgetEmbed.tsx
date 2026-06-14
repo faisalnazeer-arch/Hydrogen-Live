@@ -86,6 +86,44 @@ function ReviewSkeleton() {
   );
 }
 
+// ── Auto-play slider for multi-image review cards ────────────────────────────
+function initReviewSliders(root: HTMLElement) {
+  root.querySelectorAll<HTMLElement>('.jdgm-rev__pics:not(.mls-slider-ready)').forEach((picsEl) => {
+    const slides = [...picsEl.querySelectorAll<HTMLElement>('.jdgm-rev__pic, .jdgm-rev__pic-link')];
+    if (slides.length <= 1) return;
+    picsEl.classList.add('mls-slider-ready');
+
+    let cur = 0;
+    slides.forEach((s, i) => { s.style.display = i === 0 ? 'block' : 'none'; });
+
+    // dots
+    const dotsEl = document.createElement('div');
+    dotsEl.className = 'mls-rev-dots';
+    slides.forEach((_, i) => {
+      const btn = document.createElement('button');
+      btn.className = `mls-rev-dot${i === 0 ? ' on' : ''}`;
+      btn.setAttribute('aria-label', `Photo ${i + 1}`);
+      btn.addEventListener('click', (e) => { e.preventDefault(); go(i); });
+      dotsEl.appendChild(btn);
+    });
+    picsEl.appendChild(dotsEl);
+
+    function go(next: number) {
+      slides[cur].style.display = 'none';
+      (dotsEl.children[cur] as HTMLElement).classList.remove('on');
+      cur = next;
+      slides[cur].style.display = 'block';
+      (dotsEl.children[cur] as HTMLElement).classList.add('on');
+    }
+
+    const timer = setInterval(() => go((cur + 1) % slides.length), 3000);
+    // clean up if card is ever removed from DOM
+    new MutationObserver((_, obs) => {
+      if (!document.contains(picsEl)) { clearInterval(timer); obs.disconnect(); }
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+}
+
 export function JudgemeWidgetEmbed({ externalId, shopDomain }: Props) {
   const [loaded, setLoaded] = useState(false);
   const widgetRef = useRef<HTMLDivElement>(null);
@@ -145,7 +183,7 @@ export function JudgemeWidgetEmbed({ externalId, shopDomain }: Props) {
     };
   }, [externalId, shopDomain]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reveal once CDN injects content; 10s safety fallback
+  // Reveal once CDN injects content; also init sliders on every DOM change
   useEffect(() => {
     const el = widgetRef.current;
     if (!el) return;
@@ -154,6 +192,11 @@ export function JudgemeWidgetEmbed({ externalId, shopDomain }: Props) {
       if (el.children.length > 0) {
         setLoaded(true);
         observer.disconnect();
+        // watch for Load More adding new cards
+        const deepObserver = new MutationObserver(() => {
+          initReviewSliders(el);
+        });
+        deepObserver.observe(el, { childList: true, subtree: true });
       }
     });
     observer.observe(el, { childList: true });
@@ -161,6 +204,7 @@ export function JudgemeWidgetEmbed({ externalId, shopDomain }: Props) {
     const fallback = setTimeout(() => {
       setLoaded(true);
       observer.disconnect();
+      initReviewSliders(el);
     }, 10_000);
 
     return () => {
@@ -168,6 +212,15 @@ export function JudgemeWidgetEmbed({ externalId, shopDomain }: Props) {
       clearTimeout(fallback);
     };
   }, [externalId]);
+
+  // Run sliders once widget is revealed
+  useEffect(() => {
+    if (loaded && widgetRef.current) {
+      // small delay so Judge.me finishes painting
+      const t = setTimeout(() => initReviewSliders(widgetRef.current!), 300);
+      return () => clearTimeout(t);
+    }
+  }, [loaded]);
 
   return (
     <section className="border-t border-border pt-6" aria-busy={!loaded}>
