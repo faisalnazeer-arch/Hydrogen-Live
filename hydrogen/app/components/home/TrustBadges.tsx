@@ -48,11 +48,11 @@ export function TrustBadges({ badges: rawBadges = [] }: TrustBadgesProps) {
   if (parsed.length === 0) return null;
 
   return (
-    <section className="border-b border-border bg-background">
+    <section className="border-b border-border bg-background py-6 md:py-8">
       <div className="container mx-auto px-4">
 
-        {/* ── Mobile: icon-above-text, 3 across, ultra-compact ── */}
-        <div className="grid py-3 sm:hidden" style={{ gridTemplateColumns: `repeat(${parsed.length}, 1fr)` }}>
+        {/* ── Mobile: icon-above-text, 3 across ── */}
+        <div className="grid sm:hidden" style={{ gridTemplateColumns: `repeat(${parsed.length}, 1fr)` }}>
           {parsed.map((badge, i) => {
             const Icon = DEFAULT_ICONS[i % DEFAULT_ICONS.length];
             return (
@@ -97,7 +97,7 @@ export function TrustBadges({ badges: rawBadges = [] }: TrustBadgesProps) {
             return (
               <div
                 key={badge.id}
-                className="group flex items-center justify-center gap-4 px-8 py-6 transition-colors duration-200 hover:bg-crimson/[0.03]"
+                className="group flex items-center justify-center gap-4 px-8 transition-colors duration-200 hover:bg-crimson/[0.03]"
               >
                 {/* Icon box */}
                 <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-crimson/10 text-crimson shadow-sm transition-shadow duration-200 group-hover:shadow-md">
