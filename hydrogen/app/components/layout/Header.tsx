@@ -361,18 +361,22 @@ function MobileMenuDrawer({
   mobileMenu: import("~/root").MobileMenuTab[];
   onClose: () => void;
 }) {
-  const [tab1Idx, setTab1Idx]           = useState(0);
-  const [openEntries, setOpenEntries]   = useState<Set<string>>(new Set());
-  const [openCols, setOpenCols]         = useState<Set<string>>(new Set());
-  const [openItems, setOpenItems]       = useState<Set<string>>(new Set());
+  const [tab1Idx, setTab1Idx]               = useState(0);
+  const [openEntries, setOpenEntries]       = useState<Set<string>>(new Set());
+  const [openCols, setOpenCols]             = useState<Set<string>>(new Set());
+  const [openItems, setOpenItems]           = useState<Set<string>>(new Set());
+  const [openSecEntries, setOpenSecEntries] = useState<Set<string>>(new Set());
+  const [openSecCols, setOpenSecCols]       = useState<Set<string>>(new Set());
 
   const tabs         = mobileMenu;
   const isCategories = tabs[tab1Idx]?.label?.toLowerCase() === "categories";
 
-  const handleTab1  = (i: number) => { setTab1Idx(i); setOpenEntries(new Set()); setOpenCols(new Set()); setOpenItems(new Set()); };
-  const toggleEntry = (id: string)  => setOpenEntries((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const toggleCol   = (key: string) => setOpenCols((p)    => { const n = new Set(p); n.has(key) ? n.delete(key) : n.add(key); return n; });
-  const toggleItem  = (id: string)  => setOpenItems((p)   => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const handleTab1      = (i: number)    => { setTab1Idx(i); setOpenEntries(new Set()); setOpenCols(new Set()); setOpenItems(new Set()); };
+  const toggleEntry     = (id: string)   => setOpenEntries((p)    => { const n = new Set(p); n.has(id)  ? n.delete(id)  : n.add(id);  return n; });
+  const toggleCol       = (key: string)  => setOpenCols((p)       => { const n = new Set(p); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  const toggleItem      = (id: string)   => setOpenItems((p)      => { const n = new Set(p); n.has(id)  ? n.delete(id)  : n.add(id);  return n; });
+  const toggleSecEntry  = (id: string)   => setOpenSecEntries((p) => { const n = new Set(p); n.has(id)  ? n.delete(id)  : n.add(id);  return n; });
+  const toggleSecCol    = (key: string)  => setOpenSecCols((p)    => { const n = new Set(p); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -597,19 +601,104 @@ function MobileMenuDrawer({
             })
         }
 
-        {/* Secondary menu */}
+        {/* Secondary menu — accordion when entry has children */}
         <div className="my-1 border-t border-border/60" />
         {secondaryMenu.map((entry) => {
-          const Icon = pickIcon(entry.label, entry.url ?? "");
+          const Icon        = pickIcon(entry.label, entry.url ?? "");
+          const hasChildren = entry.columns.length > 0;
+          const isOpen      = openSecEntries.has(entry.id);
+
           return (
-            <Link key={entry.id} to={entry.url ?? "/"} onClick={onClose} prefetch="intent"
-              className="flex items-center gap-3 border-b border-border/40 px-4 py-2.5 transition-colors hover:bg-muted/40"
-            >
-              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-crimson/10 text-crimson">
-                <Icon className="h-3.5 w-3.5" />
-              </div>
-              <span className="flex-1 text-[13px] font-semibold">{entry.label}</span>
-            </Link>
+            <div key={entry.id}>
+              {hasChildren ? (
+                <button type="button" onClick={() => toggleSecEntry(entry.id)}
+                  className={`flex w-full items-center gap-3 border-b px-4 py-2.5 text-left transition-colors ${isOpen ? "border-border bg-muted/20" : "border-border/40 hover:bg-muted/40"}`}
+                >
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-crimson/10 text-crimson">
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="flex-1 text-[13px] font-semibold text-foreground">{entry.label}</span>
+                  <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[14px] font-light leading-none transition-colors ${
+                    isOpen ? "border-crimson bg-crimson text-white" : "border-border text-muted-foreground"
+                  }`}>{isOpen ? "−" : "+"}</span>
+                </button>
+              ) : (
+                <Link to={entry.url ?? "/"} onClick={onClose} prefetch="intent"
+                  className="flex items-center gap-3 border-b border-border/40 px-4 py-2.5 transition-colors hover:bg-muted/40"
+                >
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-crimson/10 text-crimson">
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="flex-1 text-[13px] font-semibold text-foreground">{entry.label}</span>
+                </Link>
+              )}
+
+              {/* Level 2: columns */}
+              {isOpen && (
+                <div className="border-b border-border/60 bg-background">
+                  <div className="ml-4 border-l-2 border-crimson/30">
+                    {entry.columns.map((col, ci) => {
+                      const colKey  = `sec-${entry.id}-${ci}`;
+                      const colOpen = openSecCols.has(colKey);
+                      const hasTitle = col.title.trim().length > 0;
+
+                      if (!hasTitle) {
+                        return (
+                          <div key={colKey}>
+                            {col.links.map((lnk) => (
+                              <Link key={lnk.url} to={lnk.url} onClick={onClose} prefetch="intent"
+                                className="block border-b border-border/25 py-2.5 pl-4 pr-3 text-[12px] font-medium text-foreground/70 last:border-0 transition-colors hover:text-crimson"
+                              >{lnk.label}</Link>
+                            ))}
+                            {col.url && col.links.length === 0 && (
+                              <Link to={col.url} onClick={onClose} prefetch="intent"
+                                className="block border-b border-border/25 py-2.5 pl-4 pr-3 text-[12px] font-medium text-foreground/70 transition-colors hover:text-crimson"
+                              >{col.title}</Link>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div key={colKey}>
+                          {col.links.length > 0 ? (
+                            <button type="button" onClick={() => toggleSecCol(colKey)}
+                              className={`flex w-full items-center gap-2.5 border-b py-2.5 pl-3 pr-3 text-left transition-colors ${colOpen ? "bg-crimson/5 border-crimson/20" : "border-border/25 hover:bg-muted/30"}`}
+                            >
+                              <span className={`grid h-6 w-6 shrink-0 place-items-center rounded text-[10px] font-black transition-colors ${colOpen ? "bg-crimson text-white" : "bg-crimson/10 text-crimson"}`}>
+                                {col.title[0].toUpperCase()}
+                              </span>
+                              <span className="flex-1 text-[12px] font-semibold text-foreground/85">{col.title}</span>
+                              <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[12px] font-light leading-none transition-colors ${colOpen ? "border-crimson bg-crimson text-white" : "border-border/60 text-muted-foreground"}`}>
+                                {colOpen ? "−" : "+"}
+                              </span>
+                            </button>
+                          ) : col.url ? (
+                            <Link to={col.url} onClick={onClose} prefetch="intent"
+                              className="flex items-center gap-2.5 border-b border-border/25 py-2.5 pl-3 pr-3 transition-colors hover:bg-muted/30"
+                            >
+                              <span className="grid h-6 w-6 shrink-0 place-items-center rounded bg-crimson/10 text-[10px] font-black text-crimson">{col.title[0].toUpperCase()}</span>
+                              <span className="flex-1 text-[12px] font-semibold text-foreground/85">{col.title}</span>
+                            </Link>
+                          ) : null}
+
+                          {/* Level 3: links */}
+                          {colOpen && (
+                            <div className="ml-3 border-l border-crimson/15">
+                              {col.links.map((lnk) => (
+                                <Link key={lnk.url} to={lnk.url} onClick={onClose} prefetch="intent"
+                                  className="block border-b border-border/25 py-2 pl-4 pr-3 text-[12px] text-foreground/60 last:border-0 transition-colors hover:text-crimson"
+                                >{lnk.label}</Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
