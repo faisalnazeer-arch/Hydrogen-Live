@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Trash2, ExternalLink, Loader2, ShoppingBag,
+  Trash2, Loader2, ShoppingBag,
   RefreshCw, Ticket, FileText, CheckCircle, XCircle, X,
   Truck,
 } from "lucide-react";
@@ -89,7 +89,7 @@ export function CartDrawer() {
 
   const handleCheckout = () => {
     const url = getCheckoutUrl();
-    if (url) { window.open(url, "_blank"); setOpen(false); }
+    if (url) { setOpen(false); window.location.href = url; }
   };
 
   const handleApplyDiscount = async () => {
@@ -473,7 +473,7 @@ export function CartDrawer() {
                   {isLoading || isSyncing ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <><ExternalLink className="me-2 h-4 w-4" /> {t("cart.checkout")}</>
+                    {t("cart.checkout")}
                   )}
                 </Button>
                 <button
