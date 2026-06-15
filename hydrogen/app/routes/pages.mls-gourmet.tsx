@@ -88,10 +88,10 @@ export default function MlsGourmetPage() {
           <p className="mx-auto mt-3 max-w-lg text-base text-white/65 md:text-lg">{heroSubtitle}</p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
             <span className="flex items-center gap-2 text-sm text-white/70">
-              <MapPin className="h-4 w-4 text-crimson" /> {stores.length} locations across UAE
+              <MapPin className="h-4 w-4 text-white/70" /> {stores.length} locations across UAE
             </span>
             <span className="flex items-center gap-2 text-sm text-white/70">
-              <Clock className="h-4 w-4 text-crimson" /> Open everyday
+              <Clock className="h-4 w-4 text-white/70" /> Open everyday
             </span>
           </div>
         </div>
