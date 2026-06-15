@@ -57,26 +57,22 @@ export function SubscriptionSelector({
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       {/* ── One-time ── */}
-      <label
+      <button
+        type="button"
+        onClick={() => onSelect(null)}
         className={cn(
-          "flex cursor-pointer items-center justify-between rounded-lg border px-4 py-3 transition-colors",
+          "flex w-full cursor-pointer items-center justify-between rounded-lg border px-4 py-3 transition-colors",
           !isSubscribing
             ? "border-crimson bg-crimson/5 ring-1 ring-crimson"
             : "border-border hover:border-muted-foreground",
         )}
       >
         <div className="flex items-center gap-3">
-          <input
-            type="radio"
-            name="purchase-type"
-            checked={!isSubscribing}
-            onChange={() => onSelect(null)}
-            className="accent-crimson"
-          />
+          <RadioDot active={!isSubscribing} />
           <span className="font-semibold">{t("subscription.one_time")}</span>
         </div>
         <span className="text-sm font-semibold">{fmt(regularPriceNum)}</span>
-      </label>
+      </button>
 
       {/* ── Subscribe & save ── */}
       <div
@@ -100,16 +96,10 @@ export function SubscriptionSelector({
 
         {/* Header row */}
         <div className={cn("flex items-center justify-between px-4 pb-3", bestDiscount > 0 ? "pt-5" : "pt-4")}>
-          <label className="flex cursor-pointer items-center gap-3">
-            <input
-              type="radio"
-              name="purchase-type"
-              checked={isSubscribing}
-              onChange={() => onSelect(allPlans[0]?.id ?? null)}
-              className="mt-0.5 accent-crimson"
-            />
+          <div className="flex items-center gap-3">
+            <RadioDot active={isSubscribing} />
             <span className="text-base font-bold">{t("subscription.subscribe_save")}</span>
-          </label>
+          </div>
           <div className="flex shrink-0 flex-col items-end gap-0.5">
             {subscriptionPriceNum < regularPriceNum && (
               <span className="text-xs text-muted-foreground line-through">
@@ -181,6 +171,19 @@ export function SubscriptionSelector({
         )}
       </div>
     </div>
+  );
+}
+
+function RadioDot({ active }: { active: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+        active ? "border-crimson" : "border-muted-foreground/50",
+      )}
+    >
+      {active && <span className="h-2 w-2 rounded-full bg-crimson" />}
+    </span>
   );
 }
 
