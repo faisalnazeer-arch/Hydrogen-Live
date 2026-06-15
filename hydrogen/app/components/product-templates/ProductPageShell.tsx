@@ -1288,7 +1288,7 @@ export function ProductPageShell({
       )}
 
       {/* Recently viewed */}
-      <RecentlyViewed />
+      <RecentlyViewed excludeHandle={product.handle} />
 
       {/* Reviews — Judge.me CDN widget (shows all reviews including historical ones) */}
       <div id="reviews" className="container mx-auto px-4 pb-6">
