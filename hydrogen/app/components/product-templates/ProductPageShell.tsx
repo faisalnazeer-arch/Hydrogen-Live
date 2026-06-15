@@ -1287,6 +1287,9 @@ export function ProductPageShell({
         </div>
       )}
 
+      {/* Recently viewed */}
+      <RecentlyViewed />
+
       {/* Reviews — Judge.me CDN widget (shows all reviews including historical ones) */}
       <div id="reviews" className="container mx-auto px-4 pb-6">
         {externalId ? (
@@ -1298,9 +1301,6 @@ export function ProductPageShell({
           <JudgemeReviews reviews={reviews} rating={rating} totalCount={reviewsTotalCount} handle={product.handle} externalId={undefined} />
         )}
       </div>
-
-      {/* Recently viewed */}
-      <RecentlyViewed />
 
       {/* Store pickup drawer */}
       <PickupDrawer
