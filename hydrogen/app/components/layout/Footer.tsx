@@ -51,7 +51,7 @@ export function Footer({ settings, menuCols }: Props) {
   };
 
   return (
-    <footer className="mt-16 bg-charcoal text-charcoal-foreground">
+    <footer className="bg-charcoal text-charcoal-foreground">
       <div className="container mx-auto px-4 py-12">
 
         {/* ── Desktop ─────────────────────────────────────────────── */}

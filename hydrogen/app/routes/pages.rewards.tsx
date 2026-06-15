@@ -48,25 +48,27 @@ export default function RewardsPage() {
 
   useEffect(() => {
     const SCRIPT_ID = "yotpo-loyalty-script";
-    if (!document.getElementById(SCRIPT_ID)) {
-      // First visit — inject script; it will auto-scan for widget instances on load
-      const script = document.createElement("script");
-      script.id = SCRIPT_ID;
-      script.src = `https://cdn-loyalty.yotpo.com/loader/${YOTPO_GUID}.js`;
-      script.async = true;
-      document.head.appendChild(script);
-    } else {
-      // SPA navigation back to this page — script already loaded, trigger rescan
-      try {
-        const w = window as any;
-        if (w.yotpo?.initWidgets) {
-          w.yotpo.initWidgets();
-        } else if (Array.isArray(w.yotpoQ)) {
-          w.yotpoQ.push(["initWidgets"]);
-        }
-      } catch {}
-    }
-    // No cleanup — keep script alive across navigations so Yotpo state is preserved
+
+    // The Swell/Yotpo Loyalty loader guards against double-init with:
+    //   if (window.swellConfig) throw new Error('...already loaded')
+    // So we must clear swellConfig + remove the old script before each mount,
+    // then re-inject fresh — this guarantees the widget always renders even after
+    // SPA navigation back to this page.
+    delete (window as any).swellConfig;
+    const existing = document.getElementById(SCRIPT_ID);
+    if (existing) existing.remove();
+
+    const script = document.createElement("script");
+    script.id = SCRIPT_ID;
+    script.src = `https://cdn-loyalty.yotpo.com/loader/${YOTPO_GUID}.js`;
+    script.async = true;
+    document.head.appendChild(script);
+
+    return () => {
+      const s = document.getElementById(SCRIPT_ID);
+      if (s) s.remove();
+      delete (window as any).swellConfig;
+    };
   }, []);
 
   return (
