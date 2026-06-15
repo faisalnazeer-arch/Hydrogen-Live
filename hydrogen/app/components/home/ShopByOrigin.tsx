@@ -121,7 +121,7 @@ export function ShopByOrigin({ section }: Props) {
         )}
 
         {/* Carousel — keyed by tab so it resets scroll position on tab change */}
-        <HScroller key={activeTab}>
+        <HScroller key={activeTab} innerClassName="md:justify-center">
           {activeItems.map((item) => (
             <Link
               key={item.id}
