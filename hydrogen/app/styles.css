@@ -8,6 +8,14 @@
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
+/* Language toggle active state — driven by html[lang] set from cookie via
+   inline <head> script, so it's correct before React even renders (no flash) */
+:root[lang="en"] .locale-btn[data-locale="en"],
+:root[lang="ar"] .locale-btn[data-locale="ar"] {
+  background-color: var(--crimson);
+  color: oklch(0.985 0.005 60);
+}
+
 
 
 /*

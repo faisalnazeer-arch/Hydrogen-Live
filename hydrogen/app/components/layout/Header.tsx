@@ -125,21 +125,17 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
             <button
               type="button"
               onClick={() => setLocale("en")}
-              aria-pressed={locale === "en"}
-              className={`rounded-full px-2 py-0.5 transition-colors ${
-                locale === "en" ? "bg-crimson text-crimson-foreground" : "hover:text-crimson"
-              }`}
+              data-locale="en"
+              className="locale-btn rounded-full px-2 py-0.5 transition-colors hover:text-crimson"
             >
               EN
             </button>
             <button
               type="button"
               onClick={() => setLocale("ar")}
-              aria-pressed={locale === "ar"}
+              data-locale="ar"
               lang="ar"
-              className={`rounded-full px-2 py-0.5 transition-colors ${
-                locale === "ar" ? "bg-crimson text-crimson-foreground" : "hover:text-crimson"
-              }`}
+              className="locale-btn rounded-full px-2 py-0.5 transition-colors hover:text-crimson"
             >
               العربية
             </button>

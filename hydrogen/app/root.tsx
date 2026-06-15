@@ -22,7 +22,7 @@ import { QuickBuyDrawer } from "./components/product/QuickBuyDrawer";
 import { Toaster } from "./components/ui/sonner";
 import { useCartSync } from "./hooks/useCartSync";
 import { useCartStore } from "./stores/cartStore";
-import { useLocaleStore, dirFor, type Locale } from "./stores/localeStore";
+import { useLocaleStore, dirFor } from "./stores/localeStore";
 
 const DEFAULT_FAVICON = "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/MLS-favicon.png?v=1693298131";
 
@@ -583,18 +583,9 @@ function PageLoader() {
 function LocaleSync() {
   const locale = useLocaleStore((s) => s.locale);
 
-  // On first client mount, read the lang cookie the server already set and sync
-  // the store. This bridges the SSR→hydration gap: the server used the cookie for
-  // Shopify queries; the store now matches it so useT() renders the right language.
-  useEffect(() => {
-    const match = document.cookie.match(/(?:^|;\s*)lang=([a-z]{2})/);
-    const cookieLocale = match?.[1] === "ar" ? "ar" : "en";
-    if (cookieLocale !== useLocaleStore.getState().locale) {
-      useLocaleStore.setState({ locale: cookieLocale as Locale });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  // Keep html[lang] and html[dir] in sync whenever locale changes.
+  // The inline <script> in <head> handles the initial paint; this effect
+  // covers runtime switches without a full reload edge case.
   useEffect(() => {
     const html = document.documentElement;
     html.lang = locale;
