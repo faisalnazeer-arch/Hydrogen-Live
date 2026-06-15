@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
-import { MapPin, Clock, ExternalLink, Phone, Navigation } from "lucide-react";
+import { MapPin, Clock, ExternalLink, Phone } from "lucide-react";
 import { useState } from "react";
 import { FaqAccordion, parseFaqItems } from "@/components/ui/FaqAccordion";
 
@@ -157,13 +157,13 @@ export default function MlsGourmetPage() {
                 {current.mapsUrl && (
                   <a href={current.mapsUrl} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 rounded-lg bg-crimson px-5 py-2.5 text-sm font-bold transition-colors hover:bg-rich-red" style={{ color: '#fff' }}>
-                    <Navigation className="h-4 w-4" /> Get Directions
+                    <ExternalLink className="h-4 w-4" /> Open in Maps
                   </a>
                 )}
-                {current.mapsUrl && (
-                  <a href={current.mapsUrl} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:border-crimson hover:text-crimson">
-                    <ExternalLink className="h-4 w-4" /> Open in Maps
+                {current.phone && (
+                  <a href={`tel:${current.phone}`}
+                    className="inline-flex items-center gap-2 rounded-lg bg-crimson px-5 py-2.5 text-sm font-bold transition-colors hover:bg-rich-red" style={{ color: '#fff' }}>
+                    <Phone className="h-4 w-4" /> Call Us
                   </a>
                 )}
               </div>
