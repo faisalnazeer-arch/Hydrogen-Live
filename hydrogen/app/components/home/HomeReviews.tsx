@@ -69,9 +69,9 @@ export function HomeReviews({ reviews, totalCount, averageRating }: HomeReviewsP
         {/* Header — matches site-wide centred section style */}
         <div className="mb-4 text-center md:mb-5">
           <div className="mb-1.5 flex items-center justify-center gap-3">
-            <span className="h-px w-6 rounded-full bg-crimson" />
-            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">Verified Buyers</span>
-            <span className="h-px w-6 rounded-full bg-crimson" />
+            <span className="h-px w-6 rounded-full bg-white/40" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/70">Verified Buyers</span>
+            <span className="h-px w-6 rounded-full bg-white/40" />
           </div>
           <h2 className="font-display text-2xl font-bold leading-snug tracking-tight text-white md:text-3xl">
             What Our Customers Say
