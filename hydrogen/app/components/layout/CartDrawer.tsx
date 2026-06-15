@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Trash2, Loader2, ShoppingBag,
   RefreshCw, Ticket, FileText, CheckCircle, XCircle, X,
-  Truck,
+  Truck, Tag,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useCartStore, initGiftIds } from "@/stores/cartStore";
@@ -42,7 +42,9 @@ export function CartDrawer() {
     getCheckoutUrl,
     syncCart,
     discountCodes,
+    automaticDiscounts,
     appliedGiftCards,
+    subtotalAmount,
     totalAmount,
     applyDiscountCode,
     removeDiscountCode,
@@ -91,15 +93,40 @@ export function CartDrawer() {
   }, [subGiftId, carcassGiftId]);
 
   const totalItems = items.reduce((n, i) => n + i.quantity, 0);
-  const subtotal = items.reduce((n, i) => n + parseFloat(i.price.amount) * i.quantity, 0);
+  // localSubtotal is always the original un-discounted item sum — used as the baseline for savings
+  const localSubtotal = items.reduce((n, i) => n + parseFloat(i.price.amount) * i.quantity, 0);
   const currency = items[0]?.price.currencyCode ?? "AED";
-  const threshold = drawerConfig.freeShippingThreshold;
-  const remaining = Math.max(0, threshold - subtotal);
-  const progress = Math.min(100, (subtotal / threshold) * 100);
+  const shopifyCurrency = totalAmount?.currencyCode ?? subtotalAmount?.currencyCode ?? currency;
 
-  const hasDiscounts = discountCodes.some((d) => d.applicable) || appliedGiftCards.length > 0;
-  const displayTotal = hasDiscounts && totalAmount ? parseFloat(totalAmount.amount) : subtotal;
-  const displayCurrency = hasDiscounts && totalAmount ? totalAmount.currencyCode : currency;
+  // Shopify's final total (after ALL discounts). Falls back to localSubtotal when not yet synced.
+  const shopifyTotal = totalAmount ? parseFloat(totalAmount.amount) : localSubtotal;
+
+  const displaySubtotal = localSubtotal;         // always show original price as "Subtotal"
+  const displayTotal = shopifyTotal;              // Shopify's authoritative discounted total
+  const displayCurrency = shopifyCurrency;
+
+  // Savings = difference between what items cost and what Shopify is charging
+  const savings = Math.max(0, localSubtotal - shopifyTotal);
+  const savingsPct = localSubtotal > 0 ? Math.round((savings / localSubtotal) * 100) : 0;
+
+  // Free-shipping progress uses discounted total (amount you actually pay)
+  const threshold = drawerConfig.freeShippingThreshold;
+  const remaining = Math.max(0, threshold - shopifyTotal);
+  const progress = Math.min(100, (shopifyTotal / threshold) * 100);
+
+  const hasManualDiscounts = discountCodes.some((d) => d.applicable) || appliedGiftCards.length > 0;
+  // Automatic discounts = any saving not explained by a manual code
+  // When discountAllocations title isn't returned, derive a % tag from the price difference
+  const autoDiscountTags: { title: string; discountedAmount: { amount: string; currencyCode: string } }[] =
+    automaticDiscounts.length > 0
+      ? automaticDiscounts
+      : !hasManualDiscounts && savings > 0
+        ? [{
+            title: savingsPct > 0 ? `${savingsPct}% OFF` : "Automatic Discount",
+            discountedAmount: { amount: savings.toFixed(2), currencyCode: displayCurrency },
+          }]
+        : [];
+  const hasAnyDiscount = savings > 0;
 
   const handleCheckout = () => {
     const url = getCheckoutUrl();
@@ -139,7 +166,7 @@ export function CartDrawer() {
       id: "discount",
       icon: <Ticket className="h-5 w-5" />,
       label: "Discount code",
-      badge: discountCodes.filter((d) => d.applicable).length || undefined,
+      badge: (discountCodes.filter((d) => d.applicable).length + autoDiscountTags.length) || undefined,
     },
     { id: "delivery", icon: <Truck className="h-5 w-5" />, label: "Delivery info" },
     {
@@ -227,7 +254,7 @@ export function CartDrawer() {
               {remaining > 0 ? (
                 <p className="text-xs text-foreground">
                   {t("cart.add_prefix")}{" "}
-                  <span className="font-bold text-crimson">{formatPrice(remaining, currency)}</span>{" "}
+                  <span className="font-bold text-crimson">{formatPrice(remaining, displayCurrency)}</span>{" "}
                   {t("cart.add_suffix")}
                 </p>
               ) : (
@@ -307,21 +334,12 @@ export function CartDrawer() {
                           </div>
                         )}
 
-                        {item.sellingPlanId && (() => {
-                          const subPrice = parseFloat(item.price.amount);
-                          const regPrice = item.compareAtPrice ? parseFloat(item.compareAtPrice.amount) : 0;
-                          const savePct = regPrice > subPrice ? Math.round((1 - subPrice / regPrice) * 100) : 0;
-                          const label = [
-                            item.sellingPlanName ?? "Subscribe & Save",
-                            savePct > 0 ? `with ${savePct}% discount` : "",
-                          ].filter(Boolean).join(" ");
-                          return (
-                            <div className="flex items-center gap-1 text-xs text-green-700">
-                              <RefreshCw className="h-3 w-3 flex-shrink-0" />
-                              <span>{label}</span>
-                            </div>
-                          );
-                        })()}
+                        {item.sellingPlanId && (
+                          <div className="flex items-center gap-1 text-xs text-green-700">
+                            <RefreshCw className="h-3 w-3 flex-shrink-0" />
+                            <span>{item.sellingPlanName ?? "Subscribe & Save"}</span>
+                          </div>
+                        )}
 
                           <div className="mt-auto flex items-center justify-between pt-1">
                           {isGift ? (
@@ -335,15 +353,15 @@ export function CartDrawer() {
                               <QuantitySelector
                                 size="sm"
                                 value={item.quantity}
-                                onChange={(qty) => updateQuantity(item.variantId, qty)}
+                                onChange={(qty) => item.lineId && updateQuantity(item.lineId, qty)}
                                 min={0}
                                 className={pending || isLoading ? "pointer-events-none opacity-50" : ""}
                               />
                               <button
                                 type="button"
                                 aria-label="Remove"
-                                disabled={pending}
-                                onClick={() => removeItem(item.variantId)}
+                                disabled={pending || !item.lineId}
+                                onClick={() => item.lineId && removeItem(item.lineId)}
                                 className={`rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-crimson ${pending ? "cursor-not-allowed opacity-30" : ""}`}
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -378,7 +396,7 @@ export function CartDrawer() {
 
           {/* Footer — tabs + totals */}
           {items.length > 0 && (
-            <div className="relative space-y-1.5 border-t border-border px-2 pb-2 pt-2">
+            <div className="relative space-y-1 border-t border-border px-2 pb-1.5 pt-1.5">
               {/* Tab row */}
               <div className="grid grid-cols-3 gap-1.5">
                 {tabs.map((tab) => {
@@ -434,6 +452,23 @@ export function CartDrawer() {
                       <XCircle className="h-3 w-3 shrink-0" /> {discountError}
                     </p>
                   )}
+                  {/* Automatic discounts — shown as non-removable green tags */}
+                  {autoDiscountTags.length > 0 && (
+                    <ul className="mt-1 space-y-0.5">
+                      {autoDiscountTags.map((ad) => (
+                        <li key={ad.title} className="flex items-center justify-between rounded-md bg-emerald-50 border border-emerald-200 px-2 py-1 text-[10px]">
+                          <span className="flex items-center gap-1 text-emerald-700">
+                            <Tag className="h-3 w-3 shrink-0" />
+                            <span className="font-semibold uppercase tracking-wide">{ad.title}</span>
+                          </span>
+                          <span className="font-semibold text-emerald-700">
+                            -{formatPrice(parseFloat(ad.discountedAmount.amount), ad.discountedAmount.currencyCode)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {/* Manual discount codes */}
                   {discountCodes.length > 0 && (
                     <ul className="mt-1 space-y-0.5">
                       {discountCodes.map((dc) => (
@@ -463,15 +498,29 @@ export function CartDrawer() {
 
               {/* Totals + checkout */}
               <div className="border-t border-border pt-1.5">
-                {hasDiscounts && (
-                  <div className="mb-0.5 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Subtotal</span>
-                    <span>{formatPrice(subtotal, currency)}</span>
-                  </div>
+                {/* Subtotal + savings rows — only when a discount is active */}
+                {savings > 0 && (
+                  <>
+                    <div className="flex items-center justify-between text-sm text-foreground mb-0.5">
+                      <span className="font-medium">{t("cart.subtotal")}</span>
+                      <span className="font-semibold">{formatPrice(displaySubtotal, displayCurrency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-emerald-600 mb-0.5">
+                      <span className="font-medium flex items-center gap-1">
+                        You save
+                        {savingsPct > 0 && (
+                          <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold leading-none">
+                            {savingsPct}%
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-semibold">-{formatPrice(savings, displayCurrency)}</span>
+                    </div>
+                  </>
                 )}
-                <div className="mb-1.5 flex items-center justify-between">
+                <div className="mb-1 flex items-center justify-between">
                   <span className="text-base font-bold">
-                    {hasDiscounts ? "Total" : t("cart.subtotal")}
+                    {savings > 0 ? "Total" : t("cart.subtotal")}
                   </span>
                   <span className="font-display text-xl font-bold text-crimson">
                     {formatPrice(displayTotal, displayCurrency)}

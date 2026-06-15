@@ -62,13 +62,8 @@ interface HeaderProps {
 }
 
 export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu = [], navItemImages = {}, mobileBanners = [], mobileMenu = [] }: HeaderProps) {
-  const rawTotal = useCartStore((s) => s.items.reduce((n, i) => n + i.quantity, 0));
+  const totalItems = useCartStore((s) => s.items.reduce((n, i) => n + i.quantity, 0));
   const setCartOpen = useCartStore((s) => s.setOpen);
-  // Defer cart count display until after client hydration so SSR (always 0)
-  // matches the initial client render, preventing React hydration errors.
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
-  const totalItems = hydrated ? rawTotal : 0;
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const locale = useLocaleStore((s) => s.locale);
   const setLocale = useLocaleStore((s) => s.setLocale);
@@ -157,7 +152,7 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
           >
             <ShoppingBag className="h-5 w-5" />
             {totalItems > 0 && (
-              <span className="absolute -end-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-crimson px-1 text-[10px] font-bold text-crimson-foreground">
+              <span suppressHydrationWarning className="absolute -end-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-crimson px-1 text-[10px] font-bold text-crimson-foreground">
                 {totalItems}
               </span>
             )}

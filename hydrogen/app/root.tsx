@@ -469,13 +469,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 function CartSyncWrapper() {
   useCartSync();
-  // Rehydrate the persisted cart store from localStorage after mount.
-  // skipHydration:true in the store prevents auto-rehydrate during SSR,
-  // which would cause a hydration mismatch (server sees 0 items, client sees persisted cart).
-  useEffect(() => {
-    useCartStore.persist.rehydrate();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   return null;
 }
 

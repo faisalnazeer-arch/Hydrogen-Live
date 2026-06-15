@@ -26,6 +26,11 @@ export interface DiscountCodeInfo {
   applicable: boolean;
 }
 
+export interface AutomaticDiscount {
+  title: string;
+  discountedAmount: MoneyV2;
+}
+
 export interface AppliedGiftCard {
   id: string;
   lastCharacters: string;
@@ -42,14 +47,16 @@ interface CartStore {
   isApplyingCode: boolean;
   isOpen: boolean;
   discountCodes: DiscountCodeInfo[];
+  automaticDiscounts: AutomaticDiscount[];
   giftCardCodes: string[];
   appliedGiftCards: AppliedGiftCard[];
+  subtotalAmount: MoneyV2 | null;
   totalAmount: MoneyV2 | null;
   orderNote: string;
   setOpen: (open: boolean) => void;
   addItem: (item: Omit<CartItem, "lineId" | "isPending">) => Promise<void>;
-  updateQuantity: (variantId: string, quantity: number) => Promise<void>;
-  removeItem: (variantId: string) => Promise<void>;
+  updateQuantity: (lineId: string, quantity: number) => Promise<void>;
+  removeItem: (lineId: string) => Promise<void>;
   clearCart: () => void;
   syncCart: () => Promise<void>;
   getCheckoutUrl: () => string | null;
@@ -59,6 +66,27 @@ interface CartStore {
   removeGiftCard: (id: string) => Promise<void>;
   updateOrderNote: (note: string) => Promise<void>;
 }
+
+const COST_FIELDS = `cost { subtotalAmount { amount currencyCode } totalAmount { amount currencyCode } }`;
+const LINES_FIELDS = `lines(first: 100) {
+  edges {
+    node {
+      id
+      merchandise { ... on ProductVariant { id } }
+      discountAllocations {
+        __typename
+        discountedAmount { amount currencyCode }
+        ... on CartAutomaticDiscountAllocation { title }
+        ... on CartCustomDiscountAllocation { title }
+      }
+    }
+  }
+}`;
+
+// Minimal lines — only needed to resolve the new lineId after create/add
+const MINIMAL_LINES_FIELDS = `lines(first: 100) {
+  edges { node { id merchandise { ... on ProductVariant { id } } } }
+}`;
 
 const CART_QUERY = `query cart($id: ID!) {
   cart(id: $id) {
@@ -72,7 +100,8 @@ const CART_QUERY = `query cart($id: ID!) {
       amountUsed { amount currencyCode }
       balance { amount currencyCode }
     }
-    cost { totalAmount { amount currencyCode } }
+    ${COST_FIELDS}
+    ${LINES_FIELDS}
   }
 }`;
 
@@ -82,8 +111,8 @@ const CART_CREATE_MUTATION = `
       cart {
         id
         checkoutUrl
-        lines(first: 100) { edges { node { id merchandise { ... on ProductVariant { id } } } } }
-        cost { totalAmount { amount currencyCode } }
+        ${COST_FIELDS}
+        ${MINIMAL_LINES_FIELDS}
       }
       userErrors { field message }
     }
@@ -93,7 +122,7 @@ const CART_CREATE_MUTATION = `
 const CART_LINES_ADD_MUTATION = `
   mutation cartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {
     cartLinesAdd(cartId: $cartId, lines: $lines) {
-      cart { id lines(first: 100) { edges { node { id merchandise { ... on ProductVariant { id } } } } } }
+      cart { id ${COST_FIELDS} ${MINIMAL_LINES_FIELDS} }
       userErrors { field message }
     }
   }
@@ -101,13 +130,13 @@ const CART_LINES_ADD_MUTATION = `
 
 const CART_LINES_UPDATE_MUTATION = `
   mutation cartLinesUpdate($cartId: ID!, $lines: [CartLineUpdateInput!]!) {
-    cartLinesUpdate(cartId: $cartId, lines: $lines) { cart { id } userErrors { field message } }
+    cartLinesUpdate(cartId: $cartId, lines: $lines) { cart { id ${COST_FIELDS} } userErrors { field message } }
   }
 `;
 
 const CART_LINES_REMOVE_MUTATION = `
   mutation cartLinesRemove($cartId: ID!, $lineIds: [ID!]!) {
-    cartLinesRemove(cartId: $cartId, lineIds: $lineIds) { cart { id } userErrors { field message } }
+    cartLinesRemove(cartId: $cartId, lineIds: $lineIds) { cart { id ${COST_FIELDS} } userErrors { field message } }
   }
 `;
 
@@ -117,7 +146,7 @@ const CART_DISCOUNT_CODES_UPDATE = `
       cart {
         id
         discountCodes { code applicable }
-        cost { totalAmount { amount currencyCode } }
+        ${COST_FIELDS}
       }
       userErrors { field message }
     }
@@ -159,7 +188,7 @@ const CART_GIFT_CARD_CODES_UPDATE = `
           amountUsed { amount currencyCode }
           balance { amount currencyCode }
         }
-        cost { totalAmount { amount currencyCode } }
+        ${COST_FIELDS}
       }
       userErrors { field message }
     }
@@ -174,6 +203,29 @@ function formatCheckoutUrl(checkoutUrl: string): string {
   } catch {
     return checkoutUrl;
   }
+}
+
+function extractAutomaticDiscounts(lines: any[]): AutomaticDiscount[] {
+  const map = new Map<string, { amount: number; currencyCode: string }>();
+  for (const edge of lines) {
+    for (const alloc of edge.node?.discountAllocations ?? []) {
+      const isAuto =
+        alloc.__typename === "CartAutomaticDiscountAllocation" ||
+        alloc.__typename === "CartCustomDiscountAllocation" ||
+        // fallback: has title but no code (older API versions without __typename)
+        (alloc.title && !alloc.code);
+      if (!isAuto || !alloc.title) continue;
+      const prev = map.get(alloc.title) ?? { amount: 0, currencyCode: alloc.discountedAmount?.currencyCode ?? "AED" };
+      map.set(alloc.title, {
+        amount: prev.amount + parseFloat(alloc.discountedAmount?.amount ?? "0"),
+        currencyCode: prev.currencyCode,
+      });
+    }
+  }
+  return Array.from(map.entries()).map(([title, { amount, currencyCode }]) => ({
+    title,
+    discountedAmount: { amount: amount.toFixed(2), currencyCode },
+  }));
 }
 
 function isCartNotFoundError(
@@ -202,6 +254,7 @@ async function createShopifyCart(item: CartItem) {
     cartId: cart.id as string,
     checkoutUrl: formatCheckoutUrl(cart.checkoutUrl),
     lineId: lineId as string,
+    subtotalAmount: cart.cost?.subtotalAmount ?? null,
     totalAmount: cart.cost?.totalAmount ?? null,
   };
 }
@@ -217,9 +270,15 @@ async function addLineToShopifyCart(cartId: string, item: CartItem) {
   const userErrors = data?.data?.cartLinesAdd?.userErrors || [];
   if (isCartNotFoundError(userErrors)) return { success: false, cartNotFound: true as const };
   if (userErrors.length > 0) return { success: false as const };
-  const lines = data?.data?.cartLinesAdd?.cart?.lines?.edges || [];
+  const cartData = data?.data?.cartLinesAdd?.cart;
+  const lines: any[] = cartData?.lines?.edges || [];
   const newLine = lines.find((l: any) => l.node.merchandise.id === item.variantId);
-  return { success: true as const, lineId: newLine?.node?.id as string | undefined };
+  return {
+    success: true as const,
+    lineId: newLine?.node?.id as string | undefined,
+    subtotalAmount: cartData?.cost?.subtotalAmount ?? null,
+    totalAmount: cartData?.cost?.totalAmount ?? null,
+  };
 }
 
 async function updateShopifyCartLine(cartId: string, lineId: string, quantity: number) {
@@ -230,7 +289,12 @@ async function updateShopifyCartLine(cartId: string, lineId: string, quantity: n
   const userErrors = data?.data?.cartLinesUpdate?.userErrors || [];
   if (isCartNotFoundError(userErrors)) return { success: false, cartNotFound: true as const };
   if (userErrors.length > 0) return { success: false as const };
-  return { success: true as const };
+  const cartData = data?.data?.cartLinesUpdate?.cart;
+  return {
+    success: true as const,
+    subtotalAmount: cartData?.cost?.subtotalAmount ?? null,
+    totalAmount: cartData?.cost?.totalAmount ?? null,
+  };
 }
 
 async function removeLineFromShopifyCart(cartId: string, lineId: string) {
@@ -241,7 +305,12 @@ async function removeLineFromShopifyCart(cartId: string, lineId: string) {
   const userErrors = data?.data?.cartLinesRemove?.userErrors || [];
   if (isCartNotFoundError(userErrors)) return { success: false, cartNotFound: true as const };
   if (userErrors.length > 0) return { success: false as const };
-  return { success: true as const };
+  const cartData = data?.data?.cartLinesRemove?.cart;
+  return {
+    success: true as const,
+    subtotalAmount: cartData?.cost?.subtotalAmount ?? null,
+    totalAmount: cartData?.cost?.totalAmount ?? null,
+  };
 }
 
 async function fetchGiftVariantData(variantId: string): Promise<Partial<CartItem>> {
@@ -282,11 +351,13 @@ async function fetchGiftVariantData(variantId: string): Promise<Partial<CartItem
 }
 
 const EMPTY: Pick<CartStore,
-  "discountCodes" | "giftCardCodes" | "appliedGiftCards" | "totalAmount" | "orderNote"
+  "discountCodes" | "automaticDiscounts" | "giftCardCodes" | "appliedGiftCards" | "subtotalAmount" | "totalAmount" | "orderNote"
 > = {
   discountCodes: [],
+  automaticDiscounts: [],
   giftCardCodes: [],
   appliedGiftCards: [],
+  subtotalAmount: null,
   totalAmount: null,
   orderNote: "",
 };
@@ -433,6 +504,7 @@ export const useCartStore = create<CartStore>()(
               set({
                 cartId: result.cartId,
                 checkoutUrl: result.checkoutUrl,
+                subtotalAmount: result.subtotalAmount,
                 totalAmount: result.totalAmount,
                 items: get().items.map((i) =>
                   i.variantId === item.variantId && i.isPending
@@ -458,6 +530,8 @@ export const useCartStore = create<CartStore>()(
             const result = await updateShopifyCartLine(cartId, existing.lineId, newQty);
             if (result.success) {
               set({
+                subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
+                totalAmount: result.totalAmount ?? get().totalAmount,
                 items: get().items.map((i) =>
                   i.variantId === item.variantId && i.sellingPlanId === item.sellingPlanId
                     ? { ...i, isPending: false }
@@ -484,6 +558,8 @@ export const useCartStore = create<CartStore>()(
             const result = await addLineToShopifyCart(cartId, { ...item, lineId: null });
             if (result.success) {
               set({
+                subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
+                totalAmount: result.totalAmount ?? get().totalAmount,
                 items: get().items.map((i) =>
                   i.variantId === item.variantId && i.isPending
                     ? { ...i, lineId: result.lineId ?? null, isPending: false }
@@ -505,19 +581,23 @@ export const useCartStore = create<CartStore>()(
         }
       },
 
-      updateQuantity: async (variantId, quantity) => {
+      updateQuantity: async (lineId, quantity) => {
         if (quantity <= 0) {
-          await get().removeItem(variantId);
+          await get().removeItem(lineId);
           return;
         }
         const { items, cartId, clearCart } = get();
-        const item = items.find((i) => i.variantId === variantId);
-        if (!item?.lineId || !cartId) return;
+        const item = items.find((i) => i.lineId === lineId);
+        if (!item || !lineId || !cartId) return;
         set({ isLoading: true });
         try {
-          const result = await updateShopifyCartLine(cartId, item.lineId, quantity);
+          const result = await updateShopifyCartLine(cartId, lineId, quantity);
           if (result.success) {
-            set({ items: get().items.map((i) => i.variantId === variantId ? { ...i, quantity } : i) });
+            set({
+              subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
+              totalAmount: result.totalAmount ?? get().totalAmount,
+              items: get().items.map((i) => i.lineId === lineId ? { ...i, quantity } : i),
+            });
           } else if (result.cartNotFound) {
             clearCart();
           }
@@ -527,17 +607,20 @@ export const useCartStore = create<CartStore>()(
         }
       },
 
-      removeItem: async (variantId) => {
-        const { items, cartId, clearCart } = get();
-        const item = items.find((i) => i.variantId === variantId);
-        if (!item?.lineId || !cartId) return;
+      removeItem: async (lineId) => {
+        const { cartId, clearCart } = get();
+        if (!lineId || !cartId) return;
         set({ isLoading: true });
         try {
-          const result = await removeLineFromShopifyCart(cartId, item.lineId);
+          const result = await removeLineFromShopifyCart(cartId, lineId);
           if (result.success) {
-            const next = get().items.filter((i) => i.variantId !== variantId);
+            const next = get().items.filter((i) => i.lineId !== lineId);
             if (next.length === 0) clearCart();
-            else set({ items: next });
+            else set({
+              items: next,
+              subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
+              totalAmount: result.totalAmount ?? get().totalAmount,
+            });
           } else if (result.cartNotFound) {
             clearCart();
           }
@@ -565,7 +648,9 @@ export const useCartStore = create<CartStore>()(
             set({
               discountCodes: cart.discountCodes ?? [],
               appliedGiftCards: cart.appliedGiftCards ?? [],
+              subtotalAmount: cart.cost?.subtotalAmount ?? null,
               totalAmount: cart.cost?.totalAmount ?? null,
+              automaticDiscounts: extractAutomaticDiscounts(cart.lines?.edges ?? []),
               orderNote: cart.note ?? "",
             });
           }
@@ -594,12 +679,36 @@ export const useCartStore = create<CartStore>()(
           const userErrors = data?.data?.cartDiscountCodesUpdate?.userErrors ?? [];
           if (userErrors.length > 0) return { success: false, error: userErrors[0].message };
           const cart = data?.data?.cartDiscountCodesUpdate?.cart;
-          const newCodes: DiscountCodeInfo[] = cart?.discountCodes ?? [];
-          set({ discountCodes: newCodes, totalAmount: cart?.cost?.totalAmount ?? get().totalAmount });
+          if (!cart) return { success: false, error: "Could not verify discount code. Please try again." };
+          const newCodes: DiscountCodeInfo[] = cart.discountCodes ?? [];
           const applied = newCodes.find((c) => c.code.toUpperCase() === trimmed);
           if (!applied?.applicable) {
-            return { success: false, error: "This discount code is invalid or expired" };
+            // Revert Shopify cart back to previous codes so invalid code doesn't linger
+            void storefrontApiRequest<any>(CART_DISCOUNT_CODES_UPDATE, {
+              cartId,
+              discountCodes: currentCodes,
+            });
+            // Ask the server for the real reason (Admin API)
+            let reason = "This discount code cannot be applied to your cart.";
+            try {
+              const items = get().items;
+              const cartTotal = items.reduce((n, i) => n + parseFloat(i.price.amount) * i.quantity, 0);
+              const currency = items[0]?.price.currencyCode ?? "AED";
+              const res = await fetch(
+                `/api/discount-check?code=${encodeURIComponent(trimmed)}&cartTotal=${cartTotal}&currency=${currency}`
+              );
+              if (res.ok) {
+                const json = await res.json() as { reason: string | null };
+                if (json.reason) reason = json.reason;
+              }
+            } catch { /* fallback to generic message */ }
+            return { success: false, error: reason };
           }
+          set({
+            discountCodes: newCodes,
+            subtotalAmount: cart.cost?.subtotalAmount ?? get().subtotalAmount,
+            totalAmount: cart.cost?.totalAmount ?? get().totalAmount,
+          });
           return { success: true };
         } finally {
           set({ isApplyingCode: false });
@@ -619,6 +728,7 @@ export const useCartStore = create<CartStore>()(
           const cart = data?.data?.cartDiscountCodesUpdate?.cart;
           set({
             discountCodes: cart?.discountCodes ?? [],
+            subtotalAmount: cart?.cost?.subtotalAmount ?? get().subtotalAmount,
             totalAmount: cart?.cost?.totalAmount ?? get().totalAmount,
           });
         } finally {
@@ -649,6 +759,7 @@ export const useCartStore = create<CartStore>()(
           set({
             giftCardCodes: newCodes,
             appliedGiftCards: appliedCards,
+            subtotalAmount: cart?.cost?.subtotalAmount ?? get().subtotalAmount,
             totalAmount: cart?.cost?.totalAmount ?? get().totalAmount,
           });
           return { success: true };
@@ -672,6 +783,7 @@ export const useCartStore = create<CartStore>()(
           set({
             giftCardCodes: remaining,
             appliedGiftCards: cart?.appliedGiftCards ?? [],
+            subtotalAmount: cart?.cost?.subtotalAmount ?? get().subtotalAmount,
             totalAmount: cart?.cost?.totalAmount ?? get().totalAmount,
           });
         } finally {
@@ -694,7 +806,7 @@ export const useCartStore = create<CartStore>()(
       name: "mls-shopify-cart",
       version: 4,
       storage: createJSONStorage(() => localStorage),
-      skipHydration: true, // Prevent auto-rehydrate during SSR — we call rehydrate() manually in useEffect
+      skipHydration: true, // Prevent auto-rehydrate during SSR — we call rehydrate() eagerly on the client below
       partialize: (s) => ({
         items: s.items.filter((i) => !i.isPending),
         cartId: s.cartId,
@@ -722,3 +834,9 @@ export const useCartStore = create<CartStore>()(
     }
   )
 );
+
+// Eagerly rehydrate from localStorage on module load so the cart count is
+// available on first render without waiting for a useEffect tick.
+if (typeof window !== "undefined") {
+  useCartStore.persist.rehydrate();
+}
