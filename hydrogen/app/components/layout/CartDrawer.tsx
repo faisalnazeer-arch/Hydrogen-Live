@@ -349,7 +349,7 @@ export function CartDrawer() {
                                 size="sm"
                                 value={item.quantity}
                                 onChange={(qty) => item.lineId && updateQuantity(item.lineId, qty)}
-                                min={0}
+                                min={1}
                                 className={pending || isLoading ? "pointer-events-none opacity-50" : ""}
                               />
                               <button

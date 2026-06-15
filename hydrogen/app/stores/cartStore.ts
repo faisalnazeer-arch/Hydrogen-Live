@@ -398,6 +398,7 @@ function makeGiftItem(variantId: string): CartItem {
 }
 
 let _giftSyncing = false;
+let _cartCreating = false;
 
 async function syncFreeGifts(
   get: () => CartStore,
@@ -494,12 +495,25 @@ export const useCartStore = create<CartStore>()(
 
         try {
           if (!cartId) {
+            // Guard: if another addItem is already creating a cart, wait for it to finish
+            if (_cartCreating) {
+              // Re-read cartId after the in-flight creation finishes
+              await new Promise<void>((resolve) => {
+                const interval = setInterval(() => {
+                  if (!_cartCreating) { clearInterval(interval); resolve(); }
+                }, 50);
+              });
+              // Now retry addItem with the newly created cartId
+              return get().addItem(item);
+            }
+            _cartCreating = true;
             set({
               items: [{ ...item, lineId: null, isPending: true }, ...get().items],
               isOpen: true,
               isLoading: true,
             });
             const result = await createShopifyCart({ ...item, lineId: null });
+            _cartCreating = false;
             if (result) {
               set({
                 cartId: result.cartId,
@@ -573,6 +587,7 @@ export const useCartStore = create<CartStore>()(
             }
           }
         } catch (err) {
+          _cartCreating = false;
           console.error("addItem failed", err);
           set({ items: get().items.filter((i) => !i.isPending) });
         } finally {
