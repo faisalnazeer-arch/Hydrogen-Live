@@ -93,40 +93,35 @@ export function CartDrawer() {
   }, [subGiftId, carcassGiftId]);
 
   const totalItems = items.reduce((n, i) => n + i.quantity, 0);
-  // localSubtotal is always the original un-discounted item sum — used as the baseline for savings
   const localSubtotal = items.reduce((n, i) => n + parseFloat(i.price.amount) * i.quantity, 0);
   const currency = items[0]?.price.currencyCode ?? "AED";
   const shopifyCurrency = totalAmount?.currencyCode ?? subtotalAmount?.currencyCode ?? currency;
 
-  // Shopify's final total (after ALL discounts). Falls back to localSubtotal when not yet synced.
+  // totalAmount = Shopify's cart total after all discount codes and automatic discounts.
+  // This is the authoritative number for what the customer pays.
   const shopifyTotal = totalAmount ? parseFloat(totalAmount.amount) : localSubtotal;
-
-  const displaySubtotal = localSubtotal;         // always show original price as "Subtotal"
-  const displayTotal = shopifyTotal;              // Shopify's authoritative discounted total
+  const displaySubtotal = localSubtotal;
+  const displayTotal = shopifyTotal;
   const displayCurrency = shopifyCurrency;
 
-  // Savings = difference between what items cost and what Shopify is charging
+  // savings = how much cheaper Shopify is charging vs stored item prices.
+  // Math.max(0,...) means if shopifyTotal > localSubtotal (e.g. tax, stale price) we show 0 — no false positive.
   const savings = Math.max(0, localSubtotal - shopifyTotal);
   const savingsPct = localSubtotal > 0 ? Math.round((savings / localSubtotal) * 100) : 0;
 
-  // Free-shipping progress uses discounted total (amount you actually pay)
-  const threshold = drawerConfig.freeShippingThreshold;
-  const remaining = Math.max(0, threshold - shopifyTotal);
-  const progress = Math.min(100, (shopifyTotal / threshold) * 100);
-
   const hasManualDiscounts = discountCodes.some((d) => d.applicable) || appliedGiftCards.length > 0;
-  // Automatic discounts = any saving not explained by a manual code
-  // When discountAllocations title isn't returned, derive a % tag from the price difference
+  // Use real Shopify discount allocations when available; fall back to computed savings tag
+  // (covers automatic price rules that Shopify applies but doesn't report in discountAllocations).
   const autoDiscountTags: { title: string; discountedAmount: { amount: string; currencyCode: string } }[] =
     automaticDiscounts.length > 0
       ? automaticDiscounts
       : !hasManualDiscounts && savings > 0
-        ? [{
-            title: savingsPct > 0 ? `${savingsPct}% OFF` : "Automatic Discount",
-            discountedAmount: { amount: savings.toFixed(2), currencyCode: displayCurrency },
-          }]
+        ? [{ title: savingsPct > 0 ? `${savingsPct}% OFF` : "Automatic Discount", discountedAmount: { amount: savings.toFixed(2), currencyCode: displayCurrency } }]
         : [];
-  const hasAnyDiscount = savings > 0;
+
+  const threshold = drawerConfig.freeShippingThreshold;
+  const remaining = Math.max(0, threshold - shopifyTotal);
+  const progress = Math.min(100, (shopifyTotal / threshold) * 100);
 
   const handleCheckout = () => {
     const url = getCheckoutUrl();
