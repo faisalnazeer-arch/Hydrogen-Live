@@ -15,6 +15,10 @@ import { ShopByOrigin, type OriginSectionData } from "../components/home/ShopByO
 import { ValueBoxesBanner, type ValueBannerData } from "../components/home/ValueBoxesBanner";
 import { RecentlyViewed } from "../components/home/RecentlyViewed";
 import { ReelsCarousel } from "../components/home/ReelsCarousel";
+import { HomeBlogSection, type BlogArticle } from "../components/home/HomeBlogSection";
+import { HomeReviews } from "../components/home/HomeReviews";
+import { fetchJudgemeStoreReviews, fetchJudgemeShopStats } from "~/lib/judgeme";
+import type { JudgemeReview } from "~/lib/judgeme";
 
 const imgFields = `key value reference { ... on MediaImage { image { url altText } } }`;
 
@@ -34,6 +38,17 @@ const Q_FEATURED   = `{ nodes: metaobjects(type: "featured_collection", first: 1
 const Q_COL_LIST   = `{ nodes: metaobjects(type: "featured_collection_list", first: 20) { nodes { id fields { ${imgFields} } } } }`;
 const Q_GIFT       = `{ nodes: metaobjects(type: "mls_first_order_gift", first: 1) { nodes { id fields { key value } } } }`;
 const Q_SALE_SEC   = `{ nodes: metaobjects(type: "mls_sale_section", first: 1) { nodes { id fields { key value reference { ... on Collection { handle title } } } } } }`;
+const Q_BLOG_ARTICLES = `
+  query HomeBlogArticles {
+    articles(first: 6, sortKey: PUBLISHED_AT, reverse: true) {
+      nodes {
+        id handle title publishedAt excerpt
+        image { url altText }
+        blog { handle }
+      }
+    }
+  }
+`;
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -366,12 +381,16 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     heroRes, badgesRes, priceSecRes, priceTileRes, reelSecRes,
     promoRes, valueRes, colCfgRes, originRes, categoryRes,
     cutsRes, featuredRes, colListRes, reelTagged, reelItemsRes, giftRes, saleSecRes,
+    blogData, reviewsData, shopStats,
   ] = await Promise.all([
     af(Q_HERO), af(Q_BADGES), af(Q_PRICE_SEC), af(Q_PRICE_TILE), af(Q_REELS_SEC),
     af(Q_PROMO), af(Q_VALUE), af(Q_COL_CFG), af(Q_ORIGIN), af(Q_CATEGORY),
     af(Q_CUTS), af(Q_FEATURED), af(Q_COL_LIST),
     context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" } }),
     af(Q_REEL_ITEMS), af(Q_GIFT), af(Q_SALE_SEC),
+    context.storefront.query(Q_BLOG_ARTICLES).catch(() => null),
+    fetchJudgemeStoreReviews(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN, 1, 9).catch(() => ({ reviews: [] as JudgemeReview[], current_page: 1, per_page: 9 })),
+    fetchJudgemeShopStats(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN).catch(() => ({ average: 0, count: 0 })),
   ]);
 
   const data = {
@@ -455,6 +474,21 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     reels = pickReels(taggedEdges);
   }
 
+  const blogArticles: BlogArticle[] = ((blogData as any)?.articles?.nodes ?? []).map((n: any) => ({
+    id: n.id as string,
+    handle: n.handle as string,
+    title: n.title as string,
+    publishedAt: n.publishedAt as string,
+    excerpt: (n.excerpt ?? null) as string | null,
+    imageUrl: (n.image?.url ?? null) as string | null,
+    imageAlt: (n.image?.altText ?? n.title ?? "") as string,
+    blogHandle: (n.blog?.handle ?? "journal") as string,
+  }));
+
+  const storeReviews: JudgemeReview[] = (reviewsData as any)?.reviews ?? [];
+  const reviewTotalCount: number = (reviewsData as any)?.total_count ?? 0;
+  const reviewAverage: number = (shopStats as any)?.average ?? 0;
+
   return {
     heroSlides: data?.heroBanners?.nodes ?? [],
     trustBadges: data?.trustBadges?.nodes ?? [],
@@ -473,11 +507,15 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     firstOrderGift,
     saleSection,
     saleProducts,
+    blogArticles,
+    storeReviews,
+    reviewTotalCount,
+    reviewAverage,
   };
 }
 
 export default function Home() {
-  const { heroSlides, trustBadges, featuredSection, collectionCards, priceSection, priceTiles, promo, reelsLabel, reelsHeading, reels, categorySection, originSection, valueBanner, cutsSection, firstOrderGift, saleSection, saleProducts } = useLoaderData<typeof loader>();
+  const { heroSlides, trustBadges, featuredSection, collectionCards, priceSection, priceTiles, promo, reelsLabel, reelsHeading, reels, categorySection, originSection, valueBanner, cutsSection, firstOrderGift, saleSection, saleProducts, blogArticles, storeReviews, reviewTotalCount, reviewAverage } = useLoaderData<typeof loader>();
   const t = useT();
   return (
     <>
@@ -513,7 +551,9 @@ export default function Home() {
       <ReelsCarousel reels={reels} label={reelsLabel} heading={reelsHeading} />
       <PromoSideBySide promo={promo} />
       <ValueBoxesBanner banner={valueBanner} />
+      <HomeBlogSection articles={blogArticles} />
       <RecentlyViewed />
+      <HomeReviews reviews={storeReviews} totalCount={reviewTotalCount} averageRating={reviewAverage} />
     </>
   );
 }

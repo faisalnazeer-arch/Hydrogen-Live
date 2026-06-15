@@ -121,10 +121,10 @@ const WEEK_BG = ["bg-crimson", "bg-crimson", "bg-rich-red", "bg-[#7a0007]"];
 
 function SectionHead({ label, title, sub }: { label: string; title: string; sub?: string }) {
   return (
-    <div className="mb-8 text-center md:mb-10">
+    <div className="mb-5 text-center md:mb-7">
       <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-crimson">{label}</p>
       <h2 className="font-display text-2xl font-extrabold text-foreground md:text-3xl">{title}</h2>
-      {sub && <p className="mt-2 text-sm text-muted-foreground">{sub}</p>}
+      {sub && <p className="mt-1.5 text-sm text-muted-foreground">{sub}</p>}
     </div>
   );
 }
@@ -138,13 +138,13 @@ export default function SubscriptionsPage() {
     <div className="min-h-screen bg-background overflow-x-hidden">
 
       {/* ══ 1. HERO ═══════════════════════════════════════════════════════════ */}
-      <section className="relative flex min-h-[480px] items-center overflow-hidden md:min-h-[580px]">
+      <section className="relative flex min-h-[400px] items-center overflow-hidden md:min-h-[500px]">
         {page.heroImageUrl && (
           <img src={page.heroImageUrl} alt={page.heroTitle}
             className="absolute inset-0 h-full w-full object-cover object-center" />
         )}
         <div className="absolute inset-0 bg-gradient-to-r from-charcoal/92 via-charcoal/70 to-transparent" />
-        <div className="relative z-10 container mx-auto px-4 py-16 md:py-24">
+        <div className="relative z-10 container mx-auto px-4 py-10 md:py-14">
           <div className="max-w-lg">
             <span className="mb-3 inline-block rounded-full bg-crimson/90 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-white shadow">
               Subscribe &amp; Save up to 15%
@@ -154,7 +154,7 @@ export default function SubscriptionsPage() {
                 <>Eat Clean,<br /><span className="text-crimson">Save Big!</span></>
               ) : page.heroTitle}
             </h1>
-            <p className="mt-3 text-base leading-relaxed text-white/75 md:text-lg">{page.heroSubtitle}</p>
+            <p className="mt-3 text-base leading-relaxed text-white/90 md:text-lg">{page.heroSubtitle}</p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link to={page.heroCtaUrl}
                 className="inline-flex items-center gap-2 rounded-lg bg-crimson px-7 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-all hover:bg-rich-red">
@@ -162,14 +162,15 @@ export default function SubscriptionsPage() {
               </Link>
               {page.manageUrl && (
                 <a href={page.manageUrl}
-                  className="inline-flex items-center gap-2 rounded-lg border border-white/35 px-7 py-3 text-sm font-bold uppercase tracking-wide text-white transition-all hover:border-white hover:bg-white/10">
+                  className="inline-flex items-center gap-2 rounded-lg px-7 py-3 text-sm font-bold uppercase tracking-wide transition-all !text-white"
+                  style={{ border: '2px solid rgba(255,255,255,0.85)', backgroundColor: 'rgba(255,255,255,0.15)' }}>
                   <Settings className="h-4 w-4" /> Manage Plan
                 </a>
               )}
             </div>
             <div className="mt-5 flex flex-wrap gap-5">
               {["🥩 Free Ribeye every order", "🚚 Free delivery AED 100+", "✅ Cancel anytime"].map((t) => (
-                <span key={t} className="text-xs text-white/60">{t}</span>
+                <span key={t} className="text-xs text-white/85">{t}</span>
               ))}
             </div>
           </div>
@@ -178,9 +179,9 @@ export default function SubscriptionsPage() {
 
       {/* ══ 2. TIMELINE ═══════════════════════════════════════════════════════ */}
       {page.timeline.length > 0 && (
-        <section className="py-12 md:py-16 overflow-hidden" style={{background:"linear-gradient(160deg,#fff5f5 0%,#fff 40%,#fff5f5 100%)"}}>
+        <section className="py-8 md:py-10 overflow-hidden" style={{background:"linear-gradient(160deg,#fff5f5 0%,#fff 40%,#fff5f5 100%)"}}>
           <div className="container mx-auto px-4">
-            <div className="mb-10 text-center md:mb-14">
+            <div className="mb-6 text-center md:mb-8">
               <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.25em] text-crimson">Your Health Journey</p>
               <h2 className="font-display text-2xl font-extrabold text-foreground md:text-4xl">Consistency Pays Off</h2>
               <p className="mt-1 font-display text-lg font-semibold text-crimson md:text-2xl">(In Health &amp; Savings)</p>
@@ -240,11 +241,11 @@ export default function SubscriptionsPage() {
                 </div>
               ))}
             </div>
-            <div className="mt-8 text-center">
-              <Link to={page.heroCtaUrl}
-                className="inline-flex items-center gap-2 rounded-lg bg-crimson px-7 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-all hover:bg-rich-red">
+            <div className="mt-6 text-center">
+              <a href={page.heroCtaUrl}
+                className="inline-flex items-center gap-2 rounded-lg bg-crimson px-7 py-3 text-sm font-bold uppercase tracking-wide shadow-lg transition-all hover:bg-rich-red !text-white">
                 Start Now — Free Ribeye + 10% Off <ArrowRight className="h-4 w-4" />
-              </Link>
+              </a>
             </div>
           </div>
         </section>
@@ -252,7 +253,7 @@ export default function SubscriptionsPage() {
 
       {/* ══ 3. BENEFITS ═══════════════════════════════════════════════════════ */}
       {page.benefits.length > 0 && (
-        <section className="py-12 md:py-16">
+        <section className="py-8 md:py-10">
           <div className="container mx-auto px-4">
             <SectionHead label="Why Choose MLS?" title={page.benefitsTitle} />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -278,14 +279,14 @@ export default function SubscriptionsPage() {
 
       {/* ══ 4. HOW IT WORKS ═══════════════════════════════════════════════════ */}
       {page.steps.length > 0 && (
-        <section className="bg-muted/40 py-12 md:py-16">
+        <section className="bg-muted/40 py-8 md:py-10">
           <div className="container mx-auto px-4">
             <SectionHead label="Simple Setup" title={page.stepsTitle} />
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {page.steps.map(({ id, number, title, description, imageUrl }) => (
                 <div key={id} className="flex flex-col items-center gap-3 text-center">
                   {imageUrl && (
-                    <div className="flex h-72 w-full items-end justify-center">
+                    <div className="flex h-52 w-full items-end justify-center">
                       <img src={imageUrl} alt={title} className="h-full w-auto max-w-full object-contain drop-shadow-lg" />
                     </div>
                   )}
@@ -295,11 +296,11 @@ export default function SubscriptionsPage() {
                 </div>
               ))}
             </div>
-            <div className="mt-8 text-center">
-              <Link to={page.heroCtaUrl}
-                className="inline-flex items-center gap-2 rounded-lg bg-crimson px-7 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-all hover:bg-rich-red">
+            <div className="mt-6 text-center">
+              <a href={page.heroCtaUrl}
+                className="inline-flex items-center gap-2 rounded-lg bg-crimson px-7 py-3 text-sm font-bold uppercase tracking-wide shadow-lg transition-all hover:bg-rich-red !text-white">
                 Get Started Now <ArrowRight className="h-4 w-4" />
-              </Link>
+              </a>
             </div>
           </div>
         </section>
@@ -307,7 +308,7 @@ export default function SubscriptionsPage() {
 
       {/* ══ 5. REVIEWS ═══════════════════════════════════════════════════════ */}
       {page.reviews.length > 0 && (
-        <section className="py-12 md:py-16">
+        <section className="py-8 md:py-10">
           <div className="container mx-auto px-4">
             <SectionHead label="Real Customers" title={page.reviewsTitle} sub="What They're Talking About MLS" />
             <ReviewsSlider reviews={page.reviews} />
@@ -317,7 +318,7 @@ export default function SubscriptionsPage() {
 
       {/* ══ 6. FAQs ══════════════════════════════════════════════════════════ */}
       {page.faqs.length > 0 && (
-        <section className="bg-muted/30 py-12 md:py-16">
+        <section className="bg-muted/30 py-8 md:py-10">
           <div className="container mx-auto px-4">
             <SectionHead label="Got Questions?" title={page.faqTitle} />
             <div className="mx-auto max-w-2xl space-y-3">
@@ -329,7 +330,7 @@ export default function SubscriptionsPage() {
 
       {/* ══ 7. SUBSCRIPTION POLICIES ═════════════════════════════════════════ */}
       {policy.items.length > 0 && (
-        <section id="policies" className="relative overflow-hidden py-16 md:py-20" style={{ background: "linear-gradient(135deg, #0f0505 0%, #1a0808 40%, #2a0a0a 100%)" }}>
+        <section id="policies" className="relative overflow-hidden py-10 md:py-14" style={{ background: "linear-gradient(135deg, #0f0505 0%, #1a0808 40%, #2a0a0a 100%)" }}>
           {/* Subtle background pattern */}
           <div className="pointer-events-none absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "32px 32px" }} />
           {/* Glow accents */}
@@ -339,13 +340,13 @@ export default function SubscriptionsPage() {
           <div className="relative container mx-auto px-4">
 
             {/* Header */}
-            <div className="mb-10 text-center md:mb-14">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-crimson/30 bg-crimson/10 px-4 py-1.5">
-                <ShieldCheck className="h-3.5 w-3.5 text-crimson" />
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-crimson">Transparency First</span>
+            <div className="mb-7 text-center md:mb-9">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-4 py-1.5">
+                <ShieldCheck className="h-3.5 w-3.5 text-white" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">Transparency First</span>
               </div>
               <h2 className="font-display text-2xl font-extrabold text-white md:text-4xl">{policy.title}</h2>
-              <p className="mt-2 text-sm text-white/50">Clear terms so you always know where you stand.</p>
+              <p className="mt-2 text-sm text-white/75">Clear terms so you always know where you stand.</p>
             </div>
 
             {/* Two-column layout on desktop */}
@@ -353,27 +354,27 @@ export default function SubscriptionsPage() {
 
               {/* Left sticky panel */}
               <div className="mb-8 lg:mb-0">
-                <div className="sticky top-24 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+                <div className="sticky top-24 rounded-2xl border border-white/30 bg-white/15 p-6 backdrop-blur-sm">
                   <ShieldCheck className="mb-3 h-8 w-8 text-crimson" />
                   <h3 className="font-display text-lg font-bold text-white">Fair & Transparent</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-white/60">
+                  <p className="mt-2 text-sm leading-relaxed text-white/80">
                     We believe in no hidden surprises. Everything about how your subscription works is laid out clearly below.
                   </p>
                   <div className="mt-5 space-y-2.5">
                     {["Cancel any time", "No lock-in contracts", "Full refund transparency", "24/7 support"].map((item) => (
                       <div key={item} className="flex items-center gap-2.5">
-                        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-crimson/20">
-                          <CheckCircle2 className="h-2.5 w-2.5 text-crimson" />
+                        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-crimson/40">
+                          <CheckCircle2 className="h-2.5 w-2.5 text-white" />
                         </span>
-                        <span className="text-xs font-medium text-white/70">{item}</span>
+                        <span className="text-xs font-medium text-white/85">{item}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-6 border-t border-white/10 pt-5">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/40">{policy.ctaTitle}</p>
-                    <p className="mb-4 text-xs leading-relaxed text-white/50">{policy.ctaSubtitle}</p>
+                  <div className="mt-6 border-t border-white/20 pt-5">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/65">{policy.ctaTitle}</p>
+                    <p className="mb-4 text-xs leading-relaxed text-white/75">{policy.ctaSubtitle}</p>
                     <a href={policy.ctaUrl} target="_blank" rel="noopener noreferrer"
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-crimson px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all hover:bg-rich-red hover:shadow-lg">
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-crimson px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all hover:bg-rich-red hover:shadow-lg !text-white">
                       <MessageCircle className="h-3.5 w-3.5" />{policy.ctaLabel}
                     </a>
                   </div>
@@ -393,19 +394,19 @@ export default function SubscriptionsPage() {
       )}
 
       {/* ══ 8. FINAL CTA ══════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden bg-crimson py-14 md:py-16 text-center">
+      <section className="relative overflow-hidden bg-crimson py-8 md:py-10 text-center">
         <div className="pointer-events-none absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 70% 50%, white 1px, transparent 0)", backgroundSize: "24px 24px" }} />
         <div className="relative container mx-auto px-4">
           <h2 className="font-display text-2xl font-extrabold text-white md:text-3xl">Ready to Start Saving?</h2>
-          <p className="mt-2 text-sm text-white/75">Join thousands of MLS subscribers enjoying premium meat every week.</p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <p className="mt-2 text-sm text-white/90">Join thousands of MLS subscribers enjoying premium meat every week.</p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
             <Link to={page.heroCtaUrl}
               className="inline-flex items-center gap-2 rounded-xl bg-white px-8 py-3 text-sm font-bold uppercase tracking-wide text-crimson shadow-lg transition-all hover:bg-bone">
               {page.heroCtaText} <ArrowRight className="h-4 w-4" />
             </Link>
             {page.manageUrl && (
               <a href={page.manageUrl}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/40 px-8 py-3 text-sm font-bold uppercase tracking-wide text-white transition-all hover:border-white hover:bg-white/10">
+                className="inline-flex items-center gap-2 rounded-xl border-2 border-white bg-white/20 px-8 py-3 text-sm font-bold uppercase tracking-wide transition-all hover:bg-white/30 !text-white">
                 <Settings className="h-4 w-4" /> Manage Plan
               </a>
             )}
@@ -499,17 +500,17 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 function PolicyItem({ index, question, answer }: { index: number; question: string; answer: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className={`group overflow-hidden rounded-2xl border transition-all duration-200 ${open ? "border-crimson/50 bg-white/[0.06]" : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]"}`}>
+    <div className={`group overflow-hidden rounded-2xl border transition-all duration-200 ${open ? "border-crimson/70 bg-white/15" : "border-white/25 bg-white/10 hover:border-white/40 hover:bg-white/15"}`}>
       <button type="button" onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-4 px-5 py-4 text-left md:px-6 md:py-5">
-        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-colors ${open ? "bg-crimson text-white" : "bg-white/10 text-white/50 group-hover:bg-white/15"}`}>
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-colors ${open ? "bg-crimson text-white" : "bg-white/20 text-white/75 group-hover:bg-white/30"}`}>
           {String(index).padStart(2, "0")}
         </span>
-        <span className="flex-1 font-display text-sm font-semibold text-white/90 md:text-base">{question}</span>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-white/40 transition-transform duration-200 ${open ? "rotate-180 text-crimson" : ""}`} />
+        <span className="flex-1 font-display text-sm font-semibold text-white md:text-base">{question}</span>
+        <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${open ? "rotate-180 text-crimson" : "text-white/65"}`} />
       </button>
       <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: open ? "400px" : "0px" }}>
-        <p className="px-5 pb-5 text-sm leading-relaxed text-white/55 md:px-6 md:pb-6 md:text-[0.9375rem]">{answer}</p>
+        <p className="px-5 pb-5 text-sm leading-relaxed text-white/80 md:px-6 md:pb-6 md:text-[0.9375rem]">{answer}</p>
       </div>
     </div>
   );
