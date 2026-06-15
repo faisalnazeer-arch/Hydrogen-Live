@@ -96,8 +96,11 @@ export function PriceRangeShop({ section, tiles = [] }: PriceRangeShopProps) {
             ))}
           </div>
 
-          {/* ── Desktop: single row grid ── */}
-          <div className="hidden md:grid md:grid-cols-6 md:gap-3">
+          {/* ── Desktop: single row grid — columns match tile count so they stay centered ── */}
+          <div
+            className="hidden md:grid md:gap-3"
+            style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}
+          >
             {tiles.map((tile) => (
               <PriceTileCard key={tile.id} tile={tile} />
             ))}
