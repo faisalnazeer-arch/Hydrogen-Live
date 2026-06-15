@@ -187,9 +187,15 @@ function LinkList({ links }: { links: FooterLink[] }) {
     <ul className="space-y-2.5 text-sm text-off-white/80">
       {links.map((l) => (
         <li key={l.label}>
-          <Link to={l.url} className="hover:text-gold">
-            {l.label}
-          </Link>
+          {l.url.startsWith("http") ? (
+            <a href={l.url} target="_blank" rel="noopener noreferrer" className="hover:text-gold">
+              {l.label}
+            </a>
+          ) : (
+            <Link to={l.url} className="hover:text-gold">
+              {l.label}
+            </Link>
+          )}
         </li>
       ))}
     </ul>

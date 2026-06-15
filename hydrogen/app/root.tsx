@@ -181,8 +181,16 @@ const ADMIN_FOOTER_QUERY = `
 `;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+const INTERNAL_HOSTS = new Set([
+  'mls-uae.myshopify.com',
+  'mlsuae.ae',
+  'hydrogen-lovable-48c64f68e36675c8b8e2.o2.myshopify.dev',
+]);
 function toPath(u: string): string {
-  try { return new URL(u).pathname || "/"; } catch { return u || "/"; }
+  try {
+    const parsed = new URL(u);
+    return INTERNAL_HOSTS.has(parsed.hostname) ? (parsed.pathname || "/") : u;
+  } catch { return u || "/"; }
 }
 
 // ── Nav parser — native Shopify Menu API ──────────────────────────────────────
