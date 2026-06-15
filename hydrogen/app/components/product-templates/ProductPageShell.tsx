@@ -210,34 +210,52 @@ function buildMediaItems(images: any[], mediaNodes: any[]): MediaItem[] {
 }
 
 // ── Nutrition helpers ─────────────────────────────────────────────────────
+// FDA daily reference values used to compute % Daily Value
+const FDA_DV: Record<string, number> = {
+  total_fat:           78,   // g
+  saturated_fat:       20,   // g
+  total_cholesterol:  300,   // mg
+  sodium:            2300,   // mg
+  total_carbohydrates: 275,  // g
+  dietary_fibers:      28,   // g
+  iron:                18,   // mg
+};
+
 const NUTRITION_ROWS: Array<{
-  ns: string; key: string; dvKey?: string; label: string; indent?: boolean; noDv?: boolean; separator?: boolean;
+  ns: string; key: string; label: string; indent?: boolean; noDv?: boolean; separator?: boolean;
 }> = [
-  { ns: "nutrition", key: "total_fat",           dvKey: "total_fat_dv",     label: "Total Fat" },
-  { ns: "nutrition", key: "saturated_fat",       dvKey: "saturated_fat_dv", label: "Saturated Fat",      indent: true },
-  { ns: "nutrition", key: "trans_fat",                                        label: "Trans Fat",          indent: true, noDv: true },
-  { ns: "nutrition", key: "total_cholesterol",   dvKey: "cholesterol_dv",   label: "Cholesterol" },
-  { ns: "nutrition", key: "sodium",              dvKey: "sodium_dv",        label: "Sodium" },
-  { ns: "nutrition", key: "total_carbohydrates", dvKey: "total_carbs_dv",   label: "Total Carbohydrate" },
-  { ns: "nutrition", key: "dietary_fibers",      dvKey: "dietary_fiber_dv", label: "Dietary Fiber",      indent: true },
-  { ns: "nutrition", key: "sugar",                                            label: "Total Sugars",       indent: true, noDv: true },
-  { ns: "nutrition", key: "protein",                                          label: "Protein",            noDv: true },
-  { ns: "nutrition", key: "iron",                dvKey: "iron_dv",          label: "Iron",               separator: true },
+  { ns: "nutrition", key: "total_fat",           label: "Total Fat" },
+  { ns: "nutrition", key: "saturated_fat",       label: "Saturated Fat",      indent: true },
+  { ns: "nutrition", key: "trans_fat",           label: "Trans Fat",          indent: true, noDv: true },
+  { ns: "nutrition", key: "total_cholesterol",   label: "Cholesterol" },
+  { ns: "nutrition", key: "sodium",              label: "Sodium" },
+  { ns: "nutrition", key: "total_carbohydrates", label: "Total Carbohydrate" },
+  { ns: "nutrition", key: "dietary_fibers",      label: "Dietary Fiber",      indent: true },
+  { ns: "nutrition", key: "sugar",               label: "Total Sugars",       indent: true, noDv: true },
+  { ns: "nutrition", key: "protein",             label: "Protein",            noDv: true },
+  { ns: "nutrition", key: "iron",                label: "Iron",               separator: true },
 ];
 
 function getMF(variant: any, ns: string, key: string): string | null {
   return variant?.metafields?.find((m: any) => m?.namespace === ns && m?.key === key)?.value ?? null;
 }
 
+function calcDv(rawValue: string | null, key: string): string | null {
+  const dvFactor = FDA_DV[key];
+  if (!rawValue || !dvFactor) return null;
+  const num = parseFloat(rawValue.match(/[\d.]+/)?.[0] ?? "");
+  if (isNaN(num)) return null;
+  return `${Math.round((num / dvFactor) * 100)}%`;
+}
+
 function NutritionPanel({ variant }: { variant: any }) {
   const portion = getMF(variant, "custom", "portion_text") ?? "Per 100g";
   const caloriesRaw = getMF(variant, "nutrition", "total_energy");
   const caloriesNum = caloriesRaw?.match(/[\d.]+/)?.[0] ?? caloriesRaw ?? "";
-  const rows = NUTRITION_ROWS.map(r => ({
-    ...r,
-    value: getMF(variant, r.ns, r.key),
-    dv: r.dvKey ? getMF(variant, "nutrition", r.dvKey) : null,
-  })).filter(r => r.value);
+  const rows = NUTRITION_ROWS.map(r => {
+    const value = getMF(variant, r.ns, r.key);
+    return { ...r, value, dv: r.noDv ? null : calcDv(value, r.key) };
+  }).filter(r => r.value);
 
   if (!caloriesRaw && rows.length === 0) return (
     <p className="py-8 text-center text-sm text-muted-foreground">
