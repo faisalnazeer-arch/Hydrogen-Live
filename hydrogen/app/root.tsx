@@ -12,6 +12,7 @@ import { useEffect } from "react";
 import { useNonce } from "@shopify/hydrogen";
 import styles from "./styles.css?url";
 import mlsLogo from "./assets/mls-logo.png";
+import mlsFavicon from "./assets/mls-favicon.png";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Header } from "./components/layout/Header";
 import { Footer } from "./components/layout/Footer";
@@ -26,8 +27,8 @@ import { useLocaleStore, dirFor, type Locale } from "./stores/localeStore";
 export const links: LinksFunction = () => [
   // Stylesheet is injected directly in Layout with suppressHydrationWarning
   // to prevent Vite dev-mode ?t= timestamp causing a hydration cascade
-  { rel: "icon", type: "image/png", href: mlsLogo },
-  { rel: "apple-touch-icon", href: mlsLogo },
+  { rel: "icon", type: "image/png", href: mlsFavicon },
+  { rel: "apple-touch-icon", href: mlsFavicon },
 ];
 
 // ── Nav types ────────────────────────────────────────────────────────────────
