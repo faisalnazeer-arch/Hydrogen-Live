@@ -237,11 +237,11 @@ export function QuickBuyDrawer() {
         <div className="border-t border-border px-4 py-2.5 sm:p-4">
           <Button
             onClick={handleAdd}
-            disabled={!matched?.availableForSale || isLoading}
+            disabled={!matched?.availableForSale || isLoading || fetchingPlans}
             size="sm"
             className="h-9 w-full bg-crimson text-xs text-crimson-foreground hover:bg-rich-red sm:h-11 sm:text-sm"
           >
-            {isLoading ? (
+            {isLoading || fetchingPlans ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>

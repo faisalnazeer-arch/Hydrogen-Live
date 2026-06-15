@@ -105,14 +105,14 @@ const CART_QUERY = `query cart($id: ID!) {
   }
 }`;
 
-const CART_CREATE_MUTATION = `
-  mutation cartCreate($input: CartInput!) {
-    cartCreate(input: $input) {
+// Used only to bootstrap an empty cart; lines are added separately via cartLinesAdd
+const CART_CREATE_EMPTY_MUTATION = `
+  mutation cartCreate {
+    cartCreate(input: {}) {
       cart {
         id
         checkoutUrl
         ${COST_FIELDS}
-        ${MINIMAL_LINES_FIELDS}
       }
       userErrors { field message }
     }
@@ -239,41 +239,42 @@ function isCartNotFoundError(
 }
 
 async function createShopifyCart(item: CartItem) {
-  const line: Record<string, any> = { quantity: item.quantity, merchandiseId: item.variantId };
-  if (item.sellingPlanId) line.sellingPlanId = item.sellingPlanId;
-  if (item.attributes?.length) line.attributes = item.attributes;
+  // Step 1: Create an empty cart (avoids issues with sellingPlanId inside cartCreate)
   let data: any;
   try {
-    data = await storefrontApiRequest<any>(CART_CREATE_MUTATION, { input: { lines: [line] } });
+    data = await storefrontApiRequest<any>(CART_CREATE_EMPTY_MUTATION, {});
   } catch (err) {
-    console.error("[cart] cartCreate request failed:", err);
+    console.warn("[cart] cartCreate request failed:", err);
     return null;
   }
   if (!data) {
-    console.error("[cart] cartCreate: no data returned (possibly 402)");
+    console.warn("[cart] cartCreate: no data returned (possibly 402)");
     return null;
   }
-  const userErrors = data?.data?.cartCreate?.userErrors ?? [];
-  if (userErrors.length > 0) {
-    console.error("[cart] cartCreate userErrors:", JSON.stringify(userErrors));
+  const createErrors = data?.data?.cartCreate?.userErrors ?? [];
+  if (createErrors.length > 0) {
+    console.warn("[cart] cartCreate userErrors:", JSON.stringify(createErrors));
     return null;
   }
   const cart = data?.data?.cartCreate?.cart;
-  if (!cart) {
-    console.error("[cart] cartCreate: cart is null in response");
+  if (!cart?.id) {
+    console.warn("[cart] cartCreate: cart or cart.id is null in response");
     return null;
   }
-  const lineId = cart.lines?.edges?.[0]?.node?.id;
-  if (!lineId) {
-    console.error("[cart] cartCreate: no lineId returned. lines:", JSON.stringify(cart.lines));
+
+  // Step 2: Add the line (with sellingPlanId if present) to the newly created cart
+  const addResult = await addLineToShopifyCart(cart.id, { ...item, lineId: null });
+  if (!addResult.success || !addResult.lineId) {
+    console.warn("[cart] cartLinesAdd failed after cartCreate. success:", addResult.success, "lineId:", addResult.lineId);
     return null;
   }
+
   return {
     cartId: cart.id as string,
     checkoutUrl: cart.checkoutUrl ? formatCheckoutUrl(cart.checkoutUrl) : `https://mls-uae.myshopify.com/cart`,
-    lineId: lineId as string,
-    subtotalAmount: cart.cost?.subtotalAmount ?? null,
-    totalAmount: cart.cost?.totalAmount ?? null,
+    lineId: addResult.lineId,
+    subtotalAmount: addResult.subtotalAmount ?? null,
+    totalAmount: addResult.totalAmount ?? null,
   };
 }
 
@@ -515,9 +516,9 @@ export const useCartStore = create<CartStore>()(
 
         try {
           if (!cartId) {
+            // Don't open the cart drawer yet — only open after cart creation succeeds
             set({
               items: [{ ...item, lineId: null, isPending: true }, ...get().items],
-              isOpen: true,
               isLoading: true,
             });
             const result = await createShopifyCart({ ...item, lineId: null });
@@ -527,6 +528,7 @@ export const useCartStore = create<CartStore>()(
                 checkoutUrl: result.checkoutUrl,
                 subtotalAmount: result.subtotalAmount,
                 totalAmount: result.totalAmount,
+                isOpen: true,
                 items: get().items.map((i) =>
                   i.variantId === item.variantId && i.isPending
                     ? { ...i, lineId: result.lineId, isPending: false }
@@ -534,10 +536,10 @@ export const useCartStore = create<CartStore>()(
                 ),
               });
             } else {
-              // Cart creation failed — remove pending item; close drawer if nothing to show
+              // Cart creation failed — silently remove pending item; don't open drawer
               const remaining = get().items.filter((i) => !(i.variantId === item.variantId && i.isPending));
-              set({ items: remaining, isOpen: remaining.length > 0 });
-              console.error("Cart creation failed for variant", item.variantId);
+              set({ items: remaining, isOpen: false });
+              console.warn("[cart] Cart creation failed for variant", item.variantId);
             }
           } else if (existing) {
             const newQty = existing.quantity + item.quantity;
@@ -597,7 +599,7 @@ export const useCartStore = create<CartStore>()(
             }
           }
         } catch (err) {
-          console.error("addItem failed", err);
+          console.warn("[cart] addItem threw:", err);
           const remaining = get().items.filter((i) => !i.isPending);
           set({ items: remaining, isOpen: remaining.length > 0 });
         } finally {
