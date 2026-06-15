@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { toast } from "sonner";
 import {
   storefrontApiRequest,
   type MoneyV2,
@@ -553,6 +554,7 @@ export const useCartStore = create<CartStore>()(
                     : i
                 ),
               });
+              toast.success("Added to cart", { description: item.product.node.title });
             } else {
               // Cart creation failed — remove pending item, surface the error
               const remaining = get().items.filter((i) => !(i.variantId === item.variantId && i.isPending));
@@ -612,6 +614,7 @@ export const useCartStore = create<CartStore>()(
                     : i
                 ),
               });
+              toast.success("Added to cart", { description: item.product.node.title });
             } else if (result.cartNotFound) {
               clearCart();
             } else {
