@@ -124,7 +124,10 @@ export function QuickBuyDrawer() {
       sellingPlanId: selectedPlanId ?? undefined,
       sellingPlanName: activePlan?.name ?? null,
     });
-    close();
+    // Only close QuickBuy if the cart drawer is now open (meaning the add succeeded).
+    // If the add failed (cart still empty / drawer closed), keep QuickBuy open for retry.
+    const { isOpen: cartIsOpen } = useCartStore.getState();
+    if (cartIsOpen) close();
   };
 
   return (

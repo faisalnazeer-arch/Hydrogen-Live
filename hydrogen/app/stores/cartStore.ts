@@ -242,17 +242,35 @@ async function createShopifyCart(item: CartItem) {
   const line: Record<string, any> = { quantity: item.quantity, merchandiseId: item.variantId };
   if (item.sellingPlanId) line.sellingPlanId = item.sellingPlanId;
   if (item.attributes?.length) line.attributes = item.attributes;
-  const data = await storefrontApiRequest<any>(CART_CREATE_MUTATION, {
-    input: { lines: [line] },
-  });
-  if (data?.data?.cartCreate?.userErrors?.length > 0) return null;
+  let data: any;
+  try {
+    data = await storefrontApiRequest<any>(CART_CREATE_MUTATION, { input: { lines: [line] } });
+  } catch (err) {
+    console.error("[cart] cartCreate request failed:", err);
+    return null;
+  }
+  if (!data) {
+    console.error("[cart] cartCreate: no data returned (possibly 402)");
+    return null;
+  }
+  const userErrors = data?.data?.cartCreate?.userErrors ?? [];
+  if (userErrors.length > 0) {
+    console.error("[cart] cartCreate userErrors:", JSON.stringify(userErrors));
+    return null;
+  }
   const cart = data?.data?.cartCreate?.cart;
-  if (!cart?.checkoutUrl) return null;
-  const lineId = cart.lines.edges[0]?.node?.id;
-  if (!lineId) return null;
+  if (!cart) {
+    console.error("[cart] cartCreate: cart is null in response");
+    return null;
+  }
+  const lineId = cart.lines?.edges?.[0]?.node?.id;
+  if (!lineId) {
+    console.error("[cart] cartCreate: no lineId returned. lines:", JSON.stringify(cart.lines));
+    return null;
+  }
   return {
     cartId: cart.id as string,
-    checkoutUrl: formatCheckoutUrl(cart.checkoutUrl),
+    checkoutUrl: cart.checkoutUrl ? formatCheckoutUrl(cart.checkoutUrl) : `https://mls-uae.myshopify.com/cart`,
     lineId: lineId as string,
     subtotalAmount: cart.cost?.subtotalAmount ?? null,
     totalAmount: cart.cost?.totalAmount ?? null,
@@ -269,7 +287,10 @@ async function addLineToShopifyCart(cartId: string, item: CartItem) {
   });
   const userErrors = data?.data?.cartLinesAdd?.userErrors || [];
   if (isCartNotFoundError(userErrors)) return { success: false, cartNotFound: true as const };
-  if (userErrors.length > 0) return { success: false as const };
+  if (userErrors.length > 0) {
+    console.error("[cart] cartLinesAdd userErrors:", JSON.stringify(userErrors));
+    return { success: false as const };
+  }
   const cartData = data?.data?.cartLinesAdd?.cart;
   const lines: any[] = cartData?.lines?.edges || [];
   const newLine = lines.find((l: any) => l.node.merchandise.id === item.variantId);
