@@ -155,15 +155,22 @@ const PRODUCT_QUERY = `#graphql
             {namespace: "custom", key: "portion_text"}
             {namespace: "nutrition", key: "total_energy"}
             {namespace: "nutrition", key: "total_fat"}
+            {namespace: "nutrition", key: "total_fat_dv"}
             {namespace: "nutrition", key: "saturated_fat"}
+            {namespace: "nutrition", key: "saturated_fat_dv"}
             {namespace: "nutrition", key: "trans_fat"}
             {namespace: "nutrition", key: "total_cholesterol"}
+            {namespace: "nutrition", key: "cholesterol_dv"}
             {namespace: "nutrition", key: "total_carbohydrates"}
+            {namespace: "nutrition", key: "total_carbs_dv"}
             {namespace: "nutrition", key: "dietary_fibers"}
+            {namespace: "nutrition", key: "dietary_fiber_dv"}
             {namespace: "nutrition", key: "sugar"}
             {namespace: "nutrition", key: "protein"}
             {namespace: "nutrition", key: "sodium"}
+            {namespace: "nutrition", key: "sodium_dv"}
             {namespace: "nutrition", key: "iron"}
+            {namespace: "nutrition", key: "iron_dv"}
           ]) { key namespace value }
           sellingPlanAllocations(first: 10) {
             nodes {
