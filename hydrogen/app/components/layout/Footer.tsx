@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { Facebook, Instagram, Mail, MapPin, Phone } from "lucide-react";
+import { Facebook, Instagram, Mail, Phone } from "lucide-react";
 import logo from "@/assets/mls-logo.png";
 import {
   Accordion,
@@ -151,12 +151,6 @@ function ContactCol({ contact }: { contact: ContactData }) {
 function ContactList({ contact }: { contact: ContactData }) {
   return (
     <ul className="space-y-2.5 text-sm text-off-white/80">
-      {contact.address && (
-        <li className="flex items-start gap-2">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-          <span className="whitespace-pre-line">{contact.address}</span>
-        </li>
-      )}
       {contact.phone && (
         <li className="flex items-center gap-2">
           <Phone className="h-4 w-4 shrink-0 text-gold" />
