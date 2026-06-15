@@ -53,13 +53,13 @@ export default async function handleRequest(
   responseHeaders.set(
     "Content-Security-Policy",
     [
-      "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.shopify.com https://shopify.com http://localhost:* ws://localhost:* wss://localhost:* https://*.yotpo.com https://cdn.judge.me https://*.judge.me",
+      "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.shopify.com https://shopify.com http://localhost:* ws://localhost:* wss://localhost:* https://*.yotpo.com http://*.yotpo.com https://*.yotpo.xyz https://cdn.judge.me https://*.judge.me",
       "style-src 'self' 'unsafe-inline' https:",
       "img-src 'self' data: https: http: blob:",
       "media-src 'self' https: blob:",
-      "connect-src 'self' https://cdn.shopify.com https://shopify.com https://*.myshopify.com http://localhost:* ws://localhost:* wss://localhost:* https://*.yotpo.com https://*.judge.me https://judgeme-public-images.imgix.net https://*.imgix.net",
+      "connect-src 'self' https://cdn.shopify.com https://shopify.com https://*.myshopify.com http://localhost:* ws://localhost:* wss://localhost:* https://*.yotpo.com http://*.yotpo.com https://*.yotpo.xyz https://*.judge.me https://judgeme-public-images.imgix.net https://*.imgix.net",
       "font-src 'self' https: data:",
-      "frame-src https://www.youtube.com https://player.vimeo.com https://shopify.com https://*.yotpo.com https://maps.google.com https://www.google.com",
+      "frame-src https://www.youtube.com https://player.vimeo.com https://shopify.com https://*.yotpo.com http://*.yotpo.com https://*.yotpo.xyz https://maps.google.com https://www.google.com",
     ].join("; ")
   );
 

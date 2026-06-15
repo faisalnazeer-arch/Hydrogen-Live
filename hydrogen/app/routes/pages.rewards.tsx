@@ -48,12 +48,11 @@ export default function RewardsPage() {
 
   useEffect(() => {
     const SCRIPT_ID = "yotpo-loyalty-script";
+    let active = true;
 
-    // The Swell/Yotpo Loyalty loader guards against double-init with:
-    //   if (window.swellConfig) throw new Error('...already loaded')
-    // So we must clear swellConfig + remove the old script before each mount,
-    // then re-inject fresh — this guarantees the widget always renders even after
-    // SPA navigation back to this page.
+    // Swell/Yotpo Loyalty SDK throws "already loaded" if window.swellConfig exists.
+    // Clear it + remove any stale script before each mount so the widget always
+    // initialises fresh (handles SPA navigation and React Strict Mode dev remounts).
     delete (window as any).swellConfig;
     const existing = document.getElementById(SCRIPT_ID);
     if (existing) existing.remove();
@@ -62,9 +61,17 @@ export default function RewardsPage() {
     script.id = SCRIPT_ID;
     script.src = `https://cdn-loyalty.yotpo.com/loader/${YOTPO_GUID}.js`;
     script.async = true;
+
+    // If Strict Mode's cleanup ran before this script executed, clear swellConfig
+    // so the live script (from the second mount) can set it without throwing.
+    script.addEventListener("load", () => {
+      if (!active) delete (window as any).swellConfig;
+    });
+
     document.head.appendChild(script);
 
     return () => {
+      active = false;
       const s = document.getElementById(SCRIPT_ID);
       if (s) s.remove();
       delete (window as any).swellConfig;
