@@ -104,6 +104,7 @@ await ensureDefinition("mls_gourmet_store", "Gourmet Store Location", [
   { key: "name",        name: "Store Name",               type: "single_line_text_field" },
   { key: "address",     name: "Address",                  type: "multi_line_text_field" },
   { key: "hours",       name: "Opening Hours",            type: "single_line_text_field" },
+  { key: "phone",       name: "Phone Number",             type: "single_line_text_field" },
   { key: "maps_url",    name: "Google Maps URL",          type: "single_line_text_field" },
   { key: "embed_url",   name: "Map Embed URL (iframe)",   type: "single_line_text_field" },
   { key: "store_image", name: "Store Photo",              type: "file_reference" },
