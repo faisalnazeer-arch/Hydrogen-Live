@@ -432,13 +432,13 @@ function InfoTabs({
               key={id}
               type="button"
               onClick={() => setActive(id)}
-              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-3 text-[11px] font-semibold transition-colors sm:gap-2 sm:px-5 sm:py-4 sm:text-sm ${
+              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-3 text-sm font-semibold transition-colors sm:gap-2 sm:px-5 sm:py-4 ${
                 active === id
                   ? "border-crimson text-crimson"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <Icon className="h-4 w-4" />
               {label}
             </button>
           ))}
