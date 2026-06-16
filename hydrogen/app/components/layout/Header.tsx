@@ -178,7 +178,6 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
               <NavItem
                 key={entry.id}
                 label={entry.label}
-                Icon={pickIcon(entry.label, entry.url ?? "")}
                 mega={entry.columns}
               />
             ) : (
@@ -186,7 +185,6 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
                 key={entry.id}
                 to={entry.url ?? "/"}
                 label={entry.label}
-                Icon={pickIcon(entry.label, entry.url ?? "")}
               />
             )
           )}
@@ -197,7 +195,6 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
               <SecondaryNavItem
                 key={entry.id}
                 label={entry.label}
-                Icon={pickIcon(entry.label, entry.url ?? "")}
                 mega={entry.columns}
               />
             ) : (
@@ -205,7 +202,6 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
                 key={entry.id}
                 to={entry.url ?? "/"}
                 label={entry.label}
-                Icon={pickIcon(entry.label, entry.url ?? "")}
               />
             )
           )}
