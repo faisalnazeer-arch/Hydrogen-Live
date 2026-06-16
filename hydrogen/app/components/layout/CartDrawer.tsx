@@ -527,10 +527,10 @@ export function CartDrawer() {
                   variant="primary"
                   size="lg"
                   onClick={handleCheckout}
-                  disabled={isLoading || isSyncing || items.some((i) => i.isPending)}
+                  disabled={isLoading || items.some((i) => i.isPending)}
                   className="w-full"
                 >
-                  {isLoading || isSyncing ? (
+                  {isLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     t("cart.checkout")

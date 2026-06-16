@@ -107,14 +107,14 @@ const CART_QUERY = `query cart($id: ID!) {
   }
 }`;
 
-// Used only to bootstrap an empty cart; lines are added separately via cartLinesAdd
-const CART_CREATE_EMPTY_MUTATION = `
-  mutation cartCreate {
-    cartCreate(input: {}) {
+const CART_CREATE_MUTATION = `
+  mutation cartCreate($input: CartInput!) {
+    cartCreate(input: $input) {
       cart {
         id
         checkoutUrl
         ${COST_FIELDS}
+        ${MINIMAL_LINES_FIELDS}
       }
       userErrors { field message }
     }
@@ -242,14 +242,19 @@ function isCartNotFoundError(
 
 // Tracks the last error from createShopifyCart so addItem can surface it
 let _lastAddError: string | null = null;
+// Cooldown so syncCart doesn't fire on every cart open within the same session
+let _lastSyncTime = 0;
+const SYNC_COOLDOWN_MS = 30_000;
 
 async function createShopifyCart(item: CartItem) {
   _lastAddError = null;
+  const line: Record<string, any> = { quantity: item.quantity, merchandiseId: item.variantId };
+  if (item.sellingPlanId) line.sellingPlanId = item.sellingPlanId;
+  if (item.attributes?.length) line.attributes = item.attributes;
 
-  // Step 1: Create an empty cart (avoids issues with sellingPlanId inside cartCreate)
   let data: any;
   try {
-    data = await storefrontApiRequest<any>(CART_CREATE_EMPTY_MUTATION, {});
+    data = await storefrontApiRequest<any>(CART_CREATE_MUTATION, { input: { lines: [line] } });
   } catch (err: any) {
     _lastAddError = err?.message ?? "Network error — could not reach Shopify";
     console.warn("[cart] cartCreate request failed:", err);
@@ -257,7 +262,7 @@ async function createShopifyCart(item: CartItem) {
   }
   if (!data) {
     _lastAddError = "Shopify returned no response (possibly payment issue)";
-    console.warn("[cart] cartCreate: no data returned (possibly 402)");
+    console.warn("[cart] cartCreate: no data returned");
     return null;
   }
   const createErrors: Array<{ message: string }> = data?.data?.cartCreate?.userErrors ?? [];
@@ -269,29 +274,23 @@ async function createShopifyCart(item: CartItem) {
   const cart = data?.data?.cartCreate?.cart;
   if (!cart?.id) {
     _lastAddError = "Shopify did not return a cart — please try again";
-    console.warn("[cart] cartCreate: cart or cart.id is null in response");
+    console.warn("[cart] cartCreate: no cart in response");
     return null;
   }
-
-  // Step 2: Add the line (with sellingPlanId if present) to the newly created cart
-  const addResult = await addLineToShopifyCart(cart.id, { ...item, lineId: null });
-  if (!addResult.success) {
-    _lastAddError = (addResult as any).message ?? "Could not add item to cart";
-    console.warn("[cart] cartLinesAdd failed after cartCreate. message:", _lastAddError);
-    return null;
-  }
-  if (!addResult.lineId) {
+  const lines: any[] = cart?.lines?.edges ?? [];
+  const newLine = lines.find((l: any) => l.node.merchandise.id === item.variantId);
+  const lineId = newLine?.node?.id as string | undefined;
+  if (!lineId) {
     _lastAddError = "Item added but line ID not returned — please refresh";
-    console.warn("[cart] cartLinesAdd: success=true but no lineId");
+    console.warn("[cart] cartCreate: no lineId in response lines");
     return null;
   }
-
   return {
     cartId: cart.id as string,
     checkoutUrl: cart.checkoutUrl ? formatCheckoutUrl(cart.checkoutUrl) : `https://mls-uae.myshopify.com/cart`,
-    lineId: addResult.lineId,
-    subtotalAmount: addResult.subtotalAmount ?? null,
-    totalAmount: addResult.totalAmount ?? null,
+    lineId,
+    subtotalAmount: cart.cost?.subtotalAmount ?? null,
+    totalAmount: cart.cost?.totalAmount ?? null,
   };
 }
 
@@ -703,6 +702,8 @@ export const useCartStore = create<CartStore>()(
       syncCart: async () => {
         const { cartId, isSyncing, clearCart } = get();
         if (!cartId || isSyncing) return;
+        if (Date.now() - _lastSyncTime < SYNC_COOLDOWN_MS) return;
+        _lastSyncTime = Date.now();
         set({ isSyncing: true });
         try {
           const data = await storefrontApiRequest<any>(CART_QUERY, { id: cartId });
