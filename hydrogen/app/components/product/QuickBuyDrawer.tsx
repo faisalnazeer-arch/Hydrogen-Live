@@ -127,10 +127,11 @@ export function QuickBuyDrawer() {
       sellingPlanId: selectedPlanId ?? undefined,
       sellingPlanName: activePlan?.name ?? null,
     });
-    // Only close QuickBuy if the cart drawer is now open (meaning the add succeeded).
-    // If the add failed (cart still empty / drawer closed), keep QuickBuy open for retry.
-    const { isOpen: cartIsOpen } = useCartStore.getState();
-    if (cartIsOpen) close();
+    // Close QuickBuy only when add succeeded: cart is open AND no error.
+    // If addItemError is set the add failed — keep QuickBuy open so the
+    // error banner is visible and the user can retry.
+    const { isOpen: cartIsOpen, addItemError: err } = useCartStore.getState();
+    if (cartIsOpen && !err) close();
   };
 
   return (

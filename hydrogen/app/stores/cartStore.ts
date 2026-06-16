@@ -506,6 +506,11 @@ async function syncFreeGifts(
     }
   } finally {
     _giftSyncing = false;
+    // If all items are gone after gift sync, reset cartId so the next
+    // addItem creates a fresh cart instead of reusing a stale one
+    if (get().items.length === 0) {
+      set({ cartId: null, checkoutUrl: null });
+    }
   }
 }
 
@@ -619,8 +624,10 @@ export const useCartStore = create<CartStore>()(
               clearCart();
             } else {
               const msg = (result as any).message ?? "Could not add to cart";
+              const remaining = get().items.filter((i) => !(i.variantId === item.variantId && i.isPending));
               set({
-                items: get().items.filter((i) => !(i.variantId === item.variantId && i.isPending)),
+                items: remaining,
+                isOpen: remaining.length > 0,
                 addItemError: msg,
               });
             }
