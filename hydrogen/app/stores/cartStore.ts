@@ -58,8 +58,8 @@ interface CartStore {
   addItemError: string | null;
   setOpen: (open: boolean) => void;
   addItem: (item: Omit<CartItem, "lineId" | "isPending">) => Promise<void>;
-  updateQuantity: (lineId: string, quantity: number) => Promise<void>;
-  removeItem: (lineId: string) => Promise<void>;
+  updateQuantity: (lineId: string, quantity: number) => void;
+  removeItem: (lineId: string) => void;
   clearCart: () => void;
   syncCart: () => Promise<void>;
   getCheckoutUrl: () => string | null;
@@ -248,6 +248,17 @@ let _lastSyncTime = 0;
 const SYNC_COOLDOWN_MS = 120_000;
 // Gift variant image/title never changes — cache after first fetch
 const _giftVariantCache = new Map<string, Partial<CartItem>>();
+
+// ── Mutation queue ─────────────────────────────────────────────────────────
+// Shopify's Storefront API rejects concurrent mutations on the same cart.
+// All remove/update API calls run through this queue so they are serialized.
+// Optimistic UI updates still happen immediately (before enqueue).
+let _cartMutationQueue: Promise<void> = Promise.resolve();
+function enqueueCartMutation(fn: () => Promise<void>): void {
+  _cartMutationQueue = _cartMutationQueue
+    .then(fn)
+    .catch(() => {}); // swallow so the queue never gets permanently blocked
+}
 
 async function createShopifyCart(item: CartItem) {
   _lastAddError = null;
@@ -672,44 +683,50 @@ export const useCartStore = create<CartStore>()(
         }
       },
 
-      updateQuantity: async (lineId, quantity) => {
+      updateQuantity: (lineId, quantity) => {
         if (quantity <= 0) {
-          await get().removeItem(lineId);
+          get().removeItem(lineId);
           return;
         }
-        const { items, cartId, clearCart } = get();
+        const { items, clearCart } = get();
         const item = items.find((i) => i.lineId === lineId);
-        if (!item || !lineId || !cartId) return;
+        if (!item || !lineId) return;
         const prevQty = item.quantity;
-        // Optimistic: update quantity immediately so UI feels instant
+
+        // Optimistic: update quantity immediately
         set({ items: get().items.map((i) => i.lineId === lineId ? { ...i, quantity } : i) });
-        try {
-          const result = await updateShopifyCartLine(cartId, lineId, quantity);
-          if (result.success) {
-            set({
-              subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
-              totalAmount: result.totalAmount ?? get().totalAmount,
-            });
-          } else if (result.cartNotFound) {
-            clearCart();
-          } else {
-            // Revert on failure
+
+        // Serialize through queue — prevents conflicts with concurrent removes
+        enqueueCartMutation(async () => {
+          const cartId = get().cartId;
+          if (!cartId) return;
+          try {
+            const result = await updateShopifyCartLine(cartId, lineId, quantity);
+            if (result.success) {
+              set({
+                subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
+                totalAmount: result.totalAmount ?? get().totalAmount,
+              });
+              scheduleSyncFreeGifts(get, set);
+            } else if (result.cartNotFound) {
+              clearCart();
+            } else {
+              // Revert on failure
+              set({ items: get().items.map((i) => i.lineId === lineId ? { ...i, quantity: prevQty } : i) });
+            }
+          } catch {
             set({ items: get().items.map((i) => i.lineId === lineId ? { ...i, quantity: prevQty } : i) });
           }
-        } finally {
-          scheduleSyncFreeGifts(get, set);
-        }
+        });
       },
 
-      removeItem: async (lineId) => {
+      removeItem: (lineId) => {
         const { cartId, clearCart, removingLineIds } = get();
         if (!lineId || !cartId) return;
-        // Guard: prevent duplicate in-flight call for the same line
+        // Guard: prevent duplicate queued call for the same line
         if (removingLineIds.includes(lineId)) return;
 
-        // Keep a reference to the removed item so we can restore only IT on failure.
-        // Never restore the whole old snapshot — other concurrent removes may have
-        // already succeeded and their items must stay gone.
+        // Find the item now — needed for targeted revert if the API fails
         const removedItem = get().items.find((i) => i.lineId === lineId);
         if (!removedItem) return;
 
@@ -724,21 +741,47 @@ export const useCartStore = create<CartStore>()(
           ...(nextItems.length === 0 ? { subtotalAmount: null, totalAmount: null } : {}),
         });
 
-        try {
-          const result = await removeLineFromShopifyCart(cartId, lineId);
-          if (result.success) {
-            if (nextItems.length === 0) {
-              clearCart();
-            } else {
-              set({
-                subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
-                totalAmount: result.totalAmount ?? get().totalAmount,
-              });
+        // Serialize the Shopify API call — queued after any in-flight mutation completes.
+        // This prevents concurrent cartLinesRemove calls that Shopify rejects.
+        enqueueCartMutation(async () => {
+          try {
+            // Re-read cartId: a previous queued step may have called clearCart()
+            const currentCartId = get().cartId;
+            if (!currentCartId) {
+              // Cart was already cleared — nothing to do, item is already gone from UI
+              return;
             }
-          } else if (result.cartNotFound) {
-            clearCart();
-          } else {
-            // API rejected — restore only this specific item into current items
+
+            const result = await removeLineFromShopifyCart(currentCartId, lineId);
+
+            if (result.success) {
+              if (get().items.length === 0) {
+                clearCart();
+              } else {
+                set({
+                  subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
+                  totalAmount: result.totalAmount ?? get().totalAmount,
+                });
+              }
+              // Gift sync only on confirmed success — never on optimistic state
+              scheduleSyncFreeGifts(get, set);
+
+            } else if (result.cartNotFound) {
+              clearCart();
+
+            } else {
+              // API rejected — restore only this specific item (not the whole old snapshot)
+              // so other successfully-deleted items stay gone
+              set((s) => ({
+                items: s.items.some((i) => i.lineId === lineId)
+                  ? s.items
+                  : [...s.items, removedItem],
+                subtotalAmount: prevSubtotal,
+                totalAmount: prevTotal,
+              }));
+            }
+          } catch {
+            // Network / unexpected error — restore just this item
             set((s) => ({
               items: s.items.some((i) => i.lineId === lineId)
                 ? s.items
@@ -746,19 +789,10 @@ export const useCartStore = create<CartStore>()(
               subtotalAmount: prevSubtotal,
               totalAmount: prevTotal,
             }));
+          } finally {
+            set((s) => ({ removingLineIds: s.removingLineIds.filter((id) => id !== lineId) }));
           }
-        } catch {
-          set((s) => ({
-            items: s.items.some((i) => i.lineId === lineId)
-              ? s.items
-              : [...s.items, removedItem],
-            subtotalAmount: prevSubtotal,
-            totalAmount: prevTotal,
-          }));
-        } finally {
-          set((s) => ({ removingLineIds: s.removingLineIds.filter((id) => id !== lineId) }));
-          scheduleSyncFreeGifts(get, set);
-        }
+        });
       },
 
       clearCart: () => set({ items: [], cartId: null, checkoutUrl: null, ...EMPTY }),
