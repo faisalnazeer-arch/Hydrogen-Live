@@ -15,6 +15,7 @@ import {
   Truck, Tag,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
+import { useShallow } from "zustand/react/shallow";
 import { useCartStore, initGiftIds } from "@/stores/cartStore";
 import { formatPrice, shopifyImageUrl } from "@/lib/shopify";
 import { useT } from "@/i18n/strings";
@@ -36,7 +37,6 @@ export function CartDrawer() {
     isOpen,
     setOpen,
     isLoading,
-    isSyncing,
     isApplyingCode,
     updateQuantity,
     removeItem,
@@ -53,7 +53,30 @@ export function CartDrawer() {
     removeGiftCard,
     orderNote,
     updateOrderNote,
-  } = useCartStore();
+  } = useCartStore(
+    useShallow((s) => ({
+      items: s.items,
+      isOpen: s.isOpen,
+      setOpen: s.setOpen,
+      isLoading: s.isLoading,
+      isApplyingCode: s.isApplyingCode,
+      updateQuantity: s.updateQuantity,
+      removeItem: s.removeItem,
+      getCheckoutUrl: s.getCheckoutUrl,
+      syncCart: s.syncCart,
+      discountCodes: s.discountCodes,
+      automaticDiscounts: s.automaticDiscounts,
+      appliedGiftCards: s.appliedGiftCards,
+      subtotalAmount: s.subtotalAmount,
+      totalAmount: s.totalAmount,
+      applyDiscountCode: s.applyDiscountCode,
+      removeDiscountCode: s.removeDiscountCode,
+      applyGiftCard: s.applyGiftCard,
+      removeGiftCard: s.removeGiftCard,
+      orderNote: s.orderNote,
+      updateOrderNote: s.updateOrderNote,
+    }))
+  );
 
   const t = useT();
   const drawerConfig = useCartDrawerConfig();

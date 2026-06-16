@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Eye, Loader2, Tag } from "lucide-react";
 import { motion } from "framer-motion";
@@ -21,7 +21,7 @@ interface ProductCardProps {
   ratingOverride?: { average: number; count: number };
 }
 
-export function ProductCard({ product, onQuickView, ratingOverride }: ProductCardProps) {
+export const ProductCard = memo(function ProductCard({ product, onQuickView, ratingOverride }: ProductCardProps) {
   const t = useT();
   const node = product.node;
   const variants = node.variants.edges.map((e) => e.node);
@@ -192,4 +192,4 @@ export function ProductCard({ product, onQuickView, ratingOverride }: ProductCar
       </div>
     </motion.div>
   );
-}
+});
