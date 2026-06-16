@@ -47,6 +47,7 @@ interface CartStore {
   isSyncing: boolean;
   isApplyingCode: boolean;
   isOpen: boolean;
+  removingLineIds: string[];
   discountCodes: DiscountCodeInfo[];
   automaticDiscounts: AutomaticDiscount[];
   giftCardCodes: string[];
@@ -244,7 +245,9 @@ function isCartNotFoundError(
 let _lastAddError: string | null = null;
 // Cooldown so syncCart doesn't fire on every cart open within the same session
 let _lastSyncTime = 0;
-const SYNC_COOLDOWN_MS = 30_000;
+const SYNC_COOLDOWN_MS = 120_000;
+// Gift variant image/title never changes — cache after first fetch
+const _giftVariantCache = new Map<string, Partial<CartItem>>();
 
 async function createShopifyCart(item: CartItem) {
   _lastAddError = null;
@@ -352,13 +355,14 @@ async function removeLineFromShopifyCart(cartId: string, lineId: string) {
 }
 
 async function fetchGiftVariantData(variantId: string): Promise<Partial<CartItem>> {
+  if (_giftVariantCache.has(variantId)) return _giftVariantCache.get(variantId)!;
   try {
     const data = await storefrontApiRequest<any>(VARIANT_LOOKUP, { id: variantId });
     const v = data?.data?.node;
     if (!v) return {};
     const imgUrl = v.image?.url ?? v.product?.images?.edges?.[0]?.node?.url ?? null;
     const imgAlt = v.image?.altText ?? null;
-    return {
+    const result: Partial<CartItem> = {
       variantTitle: v.title ?? "Free Gift",
       product: {
         node: {
@@ -383,6 +387,8 @@ async function fetchGiftVariantData(variantId: string): Promise<Partial<CartItem
         },
       } as ShopifyProduct,
     };
+    _giftVariantCache.set(variantId, result);
+    return result;
   } catch {
     return {};
   }
@@ -407,6 +413,12 @@ const _giftIds = { sub: "", car: "" };
 export function initGiftIds(sub: string, car: string) {
   _giftIds.sub = sub;
   _giftIds.car = car;
+}
+
+// Pre-fetch gift variant images so they're cached before the first subscription add
+export function warmGiftCache(sub: string, car: string) {
+  if (sub) void fetchGiftVariantData(sub);
+  if (car) void fetchGiftVariantData(car);
 }
 
 function makeGiftItem(variantId: string): CartItem {
@@ -436,6 +448,19 @@ function makeGiftItem(variantId: string): CartItem {
 }
 
 let _giftSyncing = false;
+// Debounce handle so rapid actions only trigger one gift sync pass
+let _giftSyncTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleSyncFreeGifts(
+  get: () => CartStore,
+  set: (p: Partial<CartStore> | ((s: CartStore) => Partial<CartStore>)) => void,
+) {
+  if (_giftSyncTimer) clearTimeout(_giftSyncTimer);
+  _giftSyncTimer = setTimeout(() => {
+    _giftSyncTimer = null;
+    void syncFreeGifts(get, set);
+  }, 150);
+}
 
 async function syncFreeGifts(
   get: () => CartStore,
@@ -466,7 +491,9 @@ async function syncFreeGifts(
     if (subId) {
       if (wantSub && !hasSub) {
         const gift = makeGiftItem(subId);
-        set((s) => ({ items: [...s.items, { ...gift, isPending: true }] }));
+        // Apply cached image/title immediately if available — no waiting
+        const cachedSub = _giftVariantCache.get(subId) ?? {};
+        set((s) => ({ items: [...s.items, { ...gift, ...cachedSub, isPending: true }] }));
         const [res, variantData] = await Promise.all([
           addLineToShopifyCart(cartId, gift),
           fetchGiftVariantData(subId),
@@ -487,7 +514,9 @@ async function syncFreeGifts(
     if (carId) {
       if (wantCar && !hasCar) {
         const gift = makeGiftItem(carId);
-        set((s) => ({ items: [...s.items, { ...gift, isPending: true }] }));
+        // Apply cached image/title immediately if available — no waiting
+        const cachedCar = _giftVariantCache.get(carId) ?? {};
+        set((s) => ({ items: [...s.items, { ...gift, ...cachedCar, isPending: true }] }));
         const [res, variantData] = await Promise.all([
           addLineToShopifyCart(cartId, gift),
           fetchGiftVariantData(carId),
@@ -526,6 +555,7 @@ export const useCartStore = create<CartStore>()(
       isSyncing: false,
       isApplyingCode: false,
       isOpen: false,
+      removingLineIds: [],
       addItemError: null,
       ...EMPTY,
 
@@ -541,10 +571,10 @@ export const useCartStore = create<CartStore>()(
 
         try {
           if (!cartId) {
-            // Don't open the cart drawer yet — only open after cart creation succeeds
+            // Open drawer immediately — don't make the user wait for cart creation
             set({
               items: [{ ...item, lineId: null, isPending: true }, ...get().items],
-              isLoading: true,
+              isOpen: true,
             });
             const result = await createShopifyCart({ ...item, lineId: null });
             if (result) {
@@ -553,7 +583,6 @@ export const useCartStore = create<CartStore>()(
                 checkoutUrl: result.checkoutUrl,
                 subtotalAmount: result.subtotalAmount,
                 totalAmount: result.totalAmount,
-                isOpen: true,
                 addItemError: null,
                 items: get().items.map((i) =>
                   i.variantId === item.variantId && i.isPending
@@ -563,7 +592,6 @@ export const useCartStore = create<CartStore>()(
               });
               toast.success("Added to cart", { description: item.product.node.title });
             } else {
-              // Cart creation failed — remove pending item, surface the error
               const remaining = get().items.filter((i) => !(i.variantId === item.variantId && i.isPending));
               const errorMsg = _lastAddError ?? "Could not add to cart. Please try again.";
               console.warn("[cart] Cart creation failed for variant", item.variantId, "—", errorMsg);
@@ -572,6 +600,7 @@ export const useCartStore = create<CartStore>()(
           } else if (existing) {
             const newQty = existing.quantity + item.quantity;
             if (!existing.lineId) return;
+            // Optimistic qty update + open drawer immediately
             set({
               items: get().items.map((i) =>
                 i.variantId === item.variantId && i.sellingPlanId === item.sellingPlanId
@@ -579,7 +608,6 @@ export const useCartStore = create<CartStore>()(
                   : i
               ),
               isOpen: true,
-              isLoading: true,
             });
             const result = await updateShopifyCartLine(cartId, existing.lineId, newQty);
             if (result.success) {
@@ -607,7 +635,6 @@ export const useCartStore = create<CartStore>()(
             set({
               items: [{ ...item, lineId: null, isPending: true }, ...get().items],
               isOpen: true,
-              isLoading: true,
             });
             const result = await addLineToShopifyCart(cartId, { ...item, lineId: null });
             if (result.success) {
@@ -641,8 +668,7 @@ export const useCartStore = create<CartStore>()(
           const remaining = get().items.filter((i) => !i.isPending);
           set({ items: remaining, isOpen: remaining.length > 0 });
         } finally {
-          set({ isLoading: false });
-          void syncFreeGifts(get, set);
+          scheduleSyncFreeGifts(get, set);
         }
       },
 
@@ -654,44 +680,84 @@ export const useCartStore = create<CartStore>()(
         const { items, cartId, clearCart } = get();
         const item = items.find((i) => i.lineId === lineId);
         if (!item || !lineId || !cartId) return;
-        set({ isLoading: true });
+        const prevQty = item.quantity;
+        // Optimistic: update quantity immediately so UI feels instant
+        set({ items: get().items.map((i) => i.lineId === lineId ? { ...i, quantity } : i) });
         try {
           const result = await updateShopifyCartLine(cartId, lineId, quantity);
           if (result.success) {
             set({
               subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
               totalAmount: result.totalAmount ?? get().totalAmount,
-              items: get().items.map((i) => i.lineId === lineId ? { ...i, quantity } : i),
             });
           } else if (result.cartNotFound) {
             clearCart();
+          } else {
+            // Revert on failure
+            set({ items: get().items.map((i) => i.lineId === lineId ? { ...i, quantity: prevQty } : i) });
           }
         } finally {
-          set({ isLoading: false });
-          void syncFreeGifts(get, set);
+          scheduleSyncFreeGifts(get, set);
         }
       },
 
       removeItem: async (lineId) => {
-        const { cartId, clearCart } = get();
+        const { cartId, clearCart, removingLineIds } = get();
         if (!lineId || !cartId) return;
-        set({ isLoading: true });
+        // Guard: prevent duplicate in-flight call for the same line
+        if (removingLineIds.includes(lineId)) return;
+
+        // Keep a reference to the removed item so we can restore only IT on failure.
+        // Never restore the whole old snapshot — other concurrent removes may have
+        // already succeeded and their items must stay gone.
+        const removedItem = get().items.find((i) => i.lineId === lineId);
+        if (!removedItem) return;
+
+        const prevSubtotal = get().subtotalAmount;
+        const prevTotal = get().totalAmount;
+        const nextItems = get().items.filter((i) => i.lineId !== lineId);
+
+        // Optimistic: remove from UI immediately — no waiting for API
+        set({
+          items: nextItems,
+          removingLineIds: [...get().removingLineIds, lineId],
+          ...(nextItems.length === 0 ? { subtotalAmount: null, totalAmount: null } : {}),
+        });
+
         try {
           const result = await removeLineFromShopifyCart(cartId, lineId);
           if (result.success) {
-            const next = get().items.filter((i) => i.lineId !== lineId);
-            if (next.length === 0) clearCart();
-            else set({
-              items: next,
-              subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
-              totalAmount: result.totalAmount ?? get().totalAmount,
-            });
+            if (nextItems.length === 0) {
+              clearCart();
+            } else {
+              set({
+                subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
+                totalAmount: result.totalAmount ?? get().totalAmount,
+              });
+            }
           } else if (result.cartNotFound) {
             clearCart();
+          } else {
+            // API rejected — restore only this specific item into current items
+            set((s) => ({
+              items: s.items.some((i) => i.lineId === lineId)
+                ? s.items
+                : [...s.items, removedItem],
+              subtotalAmount: prevSubtotal,
+              totalAmount: prevTotal,
+            }));
           }
+        } catch {
+          set((s) => ({
+            items: s.items.some((i) => i.lineId === lineId)
+              ? s.items
+              : [...s.items, removedItem],
+            subtotalAmount: prevSubtotal,
+            totalAmount: prevTotal,
+          }));
         } finally {
-          set({ isLoading: false });
-          void syncFreeGifts(get, set);
+          set((s) => ({ removingLineIds: s.removingLineIds.filter((id) => id !== lineId) }));
+          scheduleSyncFreeGifts(get, set);
         }
       },
 

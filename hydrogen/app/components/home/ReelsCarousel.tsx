@@ -14,14 +14,17 @@ import { cn } from "@/lib/utils";
 
 export function ReelsCarousel({ reels, label = "Watch & Shop", heading = "MLS Reels" }: { reels: ReelProduct[]; label?: string; heading?: string }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  // Start with original order (same on server + client) then shuffle after hydration
+  const [shuffled, setShuffled] = useState<ReelProduct[]>(reels);
 
-  const shuffled = useMemo(() => {
+  useEffect(() => {
     const arr = [...reels];
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
-    return arr;
+    setShuffled(arr);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (shuffled.length === 0) return null;

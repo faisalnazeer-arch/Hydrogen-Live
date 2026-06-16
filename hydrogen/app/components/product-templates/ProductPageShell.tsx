@@ -697,7 +697,7 @@ export function ProductPageShell({
 
   const sellingPlanGroups = parseSellingPlanGroups(sellingPlanGroupsRaw, discountMap);
   const addItem = useCartStore((s) => s.addItem);
-  const isLoading = useCartStore((s) => s.isLoading);
+  const [isAdding, setIsAdding] = useState(false);
 
   const variant = variants.find((v: any) => v.id === selectedVariantId) ?? variants[0];
   const currency = variant?.price.currencyCode ?? "AED";
@@ -765,8 +765,8 @@ export function ProductPageShell({
     },
   };
 
-  const handleAddToCart = async () => {
-    if (!variant) return;
+  const handleAddToCart = () => {
+    if (!variant || isAdding) return;
     const selectedPlan = selectedPlanId
       ? sellingPlanGroups.flatMap((g) => g.plans).find((p) => p.id === selectedPlanId)
       : null;
@@ -774,13 +774,16 @@ export function ProductPageShell({
       ...globoAttributes,
       ...(specialRequest.trim() ? [{ key: "Special Request", value: specialRequest.trim() }] : []),
     ];
-    await addItem({
+    setIsAdding(true);
+    // Fire-and-forget — drawer opens immediately, no need to await
+    void addItem({
       product: shopifyProduct, variantId: variant.id, variantTitle: variant.title,
       price: displayPrice, quantity: qty, selectedOptions: variant.selectedOptions,
       sellingPlanId: selectedPlanId ?? undefined,
       sellingPlanName: selectedPlan?.name ?? null,
       attributes: attributes.length ? attributes : undefined,
     });
+    setTimeout(() => setIsAdding(false), 350);
   };
 
   // Extra-sections accordion label — determined entirely by template, not by
@@ -1062,9 +1065,9 @@ export function ProductPageShell({
                 <span className="w-8 text-center text-sm font-semibold">{qty}</span>
                 <button type="button" onClick={() => setQty((q) => q + 1)} className="grid h-10 w-10 place-items-center text-muted-foreground transition-colors hover:text-foreground"><Plus className="h-4 w-4" /></button>
               </div>
-              <button type="button" onClick={handleAddToCart} disabled={isLoading}
+              <button type="button" onClick={handleAddToCart} disabled={isAdding}
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-crimson px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-50 sm:px-6 sm:py-3 sm:text-sm">
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add to Cart"}
+                {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add to Cart"}
               </button>
             </div>
           ) : (
@@ -1259,9 +1262,9 @@ export function ProductPageShell({
                 <span className="w-5 text-center text-xs font-semibold">{qty}</span>
                 <button type="button" onClick={() => setQty((q) => q + 1)} className="grid h-9 w-8 place-items-center text-muted-foreground hover:text-foreground"><Plus className="h-3 w-3" /></button>
               </div>
-              <button type="button" onClick={handleAddToCart} disabled={isLoading}
+              <button type="button" onClick={handleAddToCart} disabled={isAdding}
                 className="flex-shrink-0 rounded-lg bg-crimson px-2.5 py-2 text-[11px] font-bold uppercase tracking-normal text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-50 sm:px-3 sm:py-2.5 sm:text-xs sm:tracking-wide">
-                {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add to Cart"}
+                {isAdding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add to Cart"}
               </button>
             </div>
           ) : (

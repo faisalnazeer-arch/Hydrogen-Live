@@ -65,6 +65,11 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
   const totalItems = useCartStore((s) => s.items.reduce((n, i) => n + i.quantity, 0));
   const setCartOpen = useCartStore((s) => s.setOpen);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // Cart count is from localStorage (Zustand persist) — server always renders 0.
+  // Use mounted flag so the badge only appears after hydration, preventing a
+  // structural mismatch (element appears/disappears) that breaks hydration.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const locale = useLocaleStore((s) => s.locale);
   const setLocale = useLocaleStore((s) => s.setLocale);
   const t = useT();
@@ -151,8 +156,8 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
             onClick={() => setCartOpen(true)}
           >
             <ShoppingBag className="h-5 w-5" />
-            {totalItems > 0 && (
-              <span suppressHydrationWarning className="absolute -end-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-crimson px-1 text-[10px] font-bold text-crimson-foreground">
+            {mounted && totalItems > 0 && (
+              <span className="absolute -end-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-crimson px-1 text-[10px] font-bold text-crimson-foreground">
                 {totalItems}
               </span>
             )}

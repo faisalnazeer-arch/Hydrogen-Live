@@ -182,7 +182,7 @@ function SlideItem({ slide, active, priority }: { slide: HeroSlide; active: bool
           alt={slide.mobileImage.altText ?? ""}
           draggable={false}
           loading={priority ? "eager" : "lazy"}
-          fetchPriority={priority ? "high" : "low"}
+          fetchpriority={priority ? "high" : "low"}
           className={cn(
             "pointer-events-none block w-full select-none",
             slide.desktopImage ? "md:hidden" : "",
@@ -195,7 +195,7 @@ function SlideItem({ slide, active, priority }: { slide: HeroSlide; active: bool
           alt={slide.desktopImage.altText ?? ""}
           draggable={false}
           loading={priority ? "eager" : "lazy"}
-          fetchPriority={priority ? "high" : "low"}
+          fetchpriority={priority ? "high" : "low"}
           className={cn(
             "pointer-events-none w-full select-none",
             slide.mobileImage ? "hidden md:block" : "block",

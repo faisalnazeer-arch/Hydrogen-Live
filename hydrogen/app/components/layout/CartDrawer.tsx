@@ -12,11 +12,11 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Trash2, Loader2, ShoppingBag,
   RefreshCw, Ticket, FileText, CheckCircle, XCircle, X,
-  Truck, Tag,
+  Truck,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useShallow } from "zustand/react/shallow";
-import { useCartStore, initGiftIds } from "@/stores/cartStore";
+import { useCartStore, initGiftIds, warmGiftCache } from "@/stores/cartStore";
 import { formatPrice, shopifyImageUrl } from "@/lib/shopify";
 import { useT } from "@/i18n/strings";
 import { useCartDrawerConfig } from "@/lib/cartDrawerConfig";
@@ -36,14 +36,15 @@ export function CartDrawer() {
     items,
     isOpen,
     setOpen,
-    isLoading,
+
     isApplyingCode,
+    removingLineIds,
     updateQuantity,
     removeItem,
     getCheckoutUrl,
     syncCart,
     discountCodes,
-    automaticDiscounts,
+
     appliedGiftCards,
     subtotalAmount,
     totalAmount,
@@ -58,14 +59,15 @@ export function CartDrawer() {
       items: s.items,
       isOpen: s.isOpen,
       setOpen: s.setOpen,
-      isLoading: s.isLoading,
+
       isApplyingCode: s.isApplyingCode,
+      removingLineIds: s.removingLineIds,
       updateQuantity: s.updateQuantity,
       removeItem: s.removeItem,
       getCheckoutUrl: s.getCheckoutUrl,
       syncCart: s.syncCart,
       discountCodes: s.discountCodes,
-      automaticDiscounts: s.automaticDiscounts,
+
       appliedGiftCards: s.appliedGiftCards,
       subtotalAmount: s.subtotalAmount,
       totalAmount: s.totalAmount,
@@ -105,15 +107,22 @@ export function CartDrawer() {
   const [noteValue, setNoteValue] = useState(orderNote);
   const noteSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => { if (isOpen) syncCart(); }, [isOpen, syncCart]);
+  // Defer syncCart so the drawer opens and renders immediately with cached data,
+  // then silently refreshes discount codes / gift cards in the background.
+  useEffect(() => {
+    if (!isOpen) return;
+    const t = setTimeout(() => syncCart(), 800);
+    return () => clearTimeout(t);
+  }, [isOpen, syncCart]);
   useEffect(() => { setNoteValue(orderNote); }, [orderNote]);
 
   const subGiftId     = drawerConfig.freeGiftSubVariantId;
   const carcassGiftId = drawerConfig.freeGiftCarVariantId;
 
-  // Keep the store's gift IDs in sync with whatever metaobject says
+  // Keep the store's gift IDs in sync and pre-warm the variant image cache
   useEffect(() => {
     initGiftIds(subGiftId, carcassGiftId);
+    warmGiftCache(subGiftId, carcassGiftId);
   }, [subGiftId, carcassGiftId]);
 
   const totalItems = items.reduce((n, i) => n + i.quantity, 0);
@@ -121,27 +130,33 @@ export function CartDrawer() {
   const currency = items[0]?.price.currencyCode ?? "AED";
   const shopifyCurrency = totalAmount?.currencyCode ?? subtotalAmount?.currencyCode ?? currency;
 
-  // totalAmount = Shopify's cart total after all discount codes and automatic discounts.
-  // This is the authoritative number for what the customer pays.
+  // totalAmount = Shopify's authoritative total (updated after every mutation response).
   const shopifyTotal = totalAmount ? parseFloat(totalAmount.amount) : localSubtotal;
-  const displaySubtotal = localSubtotal;
-  const displayTotal = shopifyTotal;
   const displayCurrency = shopifyCurrency;
 
-  // savings = how much cheaper Shopify is charging vs stored item prices.
-  // Math.max(0,...) means if shopifyTotal > localSubtotal (e.g. tax, stale price) we show 0 — no false positive.
-  const savings = Math.max(0, localSubtotal - shopifyTotal);
-  const savingsPct = localSubtotal > 0 ? Math.round((savings / localSubtotal) * 100) : 0;
+  // compareAtSubtotal = what the cart would cost at full (compareAt / regular) prices.
+  // savings = compareAt total minus the actual subscription/discounted prices we store.
+  // Only items that have a real compareAt discount count toward the percentage,
+  // so the % reflects the subscription discount rate (e.g. 10%), not the whole cart.
+  const compareAtSubtotal = items.reduce((n, i) => {
+    const cap = i.compareAtPrice ? parseFloat(i.compareAtPrice.amount) : parseFloat(i.price.amount);
+    return n + cap * i.quantity;
+  }, 0);
+  const savings = Math.max(0, compareAtSubtotal - localSubtotal);
+  // Sum compareAt only for items that actually have a discount — keeps % accurate (e.g. 10%)
+  const discountedCompareAt = items.reduce((n, i) => {
+    if (!i.compareAtPrice || i.compareAtPrice.amount === i.price.amount) return n;
+    return n + parseFloat(i.compareAtPrice.amount) * i.quantity;
+  }, 0);
+  const savingsPct = discountedCompareAt > 0 && savings > 0
+    ? Math.round((savings / discountedCompareAt) * 100)
+    : 0;
 
-  const hasManualDiscounts = discountCodes.some((d) => d.applicable) || appliedGiftCards.length > 0;
-  // Use real Shopify discount allocations when available; fall back to computed savings tag
-  // (covers automatic price rules that Shopify applies but doesn't report in discountAllocations).
-  const autoDiscountTags: { title: string; discountedAmount: { amount: string; currencyCode: string } }[] =
-    automaticDiscounts.length > 0
-      ? automaticDiscounts
-      : !hasManualDiscounts && savings > 0
-        ? [{ title: savingsPct > 0 ? `${savingsPct}% OFF` : "Automatic Discount", discountedAmount: { amount: savings.toFixed(2), currencyCode: displayCurrency } }]
-        : [];
+  // When savings exist: Subtotal = full (compareAt) price, Total = what you actually pay.
+  // Math: compareAtSubtotal − savings = localSubtotal = Total ✓
+  const displaySubtotal = savings > 0 ? compareAtSubtotal : localSubtotal;
+  const displayTotal = savings > 0 ? localSubtotal : shopifyTotal;
+
 
   const threshold = drawerConfig.freeShippingThreshold;
   const remaining = Math.max(0, threshold - shopifyTotal);
@@ -185,7 +200,7 @@ export function CartDrawer() {
       id: "discount",
       icon: <Ticket className="h-5 w-5" />,
       label: "Discount code",
-      badge: (discountCodes.filter((d) => d.applicable).length + autoDiscountTags.length) || undefined,
+      badge: discountCodes.filter((d) => d.applicable).length || undefined,
     },
     { id: "delivery", icon: <Truck className="h-5 w-5" />, label: "Delivery info" },
     {
@@ -306,7 +321,7 @@ export function CartDrawer() {
                   return (
                     <li
                       key={`${item.variantId}-${item.sellingPlanId ?? "none"}`}
-                      className={`flex gap-3 p-4 transition-opacity ${pending ? "opacity-60" : ""}`}
+                      className={`flex gap-3 p-4 transition-opacity ${pending ? "opacity-50" : ""}`}
                     >
                       <Link
                         to={`/products/${item.product.node.handle}`}
@@ -375,7 +390,7 @@ export function CartDrawer() {
                                 value={item.quantity}
                                 onChange={(qty) => item.lineId && updateQuantity(item.lineId, qty)}
                                 min={0}
-                                className={pending || isLoading ? "pointer-events-none opacity-50" : ""}
+                                className={pending ? "pointer-events-none opacity-50" : ""}
                               />
                               <button
                                 type="button"
@@ -472,23 +487,7 @@ export function CartDrawer() {
                       <XCircle className="h-3 w-3 shrink-0" /> {discountError}
                     </p>
                   )}
-                  {/* Automatic discounts — shown as non-removable green tags */}
-                  {autoDiscountTags.length > 0 && (
-                    <ul className="mt-1 space-y-0.5">
-                      {autoDiscountTags.map((ad) => (
-                        <li key={ad.title} className="flex items-center justify-between rounded-md bg-emerald-50 border border-emerald-200 px-2 py-1 text-[10px]">
-                          <span className="flex items-center gap-1 text-emerald-700">
-                            <Tag className="h-3 w-3 shrink-0" />
-                            <span className="font-semibold uppercase tracking-wide">{ad.title}</span>
-                          </span>
-                          <span className="font-semibold text-emerald-700">
-                            -{formatPrice(parseFloat(ad.discountedAmount.amount), ad.discountedAmount.currencyCode)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {/* Manual discount codes */}
+                  {/* Discount codes */}
                   {discountCodes.length > 0 && (
                     <ul className="mt-1 space-y-0.5">
                       {discountCodes.map((dc) => (
@@ -550,14 +549,10 @@ export function CartDrawer() {
                   variant="primary"
                   size="lg"
                   onClick={handleCheckout}
-                  disabled={isLoading || items.some((i) => i.isPending)}
+                  disabled={items.some((i) => i.isPending) || removingLineIds.length > 0}
                   className="w-full"
                 >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    t("cart.checkout")
-                  )}
+                  {t("cart.checkout")}
                 </Button>
                 <button
                   type="button"

@@ -57,22 +57,20 @@ export const ProductCard = memo(function ProductCard({ product, onQuickView, rat
   const avgRating = (ratingOverride?.average ?? 0) > 0 ? ratingOverride!.average : metaRating.average;
   const reviewCount = (ratingOverride?.count ?? 0) > 0 ? ratingOverride!.count : metaRating.count;
 
-  const handleClick = async () => {
+  const handleClick = () => {
     if (hasOptions) { openQuickBuy(product); return; }
-    if (!firstAvailable) return;
+    if (!firstAvailable || isAdding) return;
     setIsAdding(true);
-    try {
-      await addItem({
-        product,
-        variantId: firstAvailable.id,
-        variantTitle: firstAvailable.title,
-        price: firstAvailable.price,
-        quantity: 1,
-        selectedOptions: firstAvailable.selectedOptions || [],
-      });
-    } finally {
-      setIsAdding(false);
-    }
+    // Fire-and-forget — drawer opens immediately, no need to await the full chain
+    void addItem({
+      product,
+      variantId: firstAvailable.id,
+      variantTitle: firstAvailable.title,
+      price: firstAvailable.price,
+      quantity: 1,
+      selectedOptions: firstAvailable.selectedOptions || [],
+    });
+    setTimeout(() => setIsAdding(false), 350);
   };
 
   return (

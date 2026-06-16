@@ -29,8 +29,8 @@ const _planCache = new Map<string, PlanData>();
 export function QuickBuyDrawer() {
   const { product, isOpen, close } = useQuickBuyStore();
   const addItem = useCartStore((s) => s.addItem);
-  const isLoading = useCartStore((s) => s.isLoading);
   const addItemError = useCartStore((s) => s.addItemError);
+  const [isAdding, setIsAdding] = useState(false);
 
   const node = product?.node;
   const variants = useMemo(
@@ -161,11 +161,12 @@ export function QuickBuyDrawer() {
   if (!node) return null;
   const img = node.images.edges[0]?.node;
 
-  const handleAdd = async () => {
-    if (!matched) return;
-    // Clear any previous error before trying again
+  const handleAdd = () => {
+    if (!matched || isAdding) return;
     useCartStore.setState({ addItemError: null });
-    await addItem({
+    setIsAdding(true);
+    // Fire-and-forget — drawer opens immediately
+    void addItem({
       product: product!,
       variantId: matched.id,
       variantTitle: matched.title,
@@ -176,11 +177,12 @@ export function QuickBuyDrawer() {
       sellingPlanId: selectedPlanId ?? undefined,
       sellingPlanName: activePlan?.name ?? null,
     });
-    // Close QuickBuy only when add succeeded: cart is open AND no error.
-    // If addItemError is set the add failed — keep QuickBuy open so the
-    // error banner is visible and the user can retry.
-    const { isOpen: cartIsOpen, addItemError: err } = useCartStore.getState();
-    if (cartIsOpen && !err) close();
+    // Brief button lock to prevent double-submit, then close QuickBuy
+    setTimeout(() => {
+      setIsAdding(false);
+      const { isOpen: cartIsOpen, addItemError: err } = useCartStore.getState();
+      if (cartIsOpen && !err) close();
+    }, 350);
   };
 
   return (
@@ -296,11 +298,11 @@ export function QuickBuyDrawer() {
           )}
           <Button
             onClick={handleAdd}
-            disabled={!matched?.availableForSale || isLoading || fetchingPlans}
+            disabled={!matched?.availableForSale || isAdding || fetchingPlans}
             size="sm"
             className="h-9 w-full bg-crimson text-xs text-crimson-foreground hover:bg-rich-red sm:h-11 sm:text-sm"
           >
-            {isLoading ? (
+            {isAdding ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : fetchingPlans ? (
               <>
