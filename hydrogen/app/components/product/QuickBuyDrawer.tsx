@@ -19,6 +19,13 @@ import {
   type SellingPlanGroup,
 } from "@/components/product/SubscriptionSelector";
 
+// Per-handle cache so re-opening the same product is instant (no spinner)
+type PlanData = {
+  groups: SellingPlanGroup[];
+  variantAllocations: Record<string, Record<string, string>>;
+};
+const _planCache = new Map<string, PlanData>();
+
 export function QuickBuyDrawer() {
   const { product, isOpen, close } = useQuickBuyStore();
   const addItem = useCartStore((s) => s.addItem);
@@ -52,7 +59,9 @@ export function QuickBuyDrawer() {
     setQty(1);
   }, [node, variants]);
 
-  // Fetch selling plans on-demand via server route (uses authenticated storefront client)
+  // Load selling plans for the current product.
+  // Cache hit → instant (no spinner). Miss → fetch with one auto-retry.
+  // AbortController cancels in-flight requests when product changes or drawer unmounts.
   useEffect(() => {
     if (!node?.handle) {
       setSelectedPlanId(null);
@@ -60,23 +69,60 @@ export function QuickBuyDrawer() {
       setVariantAllocations({});
       return;
     }
+
+    const cached = _planCache.get(node.handle);
+    if (cached) {
+      setSelectedPlanId(null);
+      setSellingPlanGroups(cached.groups);
+      setVariantAllocations(cached.variantAllocations);
+      return;
+    }
+
     setSelectedPlanId(null);
     setSellingPlanGroups([]);
     setVariantAllocations({});
     setFetchingPlans(true);
 
-    fetch(`/api/selling-plans/${node.handle}`)
-      .then((res) => res.json() as Promise<{ groups: any[]; discountMap: Record<string, number>; variantAllocations: Record<string, Record<string, string>> }>)
-      .then((data) => {
-        setSellingPlanGroups(parseSellingPlanGroups(data.groups ?? [], data.discountMap ?? {}));
-        setVariantAllocations(data.variantAllocations ?? {});
-      })
-      .catch((err) => {
-        console.error("[QuickBuy] selling plans fetch failed:", err);
-      })
-      .finally(() => {
-        setFetchingPlans(false);
-      });
+    const ac = new AbortController();
+
+    const load = async (): Promise<void> => {
+      try {
+        for (let attempt = 0; attempt <= 1; attempt++) {
+          if (ac.signal.aborted) return;
+          try {
+            const res = await fetch(`/api/selling-plans/${node.handle}`, { signal: ac.signal });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json() as {
+              groups: any[];
+              discountMap: Record<string, number>;
+              variantAllocations: Record<string, Record<string, string>>;
+            };
+            const groups = parseSellingPlanGroups(data.groups ?? [], data.discountMap ?? {});
+            const allocs = data.variantAllocations ?? {};
+            _planCache.set(node.handle, { groups, variantAllocations: allocs });
+            setSellingPlanGroups(groups);
+            setVariantAllocations(allocs);
+            return;
+          } catch (err: any) {
+            if (ac.signal.aborted || err?.name === "AbortError") return;
+            if (attempt < 1) {
+              await new Promise<void>((r) => setTimeout(r, 400));
+              continue;
+            }
+            console.warn("[QuickBuy] Failed to load subscription plans:", err);
+          }
+        }
+      } finally {
+        if (!ac.signal.aborted) setFetchingPlans(false);
+      }
+    };
+
+    load();
+
+    return () => {
+      ac.abort();
+      setFetchingPlans(false);
+    };
   }, [node?.handle]);
 
   const matched = variants.find((v) =>
@@ -250,8 +296,13 @@ export function QuickBuyDrawer() {
             size="sm"
             className="h-9 w-full bg-crimson text-xs text-crimson-foreground hover:bg-rich-red sm:h-11 sm:text-sm"
           >
-            {isLoading || fetchingPlans ? (
+            {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
+            ) : fetchingPlans ? (
+              <>
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                Loading options…
+              </>
             ) : (
               <>
                 <ShoppingBag className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />
