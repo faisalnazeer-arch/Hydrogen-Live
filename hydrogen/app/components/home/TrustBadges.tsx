@@ -48,16 +48,17 @@ function parseBadges(nodes: RawMetaobjectNode[]): TrustBadge[] {
 
 interface TrustBadgesProps {
   badges?: RawMetaobjectNode[];
+  centered?: boolean;
 }
 
-export function TrustBadges({ badges: rawBadges = [] }: TrustBadgesProps) {
+export function TrustBadges({ badges: rawBadges = [], centered = false }: TrustBadgesProps) {
   const parsed = parseBadges(rawBadges);
 
   return (
     <section className="border-b border-border bg-bone">
-      <div className="container mx-auto grid grid-cols-2 gap-3 px-4 py-6 md:grid-cols-4 md:gap-6 md:py-8">
+      <div className={`container mx-auto px-4 py-6 md:py-8 ${centered ? "flex flex-wrap justify-center gap-3 md:gap-6" : "grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-6"}`}>
         {parsed.map((badge, i) => (
-          <DynamicBadge key={badge.id} badge={badge} index={i} />
+          <DynamicBadge key={badge.id} badge={badge} index={i} centered={centered} />
         ))}
       </div>
     </section>
@@ -66,10 +67,10 @@ export function TrustBadges({ badges: rawBadges = [] }: TrustBadgesProps) {
 
 // ── Dynamic badge — text from Shopify API (T Lab syncs translations here) ─
 
-function DynamicBadge({ badge, index }: { badge: TrustBadge; index: number }) {
+function DynamicBadge({ badge, index, centered }: { badge: TrustBadge; index: number; centered?: boolean }) {
   const FallbackIcon = DEFAULT_ICONS[index % DEFAULT_ICONS.length];
   return (
-    <div className="flex flex-col items-center gap-2 rounded-lg bg-background/60 p-4 text-center md:flex-row md:gap-3 md:bg-transparent md:p-0 md:text-start">
+    <div className={`flex flex-col items-center gap-2 rounded-lg bg-background/60 p-4 text-center md:bg-transparent md:p-0 ${centered ? "w-[140px] md:w-[160px]" : "md:flex-row md:gap-3 md:text-start"}`}>
       <div className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-full bg-crimson/10 text-crimson md:h-12 md:w-12">
         {badge.iconUrl ? (
           <img src={badge.iconUrl} alt={badge.heading ?? ""} className="h-6 w-6 object-contain" />
@@ -77,7 +78,7 @@ function DynamicBadge({ badge, index }: { badge: TrustBadge; index: number }) {
           <FallbackIcon className="h-5 w-5" />
         )}
       </div>
-      <div className="min-w-0">
+      <div className={`min-w-0 ${centered ? "text-center" : "md:text-start"}`}>
         {badge.heading && (
           <div className="font-display text-[13px] font-bold leading-tight md:text-sm">
             {badge.heading}

@@ -6,13 +6,14 @@ interface HScrollerProps {
   children: ReactNode;
   className?: string;
   itemClassName?: string;
+  innerClassName?: string;
 }
 
 /**
  * Modern horizontal scroller: snap, hidden scrollbar, floating arrows,
  * edge gradient fades. RTL-aware via document direction.
  */
-export function HScroller({ children, className }: HScrollerProps) {
+export function HScroller({ children, className, innerClassName }: HScrollerProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
@@ -54,7 +55,7 @@ export function HScroller({ children, className }: HScrollerProps) {
     <div className={cn("group/scroller relative", className)}>
       <div
         ref={ref}
-        className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-2 sm:gap-4 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
+        className={cn("flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-2 sm:gap-4 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]", innerClassName)}
       >
         {children}
       </div>

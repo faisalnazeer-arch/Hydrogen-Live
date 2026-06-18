@@ -9,5 +9,5 @@ export function LpIconsSection({ nodes }: { nodes: any[] }) {
     fields: item.fields ?? [],
   }));
 
-  return <TrustBadges badges={badgeNodes} />;
+  return <TrustBadges badges={badgeNodes} centered />;
 }

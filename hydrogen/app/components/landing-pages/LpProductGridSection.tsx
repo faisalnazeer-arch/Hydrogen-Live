@@ -9,13 +9,15 @@ function getField(fields: any[], key: string): string | null {
 export function LpProductGridSection({
   fields,
   products,
+  headingOverride,
 }: {
   fields: any[];
   products: ShopifyProduct[];
+  headingOverride?: string | null;
 }) {
   if (products.length === 0) return null;
 
-  const heading = getField(fields, "heading");
+  const heading = getField(fields, "heading") ?? headingOverride ?? null;
   const subheading = getField(fields, "subheading");
   const ctaText = getField(fields, "cta_text");
   const ctaUrl = getField(fields, "cta_url");
@@ -25,17 +27,15 @@ export function LpProductGridSection({
     <section id={sectionId} className="py-12">
       <div className="container mx-auto px-4">
         {(heading || subheading) && (
-          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              {heading && (
-                <h2 className="font-display text-2xl font-extrabold md:text-3xl">{heading}</h2>
-              )}
-              {subheading && (
-                <p className="mt-1 text-sm text-muted-foreground">{subheading}</p>
-              )}
-            </div>
+          <div className="mb-8 text-center">
+            {heading && (
+              <h2 className="font-display text-2xl font-extrabold md:text-3xl">{heading}</h2>
+            )}
+            {subheading && (
+              <p className="mt-1 text-sm text-muted-foreground">{subheading}</p>
+            )}
             {ctaText && ctaUrl && (
-              <Link to={ctaUrl} className="text-sm font-semibold text-crimson hover:underline">
+              <Link to={ctaUrl} className="mt-2 inline-block text-sm font-semibold text-crimson hover:underline">
                 {ctaText} →
               </Link>
             )}

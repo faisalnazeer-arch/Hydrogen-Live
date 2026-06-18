@@ -31,6 +31,17 @@ type Pages = {
       "handle": string;
     };
   };
+  "/blogs/:handle": {
+    params: {
+      "handle": string;
+    };
+  };
+  "/blogs/:blogHandle/:articleHandle": {
+    params: {
+      "blogHandle": string;
+      "articleHandle": string;
+    };
+  };
   "/products/:handle": {
     params: {
       "handle": string;
@@ -81,10 +92,16 @@ type Pages = {
   "/pages/mls-affiliate": {
     params: {};
   };
+  "/pages/delivery-info": {
+    params: {};
+  };
   "/pages/subscription-policy": {
     params: {};
   };
   "/pages/subscriptions": {
+    params: {};
+  };
+  "/pages/subscription": {
     params: {};
   };
   "/pages/:handle": {
@@ -115,7 +132,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/cart" | "/cart.js" | "/apps/loggedincustomer" | "/search" | "/collections/:handle" | "/products/:handle" | "/api/reviews/store" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/api/globo-options/:productId" | "/pages/customer-reviews" | "/pages/contact-us" | "/pages/refund-exchange" | "/pages/rewards" | "/pages/refer-a-friend" | "/pages/faqs" | "/pages/mls-gourmet" | "/pages/our-story-new" | "/pages/mls-affiliate" | "/pages/subscription-policy" | "/pages/subscriptions" | "/pages/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
+    page: "/" | "/cart" | "/cart.js" | "/apps/loggedincustomer" | "/search" | "/collections/:handle" | "/blogs/:handle" | "/blogs/:blogHandle/:articleHandle" | "/products/:handle" | "/api/reviews/store" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/api/globo-options/:productId" | "/pages/customer-reviews" | "/pages/contact-us" | "/pages/refund-exchange" | "/pages/rewards" | "/pages/refer-a-friend" | "/pages/faqs" | "/pages/mls-gourmet" | "/pages/our-story-new" | "/pages/mls-affiliate" | "/pages/delivery-info" | "/pages/subscription-policy" | "/pages/subscriptions" | "/pages/subscription" | "/pages/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
   };
   "routes/_index.tsx": {
     id: "routes/_index";
@@ -140,6 +157,14 @@ type RouteFiles = {
   "routes/collections.$handle.tsx": {
     id: "routes/collections.$handle";
     page: "/collections/:handle";
+  };
+  "routes/blogs.$handle.tsx": {
+    id: "routes/blogs.$handle";
+    page: "/blogs/:handle";
+  };
+  "routes/blogs.$blogHandle.$articleHandle.tsx": {
+    id: "routes/blogs.$blogHandle.$articleHandle";
+    page: "/blogs/:blogHandle/:articleHandle";
   };
   "routes/products.$handle.tsx": {
     id: "routes/products.$handle";
@@ -197,6 +222,10 @@ type RouteFiles = {
     id: "routes/pages.mls-affiliate";
     page: "/pages/mls-affiliate";
   };
+  "routes/pages.delivery-info.tsx": {
+    id: "routes/pages.delivery-info";
+    page: "/pages/delivery-info";
+  };
   "routes/pages.subscription-policy.tsx": {
     id: "routes/pages.subscription-policy";
     page: "/pages/subscription-policy";
@@ -204,6 +233,10 @@ type RouteFiles = {
   "routes/pages.subscriptions.tsx": {
     id: "routes/pages.subscriptions";
     page: "/pages/subscriptions";
+  };
+  "routes/pages.subscription.tsx": {
+    id: "routes/pages.subscription";
+    page: "/pages/subscription";
   };
   "routes/pages.$handle.tsx": {
     id: "routes/pages.$handle";
@@ -225,23 +258,23 @@ type RouteFiles = {
     id: "routes/account_.logout";
     page: "/account/logout";
   };
-  "../../../..//Headless loveable code/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/layout.jsx": {
-    id: "/Headless loveable code/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/layout";
+  "../node_modules/@shopify/hydrogen/dist/vite/virtual-routes/layout.jsx": {
+    id: "/Users/laptechpk/Hydrogen-Live/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/layout";
     page: "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json" | "/";
   };
-  "../../../..//Headless loveable code/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/graphiql.jsx": {
+  "../node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/graphiql.jsx": {
     id: "vite/virtual-routes/routes/graphiql";
     page: "/graphiql";
   };
-  "../../../..//Headless loveable code/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/subrequest-profiler.jsx": {
+  "../node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/subrequest-profiler.jsx": {
     id: "vite/virtual-routes/routes/subrequest-profiler";
     page: "/subrequest-profiler";
   };
-  "../../../..//Headless loveable code/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/[.]well-known.appspecific.com[.]chrome[.]devtools[.]json.jsx": {
+  "../node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/[.]well-known.appspecific.com[.]chrome[.]devtools[.]json.jsx": {
     id: "vite/virtual-routes/routes/[.]well-known.appspecific.com[.]chrome[.]devtools[.]json";
     page: "/.well-known/appspecific/com.chrome.devtools.json";
   };
-  "../../../..//Headless loveable code/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/index.jsx": {
+  "../node_modules/@shopify/hydrogen/dist/vite/virtual-routes/routes/index.jsx": {
     id: "vite/virtual-routes/routes/index";
     page: "/";
   };
@@ -255,6 +288,8 @@ type RouteModules = {
   "routes/apps.loggedincustomer": typeof import("./app/routes/apps.loggedincustomer.tsx");
   "routes/search": typeof import("./app/routes/search.tsx");
   "routes/collections.$handle": typeof import("./app/routes/collections.$handle.tsx");
+  "routes/blogs.$handle": typeof import("./app/routes/blogs.$handle.tsx");
+  "routes/blogs.$blogHandle.$articleHandle": typeof import("./app/routes/blogs.$blogHandle.$articleHandle.tsx");
   "routes/products.$handle": typeof import("./app/routes/products.$handle.tsx");
   "routes/api.reviews.store": typeof import("./app/routes/api.reviews.store.tsx");
   "routes/api.reviews.$handle": typeof import("./app/routes/api.reviews.$handle.tsx");
@@ -269,14 +304,16 @@ type RouteModules = {
   "routes/pages.mls-gourmet": typeof import("./app/routes/pages.mls-gourmet.tsx");
   "routes/pages.our-story-new": typeof import("./app/routes/pages.our-story-new.tsx");
   "routes/pages.mls-affiliate": typeof import("./app/routes/pages.mls-affiliate.tsx");
+  "routes/pages.delivery-info": typeof import("./app/routes/pages.delivery-info.tsx");
   "routes/pages.subscription-policy": typeof import("./app/routes/pages.subscription-policy.tsx");
   "routes/pages.subscriptions": typeof import("./app/routes/pages.subscriptions.tsx");
+  "routes/pages.subscription": typeof import("./app/routes/pages.subscription.tsx");
   "routes/pages.$handle": typeof import("./app/routes/pages.$handle.tsx");
   "routes/account": typeof import("./app/routes/account.tsx");
   "routes/account._index": typeof import("./app/routes/account._index.tsx");
   "routes/account_.authorize": typeof import("./app/routes/account_.authorize.tsx");
   "routes/account_.logout": typeof import("./app/routes/account_.logout.tsx");
-  "/Headless loveable code/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/layout": unknown;
+  "/Users/laptechpk/Hydrogen-Live/hydrogen/node_modules/@shopify/hydrogen/dist/vite/virtual-routes/layout": unknown;
   "vite/virtual-routes/routes/graphiql": unknown;
   "vite/virtual-routes/routes/subrequest-profiler": unknown;
   "vite/virtual-routes/routes/[.]well-known.appspecific.com[.]chrome[.]devtools[.]json": unknown;

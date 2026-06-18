@@ -30,7 +30,7 @@ const Q_ORIGIN     = `{ nodes: metaobjects(type: "mls_origin_section", first: 1)
 const Q_CATEGORY   = `{ nodes: metaobjects(type: "mls_category_section", first: 1) { nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id fields { ${imgFields} } } } } } } } }`;
 const Q_CUTS       = `{ nodes: metaobjects(type: "mls_cuts_section", first: 1) { nodes { id fields { key value references(first: 12) { nodes { ... on Metaobject { id fields { key value } } } } } } } }`;
 const Q_FEATURED   = `{ nodes: metaobjects(type: "featured_collection", first: 10) { nodes { id fields { key value reference { ... on Collection { handle title } } references(first: 10) { nodes { ... on Metaobject { id fields { key value reference { ... on Collection { handle title } } } } } } } } } }`;
-const Q_COL_LIST   = `{ nodes: metaobjects(type: "featured_collection_list", first: 20) { nodes { id fields { ${imgFields} } } } }`;
+const Q_COL_LIST   = `{ nodes: metaobjects(type: "featured_collection_list", first: 20) { nodes { id fields { key value reference { ... on MediaImage { image { url altText } } ... on Collection { handle title } } } } } }`;
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -168,13 +168,16 @@ function parseFeaturedCollectionList(nodes: any[]): FeaturedCollectionCard[] {
   return nodes
     .map((node) => {
       const fieldMap = Object.fromEntries(node.fields.map((f: any) => [f.key, f]));
-      const heading = (fieldMap["heading"]?.value ?? "") as string;
+      // Support both old schema (heading/url) and new schema (title/collection ref)
+      const heading = (fieldMap["heading"]?.value ?? fieldMap["title"]?.value ?? "") as string;
       if (!heading) return null;
+      const collectionHandle = fieldMap["collection"]?.reference?.handle as string | undefined;
+      const url = (fieldMap["url"]?.value ?? (collectionHandle ? `/collections/${collectionHandle}` : "#")) as string;
       const card: FeaturedCollectionCard = {
         id: node.id as string,
         heading,
         subHeading: (fieldMap["sub_heading"]?.value ?? "") as string,
-        url: (fieldMap["url"]?.value ?? "#") as string,
+        url,
         imageUrl: (fieldMap["image"]?.reference?.image?.url ?? null) as string | null,
         imageAlt: (fieldMap["image"]?.reference?.image?.altText ?? "") as string,
       };
