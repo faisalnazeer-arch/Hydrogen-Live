@@ -28,25 +28,18 @@ const Q_PRICE_SEC  = `{ nodes: metaobjects(type: "price_range_section", first: 1
 const Q_PRICE_TILE = `{ nodes: metaobjects(type: "price_range_tile", first: 20) { nodes { id fields { key value reference { ... on MediaImage { image { url altText } } ... on Collection { id handle title } } } } } }`;
 const Q_REELS_SEC  = `{ nodes: metaobjects(type: "reels_section", first: 1) { nodes { id fields { key value } } } }`;
 
-const REEL_ITEMS_STOREFRONT_QUERY = `#graphql
-  query HomeReelItems {
-    metaobjects(type: "reel_item", first: 20) {
-      nodes {
+// Admin API query for reel items — gets ALL entries (including unpublished ones).
+// Does NOT include price (Admin API prices are in a different unit than Storefront).
+const Q_REEL_ITEMS = `{ nodes: metaobjects(type: "reel_item", first: 20) { nodes { id fields { key value reference { ... on Product { id handle title featuredImage { url } } ... on Video { sources { url mimeType } preview { image { url } } } } } } } }`;
+
+// Storefront API query to batch-fetch correct presentment prices by product GID.
+const REEL_PRODUCT_PRICES_QUERY = `#graphql
+  query ReelProductPrices($ids: [ID!]!, $country: CountryCode)
+  @inContext(country: $country) {
+    nodes(ids: $ids) {
+      ... on Product {
         id
-        fields {
-          key value
-          reference {
-            ... on Product {
-              id title handle
-              featuredImage { url }
-              priceRange { minVariantPrice { amount currencyCode } }
-            }
-            ... on Video {
-              sources { url mimeType }
-              previewImage { url }
-            }
-          }
-        }
+        priceRange { minVariantPrice { amount currencyCode } }
       }
     }
   }
@@ -97,7 +90,10 @@ function parseReelsSectionConfig(nodes: any[]): ReelsSectionConfig {
   };
 }
 
-function parseReelItems(nodes: any[]): ReelProduct[] {
+function parseReelItems(
+  nodes: any[],
+  priceMap: Record<string, { amount: string; currencyCode: string }> = {}
+): ReelProduct[] {
   const reels: ReelProduct[] = [];
   for (const node of nodes) {
     const f = Object.fromEntries(node.fields.map((x: any) => [x.key, x]));
@@ -105,21 +101,23 @@ function parseReelItems(nodes: any[]): ReelProduct[] {
     const video = f["video"]?.reference;
     if (!product) continue;
 
-    // Prefer the reel's own video field; fall back to product featured image as poster
     let videoUrl: string | null = null;
     let poster: string | null = product.featuredImage?.url ?? null;
 
     if (video?.sources) {
       const mp4 = video.sources.find((s: any) => s.mimeType === "video/mp4") ?? video.sources[0];
       videoUrl = mp4?.url ?? null;
-      poster = video.previewImage?.url ?? poster;
+      // Admin API Video uses preview.image.url
+      poster = video.preview?.image?.url ?? poster;
     }
+
+    const price = priceMap[product.id] ?? { amount: "0", currencyCode: "AED" };
 
     reels.push({
       id: node.id,
       title: product.title,
       handle: product.handle,
-      price: product.priceRange.minVariantPrice,
+      price,
       poster,
       videoUrl,
       embedUrl: null,
@@ -414,7 +412,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     af(Q_PROMO), af(Q_VALUE), af(Q_COL_CFG), af(Q_ORIGIN), af(Q_CATEGORY),
     af(Q_CUTS), af(Q_FEATURED), af(Q_COL_LIST),
     context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" } }),
-    context.storefront.query(REEL_ITEMS_STOREFRONT_QUERY), af(Q_GIFT), af(Q_SALE_SEC),
+    af(Q_REEL_ITEMS), af(Q_GIFT), af(Q_SALE_SEC),
     context.storefront.query(Q_BLOG_ARTICLES).catch(() => null),
     fetchJudgemeStoreReviews(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN, 1, 9).catch(() => ({ reviews: [] as JudgemeReview[], current_page: 1, per_page: 9 })),
     fetchJudgemeShopStats(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN).catch(() => ({ average: 0, count: 0 })),
@@ -487,8 +485,28 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     } catch { /* ignore missing collection */ }
   }
 
+  // Fetch correct AED presentment prices for reel products via Storefront API
+  // (Admin API prices are in a different unit — use Storefront @inContext for accuracy)
+  const reelItemNodes: any[] = reelItemsRes?.nodes ?? [];
+  const reelProductIds: string[] = reelItemNodes
+    .map((n: any) => n.fields?.find((f: any) => f.key === "product")?.reference?.id)
+    .filter(Boolean);
+  const reelPriceMap: Record<string, { amount: string; currencyCode: string }> = {};
+  if (reelProductIds.length > 0) {
+    try {
+      const priceData = await context.storefront.query(REEL_PRODUCT_PRICES_QUERY, {
+        variables: { ids: reelProductIds, country: "AE" as const },
+      });
+      for (const n of priceData?.nodes ?? []) {
+        if (n?.id && n.priceRange?.minVariantPrice) {
+          reelPriceMap[n.id] = n.priceRange.minVariantPrice;
+        }
+      }
+    } catch { /* ignore price fetch errors, cards still show without price */ }
+  }
+
   // Use reel_item entries from metaobject; fall back to tag:reel product query when none exist
-  let reels: ReelProduct[] = parseReelItems(reelItemsRes?.metaobjects?.nodes ?? []);
+  let reels: ReelProduct[] = parseReelItems(reelItemNodes, reelPriceMap);
   if (reels.length === 0) {
     let taggedEdges = reelTagged?.products?.edges ?? [];
     if (taggedEdges.length === 0) {
