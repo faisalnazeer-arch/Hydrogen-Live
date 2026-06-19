@@ -36,6 +36,12 @@ function parseSlide(node: any): ParsedSlide | null {
       scrollTarget = ctaUrl.slice(1);
       ctaUrl = null;
     }
+
+    // Internal links on LP pages → scroll to products instead of navigating away
+    if (ctaUrl && !ctaUrl.startsWith("http")) {
+      scrollTarget = "products";
+      ctaUrl = null;
+    }
   }
 
   // Default: scroll to the product grid section below when no CTA is configured
