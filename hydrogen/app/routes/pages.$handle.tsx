@@ -70,21 +70,46 @@ const PAGE_QUERY = `#graphql
               handle
               fields {
                 key value type
-                # Level-0 list refs:
-                #   lp_page.sections → lp_types nodes
-                #   OR direct lp_types list-ref sections (icon, slider, message_banner, reviews, reels_yt)
+                # ── Level-0 single-ref fields ─────────────────────────────────
+                # Used when Level-0 node IS a direct lp_types (not wrapped in lp_page).
+                # Fetches: slide, value_banner, product_grid, certifications, sub_banner
+                reference {
+                  ... on MediaImage { image { url altText } }
+                  ... on Metaobject {
+                    type handle
+                    fields {
+                      key value type
+                      reference {
+                        ... on MediaImage { image { url altText } }
+                        ... on Collection { handle title }
+                      }
+                      references(first: 20) {
+                        nodes {
+                          ... on Metaobject {
+                            type handle
+                            fields {
+                              key value
+                              reference { ... on MediaImage { image { url altText } } }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  ... on Collection { handle title }
+                }
+                # ── Level-0 list-ref fields ──────────────────────────────────
+                # Two purposes:
+                #   1. lp_page.sections → lp_types nodes (when Level-0 is lp_page)
+                #   2. Direct lp_types list-ref sections: icon, slider, message_banner, reviews, reels_yt
                 references(first: 20) {
                   nodes {
                     ... on Metaobject {
                       type handle
                       fields {
                         key value type
-                        # lp_types single-ref fields:
-                        #   slide → lp_hero_slide
-                        #   value_banner → lp_value_banner / mls_value_banner
-                        #   product_grid → lp_product_grid
-                        #   certifications → lp_certifications_section
-                        #   sub_banner → MediaImage
+                        # lp_types single-ref fields (when Level-0 is lp_page):
+                        #   slide, value_banner, product_grid, certifications, sub_banner
                         reference {
                           ... on MediaImage { image { url altText } }
                           ... on Metaobject {
@@ -110,12 +135,7 @@ const PAGE_QUERY = `#graphql
                           }
                           ... on Collection { handle title }
                         }
-                        # lp_types list-ref fields:
-                        #   icon → trust badge icons
-                        #   slider → hero slides
-                        #   message_banner → banners
-                        #   reviews → review items
-                        #   reels_yt → youtube reel items (each item's yt_url references a metaobject)
+                        # lp_types list-ref fields (icon, slider, reviews, reels_yt, message_banner)
                         references(first: 20) {
                           nodes {
                             ... on Metaobject {
