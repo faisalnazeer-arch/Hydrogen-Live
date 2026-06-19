@@ -19,7 +19,7 @@ export function LpProductGridSection({
   const subheading = getField(fields, "subheading");
   const ctaText = getField(fields, "cta_text");
   const ctaUrl = getField(fields, "cta_url");
-  const sectionId = getField(fields, "section_id") ?? "products";
+  const sectionId = "products";
 
   // Fall back to the linked collection's title if no custom heading is set
   // Try multiple possible field key names used across different LP pages

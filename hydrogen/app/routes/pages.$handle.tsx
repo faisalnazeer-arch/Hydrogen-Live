@@ -85,6 +85,7 @@ const PAGE_QUERY = `#graphql
                       }
                       references(first: 20) {
                         nodes {
+                          ... on Collection { handle title }
                           ... on Metaobject {
                             type handle
                             fields {
@@ -122,6 +123,7 @@ const PAGE_QUERY = `#graphql
                               }
                               references(first: 20) {
                                 nodes {
+                                  ... on Collection { handle title }
                                   ... on Metaobject {
                                     type handle
                                     fields {
@@ -269,25 +271,32 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   // Handles both lp_page→lp_types nesting AND direct lp_types nodes.
   const collectionHandles = new Set<string>();
 
+  function scanProductGrid(pf: any[]) {
+    // Primary collection reference (grid_collection_2, grid_collection, etc.)
+    const h = resolveCollectionHandle(pf);
+    if (h) collectionHandles.add(h);
+    // Carousel: lp_product_carousel is a list.collection_reference field
+    const carouselNodes: any[] = pf.find((x: any) => x.key === "lp_product_carousel")?.references?.nodes ?? [];
+    for (const cn of carouselNodes) {
+      if (cn?.handle) collectionHandles.add(cn.handle);
+    }
+  }
+
   function scanNode(node: any) {
     const tf: any[] = node.fields ?? [];
 
     // Direct single ref: lp_types.fields.product_grid → lp_product_grid
     const pgRef = getFieldRef(tf, "product_grid");
     if (pgRef?.type === "lp_product_grid") {
-      const pf: any[] = pgRef.fields ?? [];
-      const h = resolveCollectionHandle(pf);
-      if (h) collectionHandles.add(h);
+      scanProductGrid(pgRef.fields ?? []);
     }
 
-    // Check each field for nested lp_product_grid or list of product grids
+    // List refs: check each item for an lp_product_grid
     for (const field of tf) {
-      // List refs: check each item for an lp_product_grid
       const listNodes: any[] = field.references?.nodes ?? [];
       for (const item of listNodes) {
         if (item?.type === "lp_product_grid") {
-          const h = resolveCollectionHandle(item.fields ?? []);
-          if (h) collectionHandles.add(h);
+          scanProductGrid(item.fields ?? []);
         }
       }
     }
@@ -432,9 +441,24 @@ function renderLpTypes(
   const productGridRef = getFieldRef(f, "product_grid");
   if (productGridRef?.type === "lp_product_grid") {
     const pf: any[] = productGridRef.fields ?? [];
+    // Primary collection
     const collHandle = resolveCollectionHandle(pf);
-    const rawProducts = collHandle ? (productsByCollection[collHandle] ?? []) : [];
-    const products = rawProducts.map(toShopifyProduct);
+    let rawProducts: any[] = collHandle ? (productsByCollection[collHandle] ?? []) : [];
+    // Carousel collections (lp_product_carousel field — list.collection_reference)
+    const carouselNodes: any[] = pf.find((x: any) => x.key === "lp_product_carousel")?.references?.nodes ?? [];
+    for (const cn of carouselNodes) {
+      if (cn?.handle && productsByCollection[cn.handle]) {
+        rawProducts = [...rawProducts, ...productsByCollection[cn.handle]];
+      }
+    }
+    // Deduplicate by product ID
+    const seenIds = new Set<string>();
+    const uniqueRaw = rawProducts.filter((p) => {
+      if (seenIds.has(p.id)) return false;
+      seenIds.add(p.id);
+      return true;
+    });
+    const products = uniqueRaw.map(toShopifyProduct);
     sectionMap["product_grid"] = (
       <LpProductGridSection key={`${key}-grid`} fields={pf} products={products} />
     );
