@@ -9,24 +9,8 @@ function getImageUrl(fields: any[], key: string): string | null {
 }
 
 export function LpValueBannerSection({ node }: { node: any }) {
-  if (!node) return null;
   const f: any[] = node.fields ?? [];
 
-  // mls_value_banner: single image field — render as full-width banner image
-  const hasRichFields = f.some((x: any) =>
-    ["eyebrow", "heading", "body", "btn1_label", "btn2_label"].includes(x.key)
-  );
-  if (!hasRichFields) {
-    const imgUrl = getImageUrl(f, "image") ?? getImageUrl(f, "background_image");
-    if (!imgUrl) return null;
-    return (
-      <section className="w-full">
-        <img src={imgUrl} alt="" className="w-full" loading="lazy" />
-      </section>
-    );
-  }
-
-  // Rich value banner with text + CTA
   const banner: ValueBannerData = {
     eyebrow: getField(f, "eyebrow") ?? "",
     heading: getField(f, "heading") ?? "",
