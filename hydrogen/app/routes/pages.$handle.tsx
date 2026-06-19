@@ -8,6 +8,7 @@ import { LpIconsSection } from "~/components/landing-pages/LpIconsSection";
 import { LpMessageBanner } from "~/components/landing-pages/LpMessageBanner";
 import { LpReviewsCarousel } from "~/components/landing-pages/LpReviewsCarousel";
 import { YoutubeReelsSection } from "~/components/landing-pages/YoutubeReelsSection";
+import { LpCertificationsSection } from "~/components/landing-pages/LpCertificationsSection";
 import type { ShopifyProduct } from "@/lib/shopify";
 
 // ── Queries ───────────────────────────────────────────────────────────────────
@@ -35,41 +36,59 @@ const PAGE_QUERY = `#graphql
               type handle
               fields {
                 key value type
-                # Resolves single metaobject_reference fields (e.g. product_grid)
+                # Single refs: product_grid → lp_product_grid
+                #              value_banner → mls_value_banner
+                #              certifications → lp_certifications_section
+                #              sub_banner → MediaImage (file_reference)
                 reference {
+                  ... on MediaImage { image { url altText } }
                   ... on Metaobject {
                     type handle
                     fields {
                       key value type
+                      # Resolves: lp_product_grid.grid_collection_2 → Collection
+                      #           mls_value_banner.image → MediaImage
+                      #           lp_certifications_section items (single refs within)
                       reference {
                         ... on Collection { handle title }
                         ... on MediaImage { image { url altText } }
                       }
+                      # Resolves: lp_certifications_section.items → list of lp_certification
+                      references(first: 20) {
+                        nodes {
+                          ... on Metaobject {
+                            type handle
+                            fields {
+                              key value
+                              reference {
+                                ... on MediaImage { image { url altText } }
+                              }
+                            }
+                          }
+                        }
+                      }
                     }
                   }
                 }
-                # Resolves list.metaobject_reference fields (slider, icon, message_banner, reels_yt, reviews)
+                # List refs: slider → lp_hero_slide
+                #            message_banner → lp_message_banner
+                #            icon → icon_with_text
+                #            reels_yt → youtube_reels (→ yt_url → youtube_url metaobject)
+                #            reviews → lp_review
                 references(first: 20) {
                   nodes {
                     ... on Metaobject {
                       type handle
                       fields {
                         key value type
-                        # Resolves single refs inside each nested node
-                        # (desktop_image/mobile_image for lp_hero_slide, yt_url → youtube_url for youtube_reels)
+                        # Resolves: lp_hero_slide.desktop_image/mobile_image → MediaImage
+                        #           youtube_reels.yt_url → youtube_url metaobject
                         reference {
+                          ... on MediaImage { image { url altText } }
                           ... on Metaobject {
                             type handle
-                            fields {
-                              key value type
-                              reference {
-                                ... on MediaImage { image { url altText } }
-                                ... on Collection { handle title }
-                              }
-                            }
+                            fields { key value }
                           }
-                          ... on MediaImage { image { url altText } }
-                          ... on Collection { handle title }
                         }
                       }
                     }
@@ -202,24 +221,17 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     };
   }
 
-  // Landing page — collect collection handles to prefetch
+  // Landing page — collect collection handles for product grid prefetch
   const collectionHandles = new Set<string>();
-  for (const lpPage of lpPageNodes) {
-    const f = lpPage.fields ?? [];
-    // lp_types is the top-level metaobject; it may have a nested "sections" field
-    const lpTypeNodes: any[] = f.find((x: any) => x.key === "sections")?.references?.nodes ?? [];
-    const targets = lpTypeNodes.length > 0 ? lpTypeNodes : [lpPage];
-    for (const lpTypes of targets) {
-      const tf: any[] = lpTypes.fields ?? [];
-      // product_grid is a single metaobject_reference — use .reference (resolved by query)
-      const pgRef = tf.find((x: any) => x.key === "product_grid")?.reference;
-      if (pgRef?.type === "lp_product_grid") {
-        const pf: any[] = pgRef.fields ?? [];
-        const collHandle =
-          pf.find((x: any) => x.key === "grid_collection_2")?.reference?.handle ??
-          pf.find((x: any) => x.key === "collection_handle")?.value;
-        if (collHandle) collectionHandles.add(collHandle);
-      }
+  for (const lpTypes of lpPageNodes) {
+    const tf: any[] = lpTypes.fields ?? [];
+    const pgRef = tf.find((x: any) => x.key === "product_grid")?.reference;
+    if (pgRef?.type === "lp_product_grid") {
+      const pf: any[] = pgRef.fields ?? [];
+      const collHandle =
+        pf.find((x: any) => x.key === "grid_collection_2")?.reference?.handle ??
+        pf.find((x: any) => x.key === "collection_handle")?.value;
+      if (collHandle) collectionHandles.add(collHandle);
     }
   }
 
@@ -263,10 +275,11 @@ function renderLpTypes(
 ): React.ReactNode[] {
   const f: any[] = lpTypes.fields ?? [];
 
+  // order field controls which sections render and in what sequence
   const orderField = f.find((x: any) => x.key === "order")?.value ?? "";
   const orderedKeys: string[] = orderField
     ? orderField.split(",").map((s: string) => s.trim()).filter(Boolean)
-    : ["slider", "message_banner", "icon", "reels_yt", "reviews", "product_grid"];
+    : ["slider", "message_banner", "icon", "certifications", "value_banner", "reviews", "reels_yt", "product_grid", "sub_banner"];
 
   const sectionMap: Record<string, React.ReactNode | null> = {};
 
@@ -281,7 +294,7 @@ function renderLpTypes(
       </>
     );
   }
-  // backward compat: old "slide" key (single ref)
+  // backward compat: old "slide" key (single ref, Faraz-Dev era)
   if (!sectionMap["slider"]) {
     const slideRef = f.find((x: any) => x.key === "slide")?.reference;
     if (slideRef?.type === "lp_hero_slide") {
@@ -297,10 +310,32 @@ function renderLpTypes(
     );
   }
 
-  // ── icon (list of icon_with_text) ───────────────────────────────────────────
+  // ── icon (list of icon_with_text trust badges) ──────────────────────────────
   const iconNodes: any[] = f.find((x: any) => x.key === "icon")?.references?.nodes ?? [];
   if (iconNodes.length > 0) {
     sectionMap["icon"] = <LpIconsSection key={`${key}-icons`} nodes={iconNodes} />;
+  }
+
+  // ── certifications (single ref → lp_certifications_section) ────────────────
+  const certsRef = f.find((x: any) => x.key === "certifications")?.reference;
+  if (certsRef?.type === "lp_certifications_section") {
+    sectionMap["certifications"] = (
+      <LpCertificationsSection key={`${key}-certs`} node={certsRef} />
+    );
+  }
+
+  // ── value_banner (single ref → mls_value_banner) ───────────────────────────
+  const valueBannerRef = f.find((x: any) => x.key === "value_banner")?.reference;
+  if (valueBannerRef) {
+    sectionMap["value_banner"] = (
+      <LpValueBannerSection key={`${key}-value`} node={valueBannerRef} />
+    );
+  }
+
+  // ── reviews (list of lp_review) ─────────────────────────────────────────────
+  const reviewNodes: any[] = f.find((x: any) => x.key === "reviews")?.references?.nodes ?? [];
+  if (reviewNodes.length > 0) {
+    sectionMap["reviews"] = <LpReviewsCarousel key={`${key}-reviews`} nodes={reviewNodes} />;
   }
 
   // ── reels_yt (list of youtube_reels) ────────────────────────────────────────
@@ -308,7 +343,7 @@ function renderLpTypes(
   if (reelsYtNodes.length > 0) {
     sectionMap["reels_yt"] = <YoutubeReelsSection key={`${key}-yt`} nodes={reelsYtNodes} />;
   }
-  // backward compat: old reel_item-based "reel_section" key
+  // backward compat: Faraz-Dev "reel_section" key (single ref config with heading/label)
   if (!sectionMap["reels_yt"]) {
     const reelSectionRef = f.find((x: any) => x.key === "reel_section")?.reference;
     if (reelSectionRef && reelItems.length > 0) {
@@ -321,19 +356,7 @@ function renderLpTypes(
     }
   }
 
-  // ── reviews (list of lp_review) ─────────────────────────────────────────────
-  const reviewNodes: any[] = f.find((x: any) => x.key === "reviews")?.references?.nodes ?? [];
-  if (reviewNodes.length > 0) {
-    sectionMap["reviews"] = <LpReviewsCarousel key={`${key}-reviews`} nodes={reviewNodes} />;
-  }
-
-  // ── value_banner (backward compat) ──────────────────────────────────────────
-  const valueBannerRef = f.find((x: any) => x.key === "value_banner")?.reference;
-  if (valueBannerRef) {
-    sectionMap["value_banner"] = <LpValueBannerSection key={`${key}-value`} node={valueBannerRef} />;
-  }
-
-  // ── product_grid (single metaobject_reference → lp_product_grid) ────────────
+  // ── product_grid (single ref → lp_product_grid) ─────────────────────────────
   const productGridRef = f.find((x: any) => x.key === "product_grid")?.reference;
   if (productGridRef?.type === "lp_product_grid") {
     const pf: any[] = productGridRef.fields ?? [];
@@ -344,6 +367,17 @@ function renderLpTypes(
     const products = rawProducts.map(toShopifyProduct);
     sectionMap["product_grid"] = (
       <LpProductGridSection key={`${key}-grid`} fields={pf} products={products} />
+    );
+  }
+
+  // ── sub_banner (direct file_reference → MediaImage full-width) ──────────────
+  const subBannerUrl =
+    f.find((x: any) => x.key === "sub_banner")?.reference?.image?.url;
+  if (subBannerUrl) {
+    sectionMap["sub_banner"] = (
+      <section key={`${key}-subbanner`} className="w-full">
+        <img src={subBannerUrl} alt="" className="w-full" loading="lazy" />
+      </section>
     );
   }
 
@@ -361,14 +395,9 @@ export default function Page() {
   // ── Landing page ──────────────────────────────────────────────────────
   if (isLandingPage) {
     const allSections: React.ReactNode[] = [];
-    lpPageNodes.forEach((lpPage: any, pi: number) => {
-      const f: any[] = lpPage.fields ?? [];
-      const lpTypeNodes: any[] = f.find((x: any) => x.key === "sections")?.references?.nodes ?? [];
-      const targets = lpTypeNodes.length > 0 ? lpTypeNodes : [lpPage];
-      targets.forEach((lpTypes: any, ti: number) => {
-        renderLpTypes(lpTypes, `${pi}-${ti}`, productsByCollection, reelItems)
-          .forEach((s) => allSections.push(s));
-      });
+    lpPageNodes.forEach((lpTypes: any, i: number) => {
+      renderLpTypes(lpTypes, `${i}`, productsByCollection, reelItems)
+        .forEach((s) => allSections.push(s));
     });
 
     return <div className="min-h-screen">{allSections}</div>;
