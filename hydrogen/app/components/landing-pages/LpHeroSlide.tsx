@@ -87,7 +87,9 @@ export function LpHeroSlide({ node }: { node: any }) {
           type="button"
           className="block w-full cursor-pointer"
           onClick={() => {
-            const el = document.getElementById(slide.scrollTarget!);
+            const el =
+              document.getElementById(slide.scrollTarget!) ??
+              document.getElementById("products");
             if (el) el.scrollIntoView({ behavior: "smooth" });
           }}
         >
