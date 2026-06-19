@@ -27,7 +27,30 @@ const Q_BADGES     = `{ nodes: metaobjects(type: "icon_with_text", first: 10) { 
 const Q_PRICE_SEC  = `{ nodes: metaobjects(type: "price_range_section", first: 1) { nodes { id fields { key value } } } }`;
 const Q_PRICE_TILE = `{ nodes: metaobjects(type: "price_range_tile", first: 20) { nodes { id fields { key value reference { ... on MediaImage { image { url altText } } ... on Collection { id handle title } } } } } }`;
 const Q_REELS_SEC  = `{ nodes: metaobjects(type: "reels_section", first: 1) { nodes { id fields { key value } } } }`;
-const Q_REEL_ITEMS = `{ nodes: metaobjects(type: "reel_item", first: 20) { nodes { id fields { key value reference { ... on Product { id handle title priceRange { minVariantPrice { amount currencyCode } } featuredImage { url } } ... on Video { sources { url mimeType } preview { image { url } } } } } } } }`;
+
+const REEL_ITEMS_STOREFRONT_QUERY = `#graphql
+  query HomeReelItems {
+    metaobjects(type: "reel_item", first: 20) {
+      nodes {
+        id
+        fields {
+          key value
+          reference {
+            ... on Product {
+              id title handle
+              featuredImage { url }
+              priceRange { minVariantPrice { amount currencyCode } }
+            }
+            ... on Video {
+              sources { url mimeType }
+              previewImage { url }
+            }
+          }
+        }
+      }
+    }
+  }
+` as const;
 const Q_PROMO      = `{ nodes: metaobjects(type: "promo_side_by_side", first: 1) { nodes { id fields { ${imgFields} } } } }`;
 const Q_VALUE      = `{ nodes: metaobjects(type: "mls_value_banner", first: 1) { nodes { id fields { ${imgFields} } } } }`;
 const Q_COL_CFG    = `{ nodes: metaobjects(type: "mls_collection_section", first: 1) { nodes { id fields { key value } } } }`;
@@ -89,7 +112,7 @@ function parseReelItems(nodes: any[]): ReelProduct[] {
     if (video?.sources) {
       const mp4 = video.sources.find((s: any) => s.mimeType === "video/mp4") ?? video.sources[0];
       videoUrl = mp4?.url ?? null;
-      poster = video.preview?.image?.url ?? poster;
+      poster = video.previewImage?.url ?? poster;
     }
 
     reels.push({
@@ -391,7 +414,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     af(Q_PROMO), af(Q_VALUE), af(Q_COL_CFG), af(Q_ORIGIN), af(Q_CATEGORY),
     af(Q_CUTS), af(Q_FEATURED), af(Q_COL_LIST),
     context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" } }),
-    af(Q_REEL_ITEMS), af(Q_GIFT), af(Q_SALE_SEC),
+    context.storefront.query(REEL_ITEMS_STOREFRONT_QUERY), af(Q_GIFT), af(Q_SALE_SEC),
     context.storefront.query(Q_BLOG_ARTICLES).catch(() => null),
     fetchJudgemeStoreReviews(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN, 1, 9).catch(() => ({ reviews: [] as JudgemeReview[], current_page: 1, per_page: 9 })),
     fetchJudgemeShopStats(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN).catch(() => ({ average: 0, count: 0 })),
@@ -411,7 +434,6 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     cutsSection:          cutsRes,
     featuredCollections:  featuredRes,
     featuredCollectionList: colListRes,
-    reelItems:            reelItemsRes,
     firstOrderGift:       giftRes,
   };
 
@@ -466,7 +488,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   }
 
   // Use reel_item entries from metaobject; fall back to tag:reel product query when none exist
-  let reels: ReelProduct[] = parseReelItems(data?.reelItems?.nodes ?? []);
+  let reels: ReelProduct[] = parseReelItems(reelItemsRes?.metaobjects?.nodes ?? []);
   if (reels.length === 0) {
     let taggedEdges = reelTagged?.products?.edges ?? [];
     if (taggedEdges.length === 0) {
