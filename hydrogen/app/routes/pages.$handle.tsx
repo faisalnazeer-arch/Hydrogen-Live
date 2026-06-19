@@ -59,26 +59,52 @@ const PAGE_QUERY = `#graphql
               type
               handle
               fields {
-                key
-                value
-                type
+                key value type
+                # Single refs for DIRECT lp_types nodes:
+                #   slide → lp_hero_slide
+                #   value_banner → mls_value_banner
+                #   certifications → lp_certifications_section
+                #   product_grid → lp_product_grid
+                #   sub_banner → MediaImage
+                reference {
+                  ... on MediaImage { image { url altText } }
+                  ... on Metaobject {
+                    type handle
+                    fields {
+                      key value type
+                      reference {
+                        ... on Collection { handle title }
+                        ... on MediaImage { image { url altText } }
+                      }
+                      references(first: 20) {
+                        nodes {
+                          ... on Metaobject {
+                            type handle
+                            fields {
+                              key value
+                              reference { ... on MediaImage { image { url altText } } }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                # List refs for DIRECT lp_types: slider, icon, message_banner, reviews, reels_yt
+                # AND for lp_page.sections list → inner lp_types nodes (faraz-dev structure)
                 references(first: 20) {
                   nodes {
                     ... on Metaobject {
-                      type
-                      handle
+                      type handle
                       fields {
-                        key
-                        value
-                        type
+                        key value type
+                        # Single refs inside lp_types when parent node is lp_page
                         reference {
+                          ... on MediaImage { image { url altText } }
                           ... on Metaobject {
-                            type
-                            handle
+                            type handle
                             fields {
-                              key
-                              value
-                              type
+                              key value type
                               reference {
                                 ... on Metaobject { type handle fields { key value type reference { ... on MediaImage { image { url altText } } } } }
                                 ... on MediaImage { image { url altText } }
@@ -87,37 +113,30 @@ const PAGE_QUERY = `#graphql
                               references(first: 20) {
                                 nodes {
                                   ... on Metaobject {
-                                    type
-                                    handle
+                                    type handle
                                     fields {
-                                      key
-                                      value
-                                      reference {
-                                        ... on MediaImage { image { url altText } }
-                                      }
+                                      key value
+                                      reference { ... on MediaImage { image { url altText } } }
                                     }
                                   }
                                 }
                               }
                             }
                           }
-                          ... on MediaImage { image { url altText } }
                           ... on Collection { handle title }
                         }
+                        # List refs inside lp_types (icon, slider, reviews, reels_yt, etc.)
+                        # when parent is lp_page — OR list refs within Level-2 nodes
                         references(first: 20) {
                           nodes {
                             ... on Metaobject {
-                              id
-                              type
-                              handle
+                              id type handle
                               fields {
-                                key
-                                value
+                                key value
                                 reference {
                                   ... on MediaImage { image { url altText } }
                                   ... on Metaobject {
-                                    type
-                                    handle
+                                    type handle
                                     fields { key value }
                                   }
                                 }
