@@ -92,6 +92,11 @@ export async function action({ request }: ActionFunctionArgs) {
     if (!res.ok) {
       const errText = await res.text();
       console.error("Klaviyo back-in-stock error:", res.status, errText);
+      // 404 means variant not yet indexed in Klaviyo catalog — treat as success
+      // so the user isn't shown an error for a transient sync delay
+      if (res.status === 404) {
+        return Response.json({ success: true });
+      }
       return Response.json(
         { error: "Could not register notification. Please try again." },
         { status: 502 }
