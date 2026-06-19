@@ -448,7 +448,17 @@ function renderLpTypes(
     );
   }
 
-  return orderedKeys.map((k) => sectionMap[k]).filter(Boolean) as React.ReactNode[];
+  // Deduplicate: "slide" and "slider" are aliases for the same hero banner
+  const seen = new Set<string>();
+  return orderedKeys
+    .filter((k) => {
+      const norm = k === "slider" ? "slide" : k;
+      if (seen.has(norm)) return false;
+      seen.add(norm);
+      return true;
+    })
+    .map((k) => sectionMap[k])
+    .filter(Boolean) as React.ReactNode[];
 }
 
 // ── Page component ────────────────────────────────────────────────────────────
