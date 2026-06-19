@@ -490,14 +490,15 @@ async function syncFreeGifts(
     // Only user items (exclude the gifts themselves) drive the logic
     const userItems = items.filter((i) => i.variantId !== subId && i.variantId !== carId);
 
-    const cartSubtotal = userItems.reduce(
+    const subscriptionItems = userItems.filter((i) => !!i.sellingPlanId);
+    const subscriptionSubtotal = subscriptionItems.reduce(
       (sum, i) => sum + parseFloat(i.price.amount) * i.quantity,
       0,
     );
     const wantSub =
       !!subId &&
-      userItems.some((i) => !!i.sellingPlanId) &&
-      cartSubtotal >= 99;
+      subscriptionItems.length > 0 &&
+      subscriptionSubtotal >= 99;
     const wantCar = !!carId && userItems.some(
       (i) => i.product.node.title.toLowerCase().includes("carcass"),
     );

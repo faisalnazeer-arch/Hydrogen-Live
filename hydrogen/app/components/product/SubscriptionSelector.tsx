@@ -211,14 +211,21 @@ export function parseSellingPlanGroups(
   discountMap: Record<string, number> = {},
 ): SellingPlanGroup[] {
   if (!raw?.length) return [];
+  const seenIds = new Set<string>();
   return raw
     .map((group: any) => ({
       name: group.name ?? "Subscription",
-      plans: (group.sellingPlans?.nodes ?? []).map((plan: any) => ({
-        id: plan.id as string,
-        name: plan.name as string,
-        discount: discountMap[plan.id] ?? 0,
-      })),
+      plans: (group.sellingPlans?.nodes ?? [])
+        .filter((plan: any) => {
+          if (!plan.id || seenIds.has(plan.id)) return false;
+          seenIds.add(plan.id);
+          return true;
+        })
+        .map((plan: any) => ({
+          id: plan.id as string,
+          name: plan.name as string,
+          discount: discountMap[plan.id] ?? 0,
+        })),
     }))
     .filter((g: SellingPlanGroup) => g.plans.length > 0);
 }
