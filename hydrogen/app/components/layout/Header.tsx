@@ -393,6 +393,9 @@ function MobileMenuDrawer({
   const [openSecEntries, setOpenSecEntries] = useState<Set<string>>(new Set());
   const [openSecCols, setOpenSecCols]       = useState<Set<string>>(new Set());
 
+  const locale    = useLocaleStore((s) => s.locale);
+  const setLocale = useLocaleStore((s) => s.setLocale);
+
   const tabs             = mobileMenu;
   const isCategories     = tabs[tab1Idx]?.label?.toLowerCase() === "categories";
   const mobileCatEntries = mobileCategoriesMenu.length > 0 ? mobileCategoriesMenu : mainMenu;
@@ -725,8 +728,27 @@ function MobileMenuDrawer({
         </motion.div>
       </div>
 
-      {/* ── Login CTA footer ── */}
-      <div className="shrink-0 border-t border-border p-3">
+      {/* ── Language switcher + Login CTA footer ── */}
+      <div className="shrink-0 border-t border-border px-3 pt-3 pb-1">
+        <div className="mb-3 flex items-center justify-center gap-1 rounded-lg border border-border py-2">
+          <Globe className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+          <button
+            type="button"
+            onClick={() => setLocale("en")}
+            data-locale="en"
+            className={`locale-btn rounded-full px-3 py-1 text-[12px] font-semibold uppercase tracking-wider transition-colors ${locale === "en" ? "bg-crimson text-white" : "text-foreground hover:text-crimson"}`}
+          >EN</button>
+          <span className="text-border">|</span>
+          <button
+            type="button"
+            onClick={() => setLocale("ar")}
+            data-locale="ar"
+            lang="ar"
+            className={`locale-btn rounded-full px-3 py-1 text-[12px] font-semibold transition-colors ${locale === "ar" ? "bg-crimson text-white" : "text-foreground hover:text-crimson"}`}
+          >العربية</button>
+        </div>
+      </div>
+      <div className="shrink-0 px-3 pb-3">
         <a href="https://mlsuae.ae/customer_authentication/redirect?locale=en&region_country=AE"
           className="flex w-full items-center justify-center rounded-lg bg-crimson py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors hover:bg-crimson/90"
           style={{ color: '#ffffff' }}
