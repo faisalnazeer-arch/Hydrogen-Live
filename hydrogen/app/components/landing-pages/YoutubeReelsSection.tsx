@@ -30,9 +30,13 @@ export function YoutubeReelsSection({ nodes }: { nodes: any[] }) {
   return (
     <section className="py-10">
       <div
-        className="flex gap-3 overflow-x-auto px-4 pb-3 sm:px-6"
-        style={{ scrollbarWidth: "none", scrollSnapType: "x mandatory" }}
+        className="overflow-x-auto px-4 pb-3 sm:px-6"
+        style={{ scrollbarWidth: "none" }}
       >
+        <div
+          className="flex gap-3 mx-auto w-fit"
+          style={{ scrollSnapType: "x mandatory" }}
+        >
         {reels.map((reel, i) => (
           <div
             key={i}
@@ -53,6 +57,7 @@ export function YoutubeReelsSection({ nodes }: { nodes: any[] }) {
             />
           </div>
         ))}
+        </div>
       </div>
     </section>
   );
