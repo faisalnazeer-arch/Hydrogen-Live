@@ -26,9 +26,6 @@ export async function action({ request }: ActionFunctionArgs) {
     return Response.json({ error: "Invalid variantId" }, { status: 400 });
   }
 
-  const firstName = name?.trim().split(" ")[0] ?? "";
-  const lastName = name?.trim().split(" ").slice(1).join(" ") ?? "";
-
   const klaviyoPayload = {
     data: {
       type: "back-in-stock-subscription",
@@ -39,8 +36,6 @@ export async function action({ request }: ActionFunctionArgs) {
             type: "profile",
             attributes: {
               email,
-              ...(firstName && { first_name: firstName }),
-              ...(lastName && { last_name: lastName }),
             },
           },
         },
