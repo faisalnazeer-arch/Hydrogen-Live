@@ -35,17 +35,15 @@ export function LpProductGridSection({
     <section id={sectionId} className="py-12">
       <div className="container mx-auto px-4">
         {(displayHeading || subheading) && (
-          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              {displayHeading && (
-                <h2 className="font-display text-2xl font-extrabold md:text-3xl">{displayHeading}</h2>
-              )}
-              {subheading && (
-                <p className="mt-1 text-sm text-muted-foreground">{subheading}</p>
-              )}
-            </div>
+          <div className="mb-8 text-center">
+            {displayHeading && (
+              <h2 className="font-display text-2xl font-extrabold md:text-3xl">{displayHeading}</h2>
+            )}
+            {subheading && (
+              <p className="mt-1 text-sm text-muted-foreground">{subheading}</p>
+            )}
             {ctaText && ctaUrl && (
-              <Link to={ctaUrl} className="text-sm font-semibold text-crimson hover:underline">
+              <Link to={ctaUrl} className="mt-2 inline-block text-sm font-semibold text-crimson hover:underline">
                 {ctaText} →
               </Link>
             )}
