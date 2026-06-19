@@ -499,14 +499,9 @@ async function syncFreeGifts(
       !!subId &&
       subscriptionItems.length > 0 &&
       subscriptionSubtotal >= 99;
-    // Carcass gift only for one-time (non-subscription) carcass purchases.
-    // If the carcass item is on subscription, the subscription gift covers it.
-    const wantCar =
-      !!carId &&
-      !wantSub &&
-      userItems.some(
-        (i) => !i.sellingPlanId && i.product.node.title.toLowerCase().includes("carcass"),
-      );
+    const wantCar = !!carId && userItems.some(
+      (i) => i.product.node.title.toLowerCase().includes("carcass"),
+    );
 
     const hasSub = items.find((i) => i.variantId === subId);
     const hasCar = items.find((i) => i.variantId === carId);
