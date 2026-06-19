@@ -70,39 +70,21 @@ const PAGE_QUERY = `#graphql
               handle
               fields {
                 key value type
-                # Direct lp_types single-ref fields: slide, value_banner, product_grid, certifications, sub_banner
-                reference {
-                  ... on MediaImage { image { url altText } }
-                  ... on Metaobject {
-                    type handle
-                    fields {
-                      key value type
-                      reference {
-                        ... on MediaImage { image { url altText } }
-                        ... on Collection { handle title }
-                      }
-                      references(first: 20) {
-                        nodes {
-                          ... on Metaobject {
-                            type handle
-                            fields {
-                              key value
-                              reference { ... on MediaImage { image { url altText } } }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-                # lp_page.sections list ref  OR  direct lp_types list refs (icon, slider, message_banner, reviews, reels_yt)
+                # Level-0 list refs:
+                #   lp_page.sections → lp_types nodes
+                #   OR direct lp_types list-ref sections (icon, slider, message_banner, reviews, reels_yt)
                 references(first: 20) {
                   nodes {
                     ... on Metaobject {
                       type handle
                       fields {
                         key value type
-                        # Single refs inside lp_types (when Level-0 is lp_page): slide, value_banner, product_grid, certifications
+                        # lp_types single-ref fields:
+                        #   slide → lp_hero_slide
+                        #   value_banner → lp_value_banner / mls_value_banner
+                        #   product_grid → lp_product_grid
+                        #   certifications → lp_certifications_section
+                        #   sub_banner → MediaImage
                         reference {
                           ... on MediaImage { image { url altText } }
                           ... on Metaobject {
@@ -110,13 +92,6 @@ const PAGE_QUERY = `#graphql
                             fields {
                               key value type
                               reference {
-                                ... on Metaobject {
-                                  type handle
-                                  fields {
-                                    key value type
-                                    reference { ... on MediaImage { image { url altText } } }
-                                  }
-                                }
                                 ... on MediaImage { image { url altText } }
                                 ... on Collection { handle title }
                               }
@@ -135,8 +110,12 @@ const PAGE_QUERY = `#graphql
                           }
                           ... on Collection { handle title }
                         }
-                        # List refs inside lp_types (icon, slider, reviews, reels_yt) — when Level-0 is lp_page
-                        # OR: sub-list items inside direct lp_types list-ref items
+                        # lp_types list-ref fields:
+                        #   icon → trust badge icons
+                        #   slider → hero slides
+                        #   message_banner → banners
+                        #   reviews → review items
+                        #   reels_yt → youtube reel items (each item's yt_url references a metaobject)
                         references(first: 20) {
                           nodes {
                             ... on Metaobject {
@@ -145,7 +124,10 @@ const PAGE_QUERY = `#graphql
                                 key value
                                 reference {
                                   ... on MediaImage { image { url altText } }
-                                  ... on Metaobject { type handle fields { key value } }
+                                  ... on Metaobject {
+                                    type handle
+                                    fields { key value }
+                                  }
                                 }
                               }
                             }
