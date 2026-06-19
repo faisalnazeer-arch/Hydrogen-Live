@@ -94,7 +94,7 @@ export function CategorySection({
           {visibleProducts.map((p) => (
             <div
               key={p.node.id}
-              className="w-[44%] flex-shrink-0 snap-start sm:w-[32%] lg:w-[23%] xl:w-[19%]"
+              className="w-[42%] flex-shrink-0 snap-start sm:w-[28%] lg:w-[18%] xl:w-[15%]"
             >
               <ProductCard product={p} />
             </div>

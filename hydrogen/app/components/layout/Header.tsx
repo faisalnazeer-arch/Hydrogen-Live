@@ -488,7 +488,6 @@ function MobileMenuDrawer({
                       >
                         <div className="h-11 w-[72px] shrink-0 overflow-hidden rounded-xl">{thumb}</div>
                         <span className="flex-1 text-[13px] font-semibold text-foreground">{entry.label}</span>
-                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                       </Link>
                     )}
 
@@ -604,7 +603,6 @@ function MobileMenuDrawer({
                       >
                         <div className="h-11 w-[72px] shrink-0 overflow-hidden rounded-xl">{thumb}</div>
                         <span className="flex-1 text-[13px] font-semibold text-foreground">{item.title}</span>
-                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                       </Link>
                     )}
                     <AccordionBody isOpen={isOpen}>
@@ -652,7 +650,6 @@ function MobileMenuDrawer({
                       <Icon className="h-3.5 w-3.5" />
                     </div>
                     <span className="flex-1 text-[13px] font-semibold text-foreground">{entry.label}</span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </Link>
                 )}
 
