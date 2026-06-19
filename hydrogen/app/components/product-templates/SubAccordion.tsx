@@ -1,6 +1,14 @@
 import { useState, useRef, type ReactNode } from "react";
 import { Plus, Minus } from "lucide-react";
 
+// Shared types used by all template components and the loader
+export type TemplateAccordion = { heading: string; content: string };
+export type TemplateSetting = {
+  sectionTitle: string | null;
+  highlightText: string | null;
+  accordions: TemplateAccordion[];
+};
+
 export function SubAccordion({ title, children, defaultOpen = false }: { title: string; children: ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const ref = useRef<HTMLDivElement>(null);

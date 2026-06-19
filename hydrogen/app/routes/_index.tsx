@@ -6,6 +6,7 @@ import { TrustBadges } from "../components/home/TrustBadges";
 import { FeaturedCollections } from "../components/home/FeaturedCollections";
 import type { FeaturedCollectionCard } from "../components/home/FeaturedCollections";
 import { PriceRangeShop, parsePriceRangeSection, parsePriceTiles } from "../components/home/PriceRangeShop";
+import { FirstOrderGift, parseFirstOrderGift } from "../components/home/FirstOrderGift";
 import { PromoSideBySide, parsePromoSideBySide } from "../components/home/PromoSideBySide";
 import { CategorySection } from "../components/home/CategorySection";
 import { ShopByCategory, type CategorySectionData } from "../components/home/ShopByCategory";
@@ -14,6 +15,10 @@ import { ShopByOrigin, type OriginSectionData } from "../components/home/ShopByO
 import { ValueBoxesBanner, type ValueBannerData } from "../components/home/ValueBoxesBanner";
 import { RecentlyViewed } from "../components/home/RecentlyViewed";
 import { ReelsCarousel } from "../components/home/ReelsCarousel";
+import { HomeBlogSection, type BlogArticle } from "../components/home/HomeBlogSection";
+import { HomeReviews } from "../components/home/HomeReviews";
+import { fetchJudgemeStoreReviews, fetchJudgemeShopStats } from "~/lib/judgeme";
+import type { JudgemeReview } from "~/lib/judgeme";
 
 const imgFields = `key value reference { ... on MediaImage { image { url altText } } }`;
 
@@ -28,9 +33,26 @@ const Q_VALUE      = `{ nodes: metaobjects(type: "mls_value_banner", first: 1) {
 const Q_COL_CFG    = `{ nodes: metaobjects(type: "mls_collection_section", first: 1) { nodes { id fields { key value } } } }`;
 const Q_ORIGIN     = `{ nodes: metaobjects(type: "mls_origin_section", first: 1) { nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id handle fields { ${imgFields} } } } } } } } }`;
 const Q_CATEGORY   = `{ nodes: metaobjects(type: "mls_category_section", first: 1) { nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id fields { ${imgFields} } } } } } } } }`;
-const Q_CUTS       = `{ nodes: metaobjects(type: "mls_cuts_section", first: 1) { nodes { id fields { key value references(first: 12) { nodes { ... on Metaobject { id fields { key value } } } } } } } }`;
+const Q_CUTS       = `{ nodes: metaobjects(type: "mls_cuts_section", first: 1) { nodes { id fields { key value references(first: 12) { nodes { ... on Metaobject { id fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } } } }`;
 const Q_FEATURED   = `{ nodes: metaobjects(type: "featured_collection", first: 10) { nodes { id fields { key value reference { ... on Collection { handle title } } references(first: 10) { nodes { ... on Metaobject { id fields { key value reference { ... on Collection { handle title } } } } } } } } } }`;
-const Q_COL_LIST   = `{ nodes: metaobjects(type: "featured_collection_list", first: 20) { nodes { id fields { key value reference { ... on MediaImage { image { url altText } } ... on Collection { handle title } } } } } }`;
+const Q_COL_LIST   = `{ nodes: metaobjects(type: "featured_collection_list", first: 20) { nodes { id fields { ${imgFields} } } } }`;
+const Q_GIFT       = `{ nodes: metaobjects(type: "mls_first_order_gift", first: 1) { nodes { id fields { key value } } } }`;
+const Q_SALE_SEC   = `{ nodes: metaobjects(type: "mls_sale_section", first: 1) { nodes { id fields { key value reference { ... on Collection { handle title } } } } } }`;
+const Q_BLOG_ARTICLES = `
+  query HomeBlogArticles {
+    blogs(first: 5) {
+      nodes {
+        handle
+        articles(first: 6, sortKey: PUBLISHED_AT, reverse: true) {
+          nodes {
+            id handle title publishedAt excerpt
+            image { url altText }
+          }
+        }
+      }
+    }
+  }
+`;
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -168,16 +190,13 @@ function parseFeaturedCollectionList(nodes: any[]): FeaturedCollectionCard[] {
   return nodes
     .map((node) => {
       const fieldMap = Object.fromEntries(node.fields.map((f: any) => [f.key, f]));
-      // Support both old schema (heading/url) and new schema (title/collection ref)
-      const heading = (fieldMap["heading"]?.value ?? fieldMap["title"]?.value ?? "") as string;
+      const heading = (fieldMap["heading"]?.value ?? "") as string;
       if (!heading) return null;
-      const collectionHandle = fieldMap["collection"]?.reference?.handle as string | undefined;
-      const url = (fieldMap["url"]?.value ?? (collectionHandle ? `/collections/${collectionHandle}` : "#")) as string;
       const card: FeaturedCollectionCard = {
         id: node.id as string,
         heading,
         subHeading: (fieldMap["sub_heading"]?.value ?? "") as string,
-        url,
+        url: (fieldMap["url"]?.value ?? "#") as string,
         imageUrl: (fieldMap["image"]?.reference?.image?.url ?? null) as string | null,
         imageAlt: (fieldMap["image"]?.reference?.image?.altText ?? "") as string,
       };
@@ -252,6 +271,7 @@ export interface CutItem {
   label: string;
   emoji: string;
   url: string;
+  imageUrl: string | null;
 }
 
 export interface CutsSectionData {
@@ -260,24 +280,62 @@ export interface CutsSectionData {
   items: CutItem[];
 }
 
+const FALLBACK_CUTS: CutItem[] = [
+  { id: "cut-steaks",   label: "Steaks",                 emoji: "🥩", url: "/collections/steaks",                 imageUrl: null },
+  { id: "cut-mince",    label: "Mince",                  emoji: "🍖", url: "/collections/mince",                  imageUrl: null },
+  { id: "cut-bicubes",  label: "Bone in Cubes",          emoji: "🦴", url: "/collections/bone-in-cubes",          imageUrl: null },
+  { id: "cut-mishkak",  label: "Mishkak Barbecue Cubes", emoji: "🔥", url: "/collections/mishkak-barbecue-cubes", imageUrl: null },
+  { id: "cut-blcubes",  label: "Boneless Cubes",         emoji: "🥩", url: "/collections/boneless-cubes",         imageUrl: null },
+  { id: "cut-chops",    label: "Lamb Chops",             emoji: "🍖", url: "/collections/lamb-chops",             imageUrl: null },
+  { id: "cut-ribs",     label: "Ribs",                   emoji: "🦴", url: "/collections/ribs",                   imageUrl: null },
+  { id: "cut-burgers",  label: "Burgers",                emoji: "🍔", url: "/collections/burgers",                imageUrl: null },
+  { id: "cut-roast",    label: "Beef Roast",             emoji: "🥩", url: "/collections/beef-roast",             imageUrl: null },
+  { id: "cut-shanks",   label: "Shanks",                 emoji: "🦴", url: "/collections/shanks",                 imageUrl: null },
+  { id: "cut-carcass",  label: "Whole Carcass",          emoji: "🐄", url: "/collections/whole-carcass",          imageUrl: null },
+];
+
 function parseCutsSection(nodes: any[]): CutsSectionData | null {
   const node = nodes[0];
-  if (!node) return null;
-  const fm = Object.fromEntries(node.fields.map((f: any) => [f.key, f]));
-  const items: CutItem[] = (fm.items?.references?.nodes ?? []).map((item: any) => {
-    const f = Object.fromEntries(item.fields.map((x: any) => [x.key, x]));
-    return {
-      id: item.id as string,
-      label: (f.label?.value ?? "") as string,
-      emoji: (f.emoji?.value ?? "🥩") as string,
-      url: (f.url?.value ?? "/") as string,
-    };
-  }).filter((c: CutItem) => c.label);
-  if (items.length === 0) return null;
+  const fm = node ? Object.fromEntries(node.fields.map((f: any) => [f.key, f])) : null;
+
+  const metaItems: CutItem[] = fm
+    ? (fm.items?.references?.nodes ?? []).map((item: any) => {
+        const f = Object.fromEntries(item.fields.map((x: any) => [x.key, x]));
+        return {
+          id: item.id as string,
+          label: (f.label?.value ?? "") as string,
+          emoji: (f.emoji?.value ?? "🥩") as string,
+          url: (f.url?.value ?? "/") as string,
+          imageUrl: (f.image?.reference?.image?.url ?? null) as string | null,
+        };
+      }).filter((c: CutItem) => c.label)
+    : [];
+
+  const items = metaItems.length > 0 ? metaItems : FALLBACK_CUTS;
+
   return {
-    eyebrow: (fm.eyebrow?.value ?? "Butcher's picks") as string,
-    heading: (fm.heading?.value ?? "Shop by Cuts") as string,
+    eyebrow: (fm?.eyebrow?.value ?? "Butcher's Picks") as string,
+    heading: (fm?.heading?.value ?? "Shop by Cuts") as string,
     items,
+  };
+}
+
+interface SaleSectionConfig {
+  heading: string;
+  subHeading: string;
+  collectionHandle: string;
+}
+
+function parseSaleSection(nodes: any[]): SaleSectionConfig | null {
+  const node = nodes[0];
+  if (!node) return null;
+  const f = Object.fromEntries(node.fields.map((x: any) => [x.key, x]));
+  const handle = f.collection?.reference?.handle as string | undefined;
+  if (!handle) return null;
+  return {
+    heading:          (f.heading?.value     ?? "Sale") as string,
+    subHeading:       (f.sub_heading?.value ?? "") as string,
+    collectionHandle: handle,
   };
 }
 
@@ -326,13 +384,17 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const [
     heroRes, badgesRes, priceSecRes, priceTileRes, reelSecRes,
     promoRes, valueRes, colCfgRes, originRes, categoryRes,
-    cutsRes, featuredRes, colListRes, reelTagged, reelItemsRes,
+    cutsRes, featuredRes, colListRes, reelTagged, reelItemsRes, giftRes, saleSecRes,
+    blogData, reviewsData, shopStats,
   ] = await Promise.all([
     af(Q_HERO), af(Q_BADGES), af(Q_PRICE_SEC), af(Q_PRICE_TILE), af(Q_REELS_SEC),
     af(Q_PROMO), af(Q_VALUE), af(Q_COL_CFG), af(Q_ORIGIN), af(Q_CATEGORY),
     af(Q_CUTS), af(Q_FEATURED), af(Q_COL_LIST),
     context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" } }),
-    af(Q_REEL_ITEMS),
+    af(Q_REEL_ITEMS), af(Q_GIFT), af(Q_SALE_SEC),
+    context.storefront.query(Q_BLOG_ARTICLES).catch(() => null),
+    fetchJudgemeStoreReviews(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN, 1, 9).catch(() => ({ reviews: [] as JudgemeReview[], current_page: 1, per_page: 9 })),
+    fetchJudgemeShopStats(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN).catch(() => ({ average: 0, count: 0 })),
   ]);
 
   const data = {
@@ -350,6 +412,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     featuredCollections:  featuredRes,
     featuredCollectionList: colListRes,
     reelItems:            reelItemsRes,
+    firstOrderGift:       giftRes,
   };
 
   const parsed = parseFeaturedCollections(data?.featuredCollections?.nodes ?? []);
@@ -363,7 +426,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     await Promise.all(allHandles.map(async (handle) => {
       try {
         const res = await context.storefront.query(COLLECTION_PRODUCTS_QUERY, { variables: { handle, first: 20 } });
-        productsByHandle.set(handle, res?.collection?.products?.edges ?? []);
+        productsByHandle.set(handle, (res?.collection?.products?.edges ?? [])
+          .filter((e: any) => parseFloat(e.node?.priceRange?.minVariantPrice?.amount ?? "0") > 0));
       } catch { /* ignore missing collection */ }
     }));
   }
@@ -379,6 +443,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     ? { ...rawSection, title: collectionSectionConfig.heading, subTitle: collectionSectionConfig.subHeading || undefined }
     : rawSection;
   const collectionCards = parseFeaturedCollectionList(data?.featuredCollectionList?.nodes ?? []);
+  const firstOrderGift = parseFirstOrderGift(data?.firstOrderGift?.nodes ?? []);
   const priceSection = parsePriceRangeSection(data?.priceRangeSection?.nodes ?? []);
   const priceTiles = parsePriceTiles(data?.priceTiles?.nodes ?? []);
   const promo = parsePromoSideBySide(data?.promoSideBySide?.nodes ?? []);
@@ -387,6 +452,18 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const valueBanner = parseValueBanner(data?.valueBanner?.nodes ?? []);
   const cutsSection = parseCutsSection(data?.cutsSection?.nodes ?? []);
   const reelsConfig = parseReelsSectionConfig(data?.reelsSection?.nodes ?? []);
+  const saleSection = parseSaleSection(saleSecRes?.nodes ?? []);
+
+  let saleProducts: ShopifyProduct[] = [];
+  if (saleSection) {
+    try {
+      const res = await context.storefront.query(COLLECTION_PRODUCTS_QUERY, {
+        variables: { handle: saleSection.collectionHandle, first: 20 },
+      });
+      saleProducts = (res?.collection?.products?.edges ?? [])
+        .filter((e: any) => parseFloat(e.node?.priceRange?.minVariantPrice?.amount ?? "0") > 0);
+    } catch { /* ignore missing collection */ }
+  }
 
   // Use reel_item entries from metaobject; fall back to tag:reel product query when none exist
   let reels: ReelProduct[] = parseReelItems(data?.reelItems?.nodes ?? []);
@@ -400,6 +477,28 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     }
     reels = pickReels(taggedEdges);
   }
+
+  const blogArticles: BlogArticle[] = ((blogData as any)?.blogs?.nodes ?? [])
+    .flatMap((blog: any) =>
+      (blog.articles?.nodes ?? []).map((n: any) => ({
+        id: n.id as string,
+        handle: n.handle as string,
+        title: n.title as string,
+        publishedAt: n.publishedAt as string,
+        excerpt: (n.excerpt ?? null) as string | null,
+        imageUrl: (n.image?.url ?? null) as string | null,
+        imageAlt: (n.image?.altText ?? n.title ?? "") as string,
+        blogHandle: blog.handle as string,
+      }))
+    )
+    .sort((a: BlogArticle, b: BlogArticle) =>
+      new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+    )
+    .slice(0, 6);
+
+  const storeReviews: JudgemeReview[] = ((reviewsData as any)?.reviews ?? []).filter((r: JudgemeReview) => r.rating >= 4);
+  const reviewTotalCount: number = (reviewsData as any)?.total_count ?? 0;
+  const reviewAverage: number = (shopStats as any)?.average ?? 0;
 
   return {
     heroSlides: data?.heroBanners?.nodes ?? [],
@@ -416,11 +515,18 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     originSection,
     valueBanner,
     cutsSection,
+    firstOrderGift,
+    saleSection,
+    saleProducts,
+    blogArticles,
+    storeReviews,
+    reviewTotalCount,
+    reviewAverage,
   };
 }
 
 export default function Home() {
-  const { heroSlides, trustBadges, featuredSection, collectionCards, priceSection, priceTiles, promo, reelsLabel, reelsHeading, reels, categorySection, originSection, valueBanner, cutsSection } = useLoaderData<typeof loader>();
+  const { heroSlides, trustBadges, featuredSection, collectionCards, priceSection, priceTiles, promo, reelsLabel, reelsHeading, reels, categorySection, originSection, valueBanner, cutsSection, firstOrderGift, saleSection, saleProducts, blogArticles, storeReviews, reviewTotalCount, reviewAverage } = useLoaderData<typeof loader>();
   const t = useT();
   return (
     <>
@@ -431,8 +537,16 @@ export default function Home() {
         title={t("home.featured")}
         subtitle={t("home.featured_sub")}
       />
+      <FirstOrderGift data={firstOrderGift} />
       <PriceRangeShop section={priceSection} tiles={priceTiles} />
-      <PromoSideBySide promo={promo} />
+      {saleSection && (
+        <CategorySection
+          handle={saleSection.collectionHandle}
+          title={saleSection.heading}
+          subtitle={saleSection.subHeading}
+          products={saleProducts}
+        />
+      )}
       {featuredSection && (
         <CategorySection
           handle={featuredSection.tabs[0]?.handle ?? ""}
@@ -442,12 +556,15 @@ export default function Home() {
           tabs={featuredSection.tabs}
         />
       )}
-      <ReelsCarousel reels={reels} label={reelsLabel} heading={reelsHeading} />
       <ShopByCategory section={categorySection} />
       <ShopByCuts section={cutsSection} />
       <ShopByOrigin section={originSection} />
+      <ReelsCarousel reels={reels} label={reelsLabel} heading={reelsHeading} />
+      <PromoSideBySide promo={promo} />
       <ValueBoxesBanner banner={valueBanner} />
+      <HomeBlogSection articles={blogArticles} />
       <RecentlyViewed />
+      <HomeReviews reviews={storeReviews} totalCount={reviewTotalCount} averageRating={reviewAverage} />
     </>
   );
 }

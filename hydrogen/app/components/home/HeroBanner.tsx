@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { Link } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,15 +39,8 @@ function parseSlides(nodes: RawMetaobjectNode[]): HeroSlide[] {
     .map((node) => {
       const fieldMap = Object.fromEntries(node.fields.map((f) => [f.key, f]));
 
-      const desktopImage =
-        fieldMap["desktop_image"]?.reference?.image ??
-        fieldMap["hero_image_1"]?.reference?.image ??
-        null;
-
-      const mobileImage =
-        fieldMap["mobile_image"]?.reference?.image ??
-        fieldMap["hero_image_2"]?.reference?.image ??
-        null;
+      const desktopImage = fieldMap["desktop_image"]?.reference?.image ?? null;
+      const mobileImage  = fieldMap["mobile_image"]?.reference?.image  ?? null;
 
       if (!desktopImage && !mobileImage) return null;
 
@@ -67,8 +59,8 @@ function parseSlides(nodes: RawMetaobjectNode[]): HeroSlide[] {
         id: node.id,
         desktopImage,
         mobileImage,
-        content: fieldMap["content"]?.value ?? null,
-        buttonText: fieldMap["button_text"]?.value ?? null,
+        content:    fieldMap["content"]?.value      ?? null,
+        buttonText: fieldMap["button_text"]?.value  ?? null,
         buttonUrl,
       } satisfies HeroSlide;
     })
@@ -119,7 +111,7 @@ export function HeroBanner({ slides: rawSlides = [] }: HeroBannerProps) {
           }}
         >
           {slides.map((slide, i) => (
-            <SlideItem key={slide.id} slide={slide} active={i === current} />
+            <SlideItem key={slide.id} slide={slide} active={i === current} priority={i === 0} />
           ))}
         </div>
       </div>
@@ -171,21 +163,19 @@ export function HeroBanner({ slides: rawSlides = [] }: HeroBannerProps) {
 
 // ── Slide ──────────────────────────────────────────────────────────────────
 
-function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
+function SlideItem({ slide, active, priority }: { slide: HeroSlide; active: boolean; priority?: boolean }) {
   const hasContent = slide.content || slide.buttonText;
-
-  return (
-    <div
-      className="relative w-full min-h-[420px] sm:min-h-[380px] md:min-h-[420px] lg:min-h-[500px]"
-      style={{ flexShrink: 0 }}
-    >
+  const inner = (
+    <div className="relative w-full" style={{ flexShrink: 0 }}>
       {slide.mobileImage && (
         <img
           src={slide.mobileImage.url}
           alt={slide.mobileImage.altText ?? ""}
           draggable={false}
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "low"}
           className={cn(
-            "pointer-events-none block w-full select-none h-full object-cover object-top absolute inset-0",
+            "pointer-events-none block w-full select-none",
             slide.desktopImage ? "md:hidden" : "",
           )}
         />
@@ -195,13 +185,16 @@ function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
           src={slide.desktopImage.url}
           alt={slide.desktopImage.altText ?? ""}
           draggable={false}
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "low"}
           className={cn(
-            "pointer-events-none w-full select-none h-full object-cover object-center absolute inset-0",
+            "pointer-events-none w-full select-none",
             slide.mobileImage ? "hidden md:block" : "block",
           )}
         />
       )}
-      {/* Overlay and content sit on top via absolute */}
+
+      {/* Overlay */}
       <div
         className={cn(
           "pointer-events-none absolute inset-0 transition-opacity duration-500",
@@ -210,40 +203,76 @@ function SlideItem({ slide, active }: { slide: HeroSlide; active: boolean }) {
             : "bg-black/10",
         )}
       />
+
+      {/* Content */}
       <div className="pointer-events-none absolute inset-0">
         {hasContent ? <DynamicContent slide={slide} active={active} /> : null}
       </div>
     </div>
   );
+
+  if (slide.buttonUrl) {
+    return (
+      <Link
+        to={slide.buttonUrl}
+        className="block cursor-pointer"
+        style={{ flexShrink: 0, width: "100%" }}
+        draggable={false}
+      >
+        {inner}
+      </Link>
+    );
+  }
+
+  return inner;
 }
 
 // ── Dynamic metaobject content ─────────────────────────────────────────────
+// Uses CSS keyframe animations instead of framer-motion to avoid SSR inline-style
+// mismatches that cause React hydration errors.
 
 function DynamicContent({ slide, active }: { slide: HeroSlide; active: boolean }) {
+  const parts = slide.content?.split(/\s*—\s*/) ?? [];
+  const eyebrow = parts.length > 1 ? parts[0] : null;
+  const headline = parts.length > 1 ? parts.slice(1).join(" — ") : parts[0] ?? null;
+
   return (
     <div className="flex h-full items-center">
+      <style>{`
+        @keyframes hero-in { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes hero-out { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(28px); } }
+        .hero-active { animation: hero-in 0.6s cubic-bezier(0.22,1,0.36,1) both; }
+        .hero-active .hero-eyebrow { animation: hero-in 0.5s ease-out 0.1s both; }
+        .hero-active .hero-headline { animation: hero-in 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both; }
+        .hero-active .hero-cta { animation: hero-in 0.5s ease-out 0.25s both; }
+        .hero-inactive { opacity:0; transform:translateY(28px); }
+      `}</style>
       <div className="container mx-auto px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-          transition={{ duration: 0.55, ease: "easeOut" }}
-          className="max-w-xl"
-        >
-          {slide.content && (
-            <p className="text-base font-medium leading-relaxed text-off-white drop-shadow md:text-lg">
-              {slide.content}
-            </p>
+        <div className={cn("max-w-2xl", active ? "hero-active" : "hero-inactive")}>
+          {eyebrow && (
+            <span className="hero-eyebrow mb-3 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-off-white backdrop-blur-sm">
+              <span className="h-1 w-1 rounded-full bg-crimson" />
+              {eyebrow}
+            </span>
+          )}
+          {headline && (
+            <h1 className="hero-headline font-display text-2xl font-bold leading-[1.15] tracking-tight text-off-white drop-shadow-lg md:text-4xl lg:text-5xl">
+              {headline}
+            </h1>
           )}
           {slide.buttonText && slide.buttonUrl && (
-            <div className="pointer-events-auto mt-6">
+            <div className="hero-cta pointer-events-auto mt-8">
               <Link to={slide.buttonUrl}>
-                <Button size="lg" className="bg-crimson text-crimson-foreground hover:bg-rich-red">
+                <Button
+                  size="lg"
+                  className="h-12 rounded-full bg-crimson px-8 text-base font-bold text-crimson-foreground shadow-lg transition-all duration-200 hover:bg-rich-red hover:scale-105 hover:shadow-xl"
+                >
                   {slide.buttonText}
                 </Button>
               </Link>
             </div>
           )}
-        </motion.div>
+        </div>
       </div>
     </div>
   );

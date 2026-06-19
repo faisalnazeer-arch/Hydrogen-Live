@@ -6,7 +6,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
   if (!handle) return Response.json({ reviews: [], totalCount: 0 });
 
   const url = new URL(request.url);
-  const page = Number(url.searchParams.get("page") ?? "2");
+  const page = Number(url.searchParams.get("page") ?? "1");
   const externalId = url.searchParams.get("eid") ?? undefined;
 
   const { env } = context;

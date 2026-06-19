@@ -57,26 +57,22 @@ export function SubscriptionSelector({
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       {/* ── One-time ── */}
-      <label
+      <button
+        type="button"
+        onClick={() => onSelect(null)}
         className={cn(
-          "flex cursor-pointer items-center justify-between rounded-lg border px-4 py-3 transition-colors",
+          "flex w-full cursor-pointer items-center justify-between rounded-lg border px-4 py-3 transition-colors",
           !isSubscribing
             ? "border-crimson bg-crimson/5 ring-1 ring-crimson"
             : "border-border hover:border-muted-foreground",
         )}
       >
         <div className="flex items-center gap-3">
-          <input
-            type="radio"
-            name="purchase-type"
-            checked={!isSubscribing}
-            onChange={() => onSelect(null)}
-            className="accent-crimson"
-          />
+          <RadioDot active={!isSubscribing} />
           <span className="font-semibold">{t("subscription.one_time")}</span>
         </div>
         <span className="text-sm font-semibold">{fmt(regularPriceNum)}</span>
-      </label>
+      </button>
 
       {/* ── Subscribe & save ── */}
       <div
@@ -91,32 +87,26 @@ export function SubscriptionSelector({
             : "cursor-pointer border-border hover:border-muted-foreground",
         )}
       >
-        {/* Badge — sits on the top-right border */}
+        {/* Badge — sits on top-right border, vertically aligned with prices */}
         {bestDiscount > 0 && (
-          <span className="absolute end-0 top-0 -translate-y-1/2 rounded-full bg-crimson px-4 py-1 text-xs font-bold text-white whitespace-nowrap">
+          <span className="absolute end-4 top-0 -translate-y-1/2 rounded-full bg-crimson px-3 py-0.5 text-[11px] font-bold text-white whitespace-nowrap">
             {t("subscription.save_up_to")} {bestDiscount}%
           </span>
         )}
 
         {/* Header row */}
-        <div className={cn("flex items-start justify-between px-4 pb-3 pt-4", bestDiscount > 0 ? "pe-24" : "pe-4")}>
-          <label className="flex cursor-pointer items-center gap-3">
-            <input
-              type="radio"
-              name="purchase-type"
-              checked={isSubscribing}
-              onChange={() => onSelect(allPlans[0]?.id ?? null)}
-              className="mt-0.5 accent-crimson"
-            />
+        <div className={cn("flex items-center justify-between px-4 pb-3", bestDiscount > 0 ? "pt-5" : "pt-4")}>
+          <div className="flex items-center gap-3">
+            <RadioDot active={isSubscribing} />
             <span className="text-base font-bold">{t("subscription.subscribe_save")}</span>
-          </label>
-          <div className="flex flex-col items-end">
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-0.5">
             {subscriptionPriceNum < regularPriceNum && (
               <span className="text-xs text-muted-foreground line-through">
                 {fmt(regularPriceNum)}
               </span>
             )}
-            <span className="font-bold text-crimson">
+            <span className="text-sm font-bold text-crimson">
               {fmt(subscriptionPriceNum)}
             </span>
           </div>
@@ -146,20 +136,20 @@ export function SubscriptionSelector({
             {allPlans.length > 0 && (
               <div className="mt-4">
                 <p className="mb-2 text-sm font-bold">{t("subscription.deliver_every")}</p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex gap-2">
                   {allPlans.map((plan) => (
                     <button
                       key={plan.id}
                       type="button"
                       onClick={(e) => { e.stopPropagation(); onSelect(plan.id); }}
                       className={cn(
-                        "flex min-w-[80px] flex-col items-center rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors",
+                        "flex flex-1 flex-col items-center rounded-lg border px-2 py-2.5 text-sm font-semibold transition-colors",
                         plan.id === selectedPlanId
                           ? "border-crimson bg-crimson text-white"
                           : "border-border bg-muted/50 hover:border-crimson",
                       )}
                     >
-                      <span>{plan.name}</span>
+                      <span>{shortPlanName(plan.name)}</span>
                       {plan.discount > 0 && (
                         <span
                           className={cn(
@@ -184,6 +174,29 @@ export function SubscriptionSelector({
   );
 }
 
+function RadioDot({ active }: { active: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+        active ? "border-crimson" : "border-muted-foreground/50",
+      )}
+    >
+      {active && <span className="h-2 w-2 rounded-full bg-crimson" />}
+    </span>
+  );
+}
+
+function shortPlanName(name: string): string {
+  const lower = name.toLowerCase();
+  const num = parseInt(name.match(/^(\d+)/)?.[1] ?? "0", 10);
+  if (!num) return name;
+  if (lower.includes("month")) return num === 1 ? "Monthly" : `${num} Months`;
+  if (lower.includes("week"))  return num === 1 ? "Weekly"  : `${num} Weeks`;
+  if (lower.includes("day"))   return `${num} Days`;
+  return name;
+}
+
 function BenefitItem({ text }: { text: string }) {
   return (
     <li className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -198,14 +211,21 @@ export function parseSellingPlanGroups(
   discountMap: Record<string, number> = {},
 ): SellingPlanGroup[] {
   if (!raw?.length) return [];
+  const seenIds = new Set<string>();
   return raw
     .map((group: any) => ({
       name: group.name ?? "Subscription",
-      plans: (group.sellingPlans?.nodes ?? []).map((plan: any) => ({
-        id: plan.id as string,
-        name: plan.name as string,
-        discount: discountMap[plan.id] ?? 0,
-      })),
+      plans: (group.sellingPlans?.nodes ?? [])
+        .filter((plan: any) => {
+          if (!plan.id || seenIds.has(plan.id)) return false;
+          seenIds.add(plan.id);
+          return true;
+        })
+        .map((plan: any) => ({
+          id: plan.id as string,
+          name: plan.name as string,
+          discount: discountMap[plan.id] ?? 0,
+        })),
     }))
     .filter((g: SellingPlanGroup) => g.plans.length > 0);
 }

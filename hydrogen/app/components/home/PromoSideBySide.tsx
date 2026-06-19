@@ -36,30 +36,44 @@ export function PromoSideBySide({ promo }: PromoSideBySideProps) {
   if (!promo) return null;
 
   return (
-    <section className="container mx-auto px-4 py-6 md:py-12">
-      <div className="grid overflow-hidden rounded-xl border border-border bg-card shadow-[var(--shadow-card)] md:grid-cols-2">
-        <div className="flex flex-col justify-center gap-3 p-5 md:gap-4 md:p-12">
+    <section className="container mx-auto px-4 py-6 md:py-8">
+      <div className="grid overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)] md:grid-cols-2">
+        {/* Text side */}
+        <div className="flex flex-col justify-center gap-3 p-6 md:gap-4 md:p-10">
           {promo.badgeText && (
-            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-gold">{promo.badgeText}</span>
+            <span className="w-fit rounded-full bg-gold/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-gold">
+              {promo.badgeText}
+            </span>
           )}
-          <h3 className="font-display text-2xl font-extrabold leading-tight md:text-4xl">{promo.heading}</h3>
-          {promo.bodyText && <p className="text-sm text-muted-foreground md:text-base">{promo.bodyText}</p>}
+          <h2 className="font-display text-2xl font-bold leading-snug tracking-tight md:text-3xl">
+            {promo.heading}
+          </h2>
+          {promo.bodyText && (
+            <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
+              {promo.bodyText}
+            </p>
+          )}
           {promo.buttonLabel && promo.buttonUrl && (
-            <div>
+            <div className="pt-1">
               <Link to={promo.buttonUrl}>
-                <Button size="sm" className="bg-crimson text-crimson-foreground hover:bg-rich-red md:text-sm md:h-10 md:px-6">
+                <Button
+                  size="lg"
+                  className="rounded-full bg-crimson px-7 text-crimson-foreground hover:bg-rich-red"
+                >
                   {promo.buttonLabel}
                 </Button>
               </Link>
             </div>
           )}
         </div>
+
+        {/* Image side */}
         {promo.imageUrl && (
-          <div className="relative min-h-[200px] bg-charcoal md:min-h-0">
+          <div className="relative min-h-[220px] overflow-hidden bg-charcoal md:min-h-0">
             <img
               src={promo.imageUrl}
               alt={promo.imageAlt ?? promo.heading}
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 hover:scale-105"
             />
           </div>
         )}

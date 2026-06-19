@@ -4,17 +4,19 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Trash2, ExternalLink, Loader2, ShoppingBag,
+  Trash2, Loader2, ShoppingBag,
   RefreshCw, Ticket, FileText, CheckCircle, XCircle, X,
   Truck,
 } from "lucide-react";
-import { Link } from "react-router";
-import { useCartStore } from "@/stores/cartStore";
+import { Link, useLocation, useNavigate } from "react-router";
+import { useShallow } from "zustand/react/shallow";
+import { useCartStore, initGiftIds, warmGiftCache } from "@/stores/cartStore";
 import { formatPrice, shopifyImageUrl } from "@/lib/shopify";
 import { useT } from "@/i18n/strings";
 import { useCartDrawerConfig } from "@/lib/cartDrawerConfig";
@@ -34,15 +36,17 @@ export function CartDrawer() {
     items,
     isOpen,
     setOpen,
-    isLoading,
-    isSyncing,
+
     isApplyingCode,
+    removingLineIds,
     updateQuantity,
     removeItem,
     getCheckoutUrl,
     syncCart,
     discountCodes,
+
     appliedGiftCards,
+    subtotalAmount,
     totalAmount,
     applyDiscountCode,
     removeDiscountCode,
@@ -50,10 +54,48 @@ export function CartDrawer() {
     removeGiftCard,
     orderNote,
     updateOrderNote,
-  } = useCartStore();
+  } = useCartStore(
+    useShallow((s) => ({
+      items: s.items,
+      isOpen: s.isOpen,
+      setOpen: s.setOpen,
+
+      isApplyingCode: s.isApplyingCode,
+      removingLineIds: s.removingLineIds,
+      updateQuantity: s.updateQuantity,
+      removeItem: s.removeItem,
+      getCheckoutUrl: s.getCheckoutUrl,
+      syncCart: s.syncCart,
+      discountCodes: s.discountCodes,
+
+      appliedGiftCards: s.appliedGiftCards,
+      subtotalAmount: s.subtotalAmount,
+      totalAmount: s.totalAmount,
+      applyDiscountCode: s.applyDiscountCode,
+      removeDiscountCode: s.removeDiscountCode,
+      applyGiftCard: s.applyGiftCard,
+      removeGiftCard: s.removeGiftCard,
+      orderNote: s.orderNote,
+      updateOrderNote: s.updateOrderNote,
+    }))
+  );
 
   const t = useT();
   const drawerConfig = useCartDrawerConfig();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Open drawer when redirected from /cart via ?cart=open param, then strip it
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("cart") === "open") {
+      setOpen(true);
+      params.delete("cart");
+      const qs = params.toString();
+      navigate(location.pathname + (qs ? `?${qs}` : ""), { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
 
   const [activePanel, setActivePanel] = useState<Panel>("discount");
   const [noteOpen, setNoteOpen] = useState(false);
@@ -65,23 +107,64 @@ export function CartDrawer() {
   const [noteValue, setNoteValue] = useState(orderNote);
   const noteSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => { if (isOpen) syncCart(); }, [isOpen, syncCart]);
+  // Defer syncCart so the drawer opens and renders immediately with cached data,
+  // then silently refreshes discount codes / gift cards in the background.
+  useEffect(() => {
+    if (!isOpen) return;
+    const t = setTimeout(() => syncCart(), 800);
+    return () => clearTimeout(t);
+  }, [isOpen, syncCart]);
   useEffect(() => { setNoteValue(orderNote); }, [orderNote]);
 
-  const totalItems = items.reduce((n, i) => n + i.quantity, 0);
-  const subtotal = items.reduce((n, i) => n + parseFloat(i.price.amount) * i.quantity, 0);
-  const currency = items[0]?.price.currencyCode ?? "AED";
-  const threshold = drawerConfig.freeShippingThreshold;
-  const remaining = Math.max(0, threshold - subtotal);
-  const progress = Math.min(100, (subtotal / threshold) * 100);
+  const subGiftId     = drawerConfig.freeGiftSubVariantId;
+  const carcassGiftId = drawerConfig.freeGiftCarVariantId;
 
-  const hasDiscounts = discountCodes.some((d) => d.applicable) || appliedGiftCards.length > 0;
-  const displayTotal = hasDiscounts && totalAmount ? parseFloat(totalAmount.amount) : subtotal;
-  const displayCurrency = hasDiscounts && totalAmount ? totalAmount.currencyCode : currency;
+  // Keep the store's gift IDs in sync and pre-warm the variant image cache
+  useEffect(() => {
+    initGiftIds(subGiftId, carcassGiftId);
+    warmGiftCache(subGiftId, carcassGiftId);
+  }, [subGiftId, carcassGiftId]);
+
+  const totalItems = items.reduce((n, i) => n + i.quantity, 0);
+  const localSubtotal = items.reduce((n, i) => n + parseFloat(i.price.amount) * i.quantity, 0);
+  const currency = items[0]?.price.currencyCode ?? "AED";
+  const shopifyCurrency = totalAmount?.currencyCode ?? subtotalAmount?.currencyCode ?? currency;
+
+  // totalAmount = Shopify's authoritative total (updated after every mutation response).
+  const shopifyTotal = totalAmount ? parseFloat(totalAmount.amount) : localSubtotal;
+  const displayCurrency = shopifyCurrency;
+
+  // compareAtSubtotal = what the cart would cost at full (compareAt / regular) prices.
+  // savings = compareAt total minus the actual subscription/discounted prices we store.
+  // Only items that have a real compareAt discount count toward the percentage,
+  // so the % reflects the subscription discount rate (e.g. 10%), not the whole cart.
+  const compareAtSubtotal = items.reduce((n, i) => {
+    const cap = i.compareAtPrice ? parseFloat(i.compareAtPrice.amount) : parseFloat(i.price.amount);
+    return n + cap * i.quantity;
+  }, 0);
+  const savings = Math.max(0, compareAtSubtotal - localSubtotal);
+  // Sum compareAt only for items that actually have a discount — keeps % accurate (e.g. 10%)
+  const discountedCompareAt = items.reduce((n, i) => {
+    if (!i.compareAtPrice || i.compareAtPrice.amount === i.price.amount) return n;
+    return n + parseFloat(i.compareAtPrice.amount) * i.quantity;
+  }, 0);
+  const savingsPct = discountedCompareAt > 0 && savings > 0
+    ? Math.round((savings / discountedCompareAt) * 100)
+    : 0;
+
+  // When savings exist: Subtotal = full (compareAt) price, Total = what you actually pay.
+  // Math: compareAtSubtotal − savings = localSubtotal = Total ✓
+  const displaySubtotal = savings > 0 ? compareAtSubtotal : localSubtotal;
+  const displayTotal = savings > 0 ? localSubtotal : shopifyTotal;
+
+
+  const threshold = drawerConfig.freeShippingThreshold;
+  const remaining = Math.max(0, threshold - shopifyTotal);
+  const progress = Math.min(100, (shopifyTotal / threshold) * 100);
 
   const handleCheckout = () => {
     const url = getCheckoutUrl();
-    if (url) { window.open(url, "_blank"); setOpen(false); }
+    if (url) { setOpen(false); window.location.href = url; }
   };
 
   const handleApplyDiscount = async () => {
@@ -197,6 +280,7 @@ export function CartDrawer() {
 
           <SheetHeader className="border-b border-border px-4 py-3">
             <SheetTitle className="font-display text-lg">{t("cart.title")}</SheetTitle>
+            <SheetDescription className="sr-only">Your shopping cart items and checkout</SheetDescription>
           </SheetHeader>
 
           {/* Free shipping progress */}
@@ -205,7 +289,7 @@ export function CartDrawer() {
               {remaining > 0 ? (
                 <p className="text-xs text-foreground">
                   {t("cart.add_prefix")}{" "}
-                  <span className="font-bold text-crimson">{formatPrice(remaining, currency)}</span>{" "}
+                  <span className="font-bold text-crimson">{formatPrice(remaining, displayCurrency)}</span>{" "}
                   {t("cart.add_suffix")}
                 </p>
               ) : (
@@ -232,10 +316,12 @@ export function CartDrawer() {
                 {items.map((item) => {
                   const img = item.product.node.images.edges[0]?.node;
                   const pending = !!item.isPending;
+                  const isGift = !!(subGiftId && item.variantId === subGiftId) ||
+                                 !!(carcassGiftId && item.variantId === carcassGiftId);
                   return (
                     <li
                       key={`${item.variantId}-${item.sellingPlanId ?? "none"}`}
-                      className={`flex gap-3 p-4 transition-opacity ${pending ? "opacity-60" : ""}`}
+                      className={`flex gap-3 p-4 transition-opacity ${pending ? "opacity-50" : ""}`}
                     >
                       <Link
                         to={`/products/${item.product.node.handle}`}
@@ -264,9 +350,12 @@ export function CartDrawer() {
                         >
                           {item.product.node.title}
                         </Link>
-                        <div className="text-xs text-muted-foreground">
-                          {item.selectedOptions.map((o) => o.value).join(" · ") || item.variantTitle}
-                        </div>
+                        {(() => {
+                          const label =
+                            item.selectedOptions.map((o) => o.value).filter((v) => v !== "Default Title").join(" · ") ||
+                            (item.variantTitle !== "Default Title" ? item.variantTitle : "");
+                          return label ? <div className="text-xs text-muted-foreground">{label}</div> : null;
+                        })()}
                         {item.attributes && item.attributes.filter((a) => !a.key.startsWith("_")).length > 0 && (
                           <div className="flex flex-col gap-0.5">
                             {item.attributes
@@ -280,45 +369,43 @@ export function CartDrawer() {
                           </div>
                         )}
 
-                        {item.sellingPlanId && (() => {
-                          const subPrice = parseFloat(item.price.amount);
-                          const regPrice = item.compareAtPrice ? parseFloat(item.compareAtPrice.amount) : 0;
-                          const savePct = regPrice > subPrice ? Math.round((1 - subPrice / regPrice) * 100) : 0;
-                          const label = [
-                            item.sellingPlanName ?? "Subscribe & Save",
-                            savePct > 0 ? `with ${savePct}% discount` : "",
-                          ].filter(Boolean).join(" ");
-                          return (
-                            <div className="flex items-center gap-1 text-xs text-green-700">
-                              <RefreshCw className="h-3 w-3 flex-shrink-0" />
-                              <span>{label}</span>
-                            </div>
-                          );
-                        })()}
+                        {item.sellingPlanId && (
+                          <div className="flex items-center gap-1 text-xs text-green-700">
+                            <RefreshCw className="h-3 w-3 flex-shrink-0" />
+                            <span>{item.sellingPlanName ?? "Subscribe & Save"}</span>
+                          </div>
+                        )}
 
                           <div className="mt-auto flex items-center justify-between pt-1">
-                          {/* Quantity + delete side by side */}
-                          <div className="flex items-center gap-2">
-                            <QuantitySelector
-                              size="sm"
-                              value={item.quantity}
-                              onChange={(qty) => updateQuantity(item.variantId, qty)}
-                              min={0}
-                              className={pending || isLoading ? "pointer-events-none opacity-50" : ""}
-                            />
-                            <button
-                              type="button"
-                              aria-label="Remove"
-                              disabled={pending}
-                              onClick={() => removeItem(item.variantId)}
-                              className={`rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-crimson ${pending ? "cursor-not-allowed opacity-30" : ""}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
+                          {isGift ? (
+                            /* Free gift — no qty selector or remove button */
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                              🎁 Free Gift
+                            </span>
+                          ) : (
+                            /* Normal item controls */
+                            <div className="flex items-center gap-2">
+                              <QuantitySelector
+                                size="sm"
+                                value={item.quantity}
+                                onChange={(qty) => item.lineId && updateQuantity(item.lineId, qty)}
+                                min={0}
+                                className={pending ? "pointer-events-none opacity-50" : ""}
+                              />
+                              <button
+                                type="button"
+                                aria-label="Remove"
+                                disabled={pending || !item.lineId}
+                                onClick={() => item.lineId && removeItem(item.lineId)}
+                                className={`rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-crimson ${pending ? "cursor-not-allowed opacity-30" : ""}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          )}
 
                           <div className="flex flex-col items-end gap-0">
-                            {item.compareAtPrice && item.compareAtPrice.amount !== item.price.amount && (
+                            {!isGift && item.compareAtPrice && item.compareAtPrice.amount !== item.price.amount && (
                               <span className="text-xs text-muted-foreground line-through">
                                 {formatPrice(
                                   parseFloat(item.compareAtPrice.amount) * item.quantity,
@@ -326,8 +413,8 @@ export function CartDrawer() {
                                 )}
                               </span>
                             )}
-                            <span className="font-bold text-crimson">
-                              {formatPrice(
+                            <span className={`font-bold ${isGift ? "text-emerald-600 text-xs" : "text-crimson"}`}>
+                              {isGift ? "FREE" : formatPrice(
                                 parseFloat(item.price.amount) * item.quantity,
                                 item.price.currencyCode,
                               )}
@@ -344,7 +431,7 @@ export function CartDrawer() {
 
           {/* Footer — tabs + totals */}
           {items.length > 0 && (
-            <div className="relative space-y-1.5 border-t border-border px-2 pb-2 pt-2">
+            <div className="relative space-y-1 border-t border-border px-2 pb-1.5 pt-1.5">
               {/* Tab row */}
               <div className="grid grid-cols-3 gap-1.5">
                 {tabs.map((tab) => {
@@ -400,6 +487,7 @@ export function CartDrawer() {
                       <XCircle className="h-3 w-3 shrink-0" /> {discountError}
                     </p>
                   )}
+                  {/* Discount codes */}
                   {discountCodes.length > 0 && (
                     <ul className="mt-1 space-y-0.5">
                       {discountCodes.map((dc) => (
@@ -429,15 +517,29 @@ export function CartDrawer() {
 
               {/* Totals + checkout */}
               <div className="border-t border-border pt-1.5">
-                {hasDiscounts && (
-                  <div className="mb-0.5 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Subtotal</span>
-                    <span>{formatPrice(subtotal, currency)}</span>
-                  </div>
+                {/* Subtotal + savings rows — only when a discount is active */}
+                {savings > 0 && (
+                  <>
+                    <div className="flex items-center justify-between text-sm text-foreground mb-0.5">
+                      <span className="font-medium">{t("cart.subtotal")}</span>
+                      <span className="font-semibold">{formatPrice(displaySubtotal, displayCurrency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-emerald-600 mb-0.5">
+                      <span className="font-medium flex items-center gap-1">
+                        You save
+                        {savingsPct > 0 && (
+                          <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold leading-none">
+                            {savingsPct}%
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-semibold">-{formatPrice(savings, displayCurrency)}</span>
+                    </div>
+                  </>
                 )}
-                <div className="mb-1.5 flex items-center justify-between">
+                <div className="mb-1 flex items-center justify-between">
                   <span className="text-base font-bold">
-                    {hasDiscounts ? "Total" : t("cart.subtotal")}
+                    {savings > 0 ? "Total" : t("cart.subtotal")}
                   </span>
                   <span className="font-display text-xl font-bold text-crimson">
                     {formatPrice(displayTotal, displayCurrency)}
@@ -447,14 +549,10 @@ export function CartDrawer() {
                   variant="primary"
                   size="lg"
                   onClick={handleCheckout}
-                  disabled={isLoading || isSyncing || items.some((i) => i.isPending)}
+                  disabled={items.some((i) => i.isPending) || removingLineIds.length > 0}
                   className="w-full"
                 >
-                  {isLoading || isSyncing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <><ExternalLink className="me-2 h-4 w-4" /> {t("cart.checkout")}</>
-                  )}
+                  {t("cart.checkout")}
                 </Button>
                 <button
                   type="button"

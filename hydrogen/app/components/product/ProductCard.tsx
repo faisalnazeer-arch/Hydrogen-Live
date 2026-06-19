@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { Eye, Loader2, Tag } from "lucide-react";
+import { Bell, BellRing, Eye, Loader2, Tag, X } from "lucide-react";
 import { motion } from "framer-motion";
 import {
   type ShopifyProduct,
@@ -21,7 +21,7 @@ interface ProductCardProps {
   ratingOverride?: { average: number; count: number };
 }
 
-export function ProductCard({ product, onQuickView, ratingOverride }: ProductCardProps) {
+export const ProductCard = memo(function ProductCard({ product, onQuickView, ratingOverride }: ProductCardProps) {
   const t = useT();
   const node = product.node;
   const variants = node.variants.edges.map((e) => e.node);
@@ -57,23 +57,20 @@ export function ProductCard({ product, onQuickView, ratingOverride }: ProductCar
   const avgRating = (ratingOverride?.average ?? 0) > 0 ? ratingOverride!.average : metaRating.average;
   const reviewCount = (ratingOverride?.count ?? 0) > 0 ? ratingOverride!.count : metaRating.count;
 
-  const handleClick = async () => {
+  const handleClick = () => {
     if (hasOptions) { openQuickBuy(product); return; }
-    if (!firstAvailable) return;
+    if (!firstAvailable || isAdding) return;
     setIsAdding(true);
-    try {
-      await addItem({
-        product,
-        variantId: firstAvailable.id,
-        variantTitle: firstAvailable.title,
-        price: firstAvailable.price,
-        quantity: 1,
-        selectedOptions: firstAvailable.selectedOptions || [],
-      });
-      toast.success(t("product.added"), { description: node.title, position: "top-center" });
-    } finally {
-      setIsAdding(false);
-    }
+    // Fire-and-forget — drawer opens immediately, no need to await the full chain
+    void addItem({
+      product,
+      variantId: firstAvailable.id,
+      variantTitle: firstAvailable.title,
+      price: firstAvailable.price,
+      quantity: 1,
+      selectedOptions: firstAvailable.selectedOptions || [],
+    });
+    setTimeout(() => setIsAdding(false), 350);
   };
 
   return (
@@ -86,6 +83,7 @@ export function ProductCard({ product, onQuickView, ratingOverride }: ProductCar
       {/* ── Image ── */}
       <Link
         to={`/products/${node.handle}`}
+        prefetch="viewport"
         className="relative block aspect-square overflow-hidden bg-muted"
       >
         {primary && (
@@ -140,6 +138,7 @@ export function ProductCard({ product, onQuickView, ratingOverride }: ProductCar
       <div className="flex flex-1 flex-col p-3">
         <Link
           to={`/products/${node.handle}`}
+          prefetch="viewport"
           className="text-balance text-xs font-medium leading-snug text-foreground transition-colors hover:text-crimson sm:text-sm"
           title={node.title}
         >
@@ -170,25 +169,107 @@ export function ProductCard({ product, onQuickView, ratingOverride }: ProductCar
               </span>
             )}
           </div>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleClick}
-            disabled={!isAvailable || isAdding}
-            className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
-          >
-            {isAdding ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : !isAvailable ? (
-              "Sold Out"
-            ) : hasOptions ? (
-              t("product.quick_buy")
-            ) : (
-              t("product.add")
-            )}
-          </Button>
+          {!isAvailable ? (
+            <NotifyMeCard
+              variantId={firstAvailable?.id ?? ""}
+              productHandle={node.handle}
+            />
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleClick}
+              disabled={isAdding}
+              className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
+            >
+              {isAdding ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : hasOptions ? (
+                t("product.quick_buy")
+              ) : (
+                t("product.add")
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </motion.div>
+  );
+});
+
+// ── Notify Me (card variant) ───────────────────────────────────────────────
+function NotifyMeCard({ variantId, productHandle }: { variantId: string; productHandle: string }) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus("loading");
+    try {
+      const res = await fetch("/api/back-in-stock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, variantId, productHandle }),
+      });
+      setStatus(res.ok ? "success" : "error");
+    } catch {
+      setStatus("error");
+    }
+  };
+
+  if (status === "success") {
+    return (
+      <div className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md bg-green-50 px-2 text-[11px] font-semibold text-green-700 sm:h-8">
+        <BellRing className="h-3 w-3 shrink-0" />
+        You're on the list!
+      </div>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-crimson/50 text-[11px] font-semibold text-crimson transition-colors hover:border-crimson hover:bg-crimson/5 sm:h-8 sm:text-xs"
+      >
+        <Bell className="h-3 w-3 shrink-0" />
+        Notify Me
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-1">
+      <div className="flex items-center gap-1">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Your email"
+          required
+          autoFocus
+          className="min-w-0 flex-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] outline-none focus:border-crimson"
+        />
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <button
+        type="submit"
+        disabled={status === "loading"}
+        className="flex h-7 w-full items-center justify-center rounded-md bg-crimson text-[11px] font-bold text-white transition-colors hover:bg-rich-red disabled:opacity-60 sm:h-8"
+      >
+        {status === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Notify Me"}
+      </button>
+      {status === "error" && (
+        <p className="text-[10px] text-destructive">Try again</p>
+      )}
+    </form>
   );
 }

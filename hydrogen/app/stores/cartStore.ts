@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { toast } from "sonner";
 import {
   storefrontApiRequest,
   type MoneyV2,
@@ -26,6 +27,11 @@ export interface DiscountCodeInfo {
   applicable: boolean;
 }
 
+export interface AutomaticDiscount {
+  title: string;
+  discountedAmount: MoneyV2;
+}
+
 export interface AppliedGiftCard {
   id: string;
   lastCharacters: string;
@@ -41,15 +47,19 @@ interface CartStore {
   isSyncing: boolean;
   isApplyingCode: boolean;
   isOpen: boolean;
+  removingLineIds: string[];
   discountCodes: DiscountCodeInfo[];
+  automaticDiscounts: AutomaticDiscount[];
   giftCardCodes: string[];
   appliedGiftCards: AppliedGiftCard[];
+  subtotalAmount: MoneyV2 | null;
   totalAmount: MoneyV2 | null;
   orderNote: string;
+  addItemError: string | null;
   setOpen: (open: boolean) => void;
   addItem: (item: Omit<CartItem, "lineId" | "isPending">) => Promise<void>;
-  updateQuantity: (variantId: string, quantity: number) => Promise<void>;
-  removeItem: (variantId: string) => Promise<void>;
+  updateQuantity: (lineId: string, quantity: number) => void;
+  removeItem: (lineId: string) => void;
   clearCart: () => void;
   syncCart: () => Promise<void>;
   getCheckoutUrl: () => string | null;
@@ -59,6 +69,27 @@ interface CartStore {
   removeGiftCard: (id: string) => Promise<void>;
   updateOrderNote: (note: string) => Promise<void>;
 }
+
+const COST_FIELDS = `cost { subtotalAmount { amount currencyCode } totalAmount { amount currencyCode } }`;
+const LINES_FIELDS = `lines(first: 100) {
+  edges {
+    node {
+      id
+      merchandise { ... on ProductVariant { id } }
+      discountAllocations {
+        __typename
+        discountedAmount { amount currencyCode }
+        ... on CartAutomaticDiscountAllocation { title }
+        ... on CartCustomDiscountAllocation { title }
+      }
+    }
+  }
+}`;
+
+// Minimal lines — only needed to resolve the new lineId after create/add
+const MINIMAL_LINES_FIELDS = `lines(first: 100) {
+  edges { node { id merchandise { ... on ProductVariant { id } } } }
+}`;
 
 const CART_QUERY = `query cart($id: ID!) {
   cart(id: $id) {
@@ -72,7 +103,8 @@ const CART_QUERY = `query cart($id: ID!) {
       amountUsed { amount currencyCode }
       balance { amount currencyCode }
     }
-    cost { totalAmount { amount currencyCode } }
+    ${COST_FIELDS}
+    ${LINES_FIELDS}
   }
 }`;
 
@@ -82,8 +114,8 @@ const CART_CREATE_MUTATION = `
       cart {
         id
         checkoutUrl
-        lines(first: 100) { edges { node { id merchandise { ... on ProductVariant { id } } } } }
-        cost { totalAmount { amount currencyCode } }
+        ${COST_FIELDS}
+        ${MINIMAL_LINES_FIELDS}
       }
       userErrors { field message }
     }
@@ -93,7 +125,7 @@ const CART_CREATE_MUTATION = `
 const CART_LINES_ADD_MUTATION = `
   mutation cartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {
     cartLinesAdd(cartId: $cartId, lines: $lines) {
-      cart { id lines(first: 100) { edges { node { id merchandise { ... on ProductVariant { id } } } } } }
+      cart { id ${COST_FIELDS} ${MINIMAL_LINES_FIELDS} }
       userErrors { field message }
     }
   }
@@ -101,13 +133,13 @@ const CART_LINES_ADD_MUTATION = `
 
 const CART_LINES_UPDATE_MUTATION = `
   mutation cartLinesUpdate($cartId: ID!, $lines: [CartLineUpdateInput!]!) {
-    cartLinesUpdate(cartId: $cartId, lines: $lines) { cart { id } userErrors { field message } }
+    cartLinesUpdate(cartId: $cartId, lines: $lines) { cart { id ${COST_FIELDS} } userErrors { field message } }
   }
 `;
 
 const CART_LINES_REMOVE_MUTATION = `
   mutation cartLinesRemove($cartId: ID!, $lineIds: [ID!]!) {
-    cartLinesRemove(cartId: $cartId, lineIds: $lineIds) { cart { id } userErrors { field message } }
+    cartLinesRemove(cartId: $cartId, lineIds: $lineIds) { cart { id ${COST_FIELDS} } userErrors { field message } }
   }
 `;
 
@@ -117,7 +149,7 @@ const CART_DISCOUNT_CODES_UPDATE = `
       cart {
         id
         discountCodes { code applicable }
-        cost { totalAmount { amount currencyCode } }
+        ${COST_FIELDS}
       }
       userErrors { field message }
     }
@@ -133,6 +165,21 @@ const CART_NOTE_UPDATE = `
   }
 `;
 
+const VARIANT_LOOKUP = `
+  query variantLookup($id: ID!) {
+    node(id: $id) {
+      ... on ProductVariant {
+        title
+        image { url altText }
+        product {
+          id title handle
+          images(first: 1) { edges { node { url altText } } }
+        }
+      }
+    }
+  }
+`;
+
 const CART_GIFT_CARD_CODES_UPDATE = `
   mutation cartGiftCardCodesUpdate($cartId: ID!, $giftCardCodes: [String!]!) {
     cartGiftCardCodesUpdate(cartId: $cartId, giftCardCodes: $giftCardCodes) {
@@ -144,7 +191,7 @@ const CART_GIFT_CARD_CODES_UPDATE = `
           amountUsed { amount currencyCode }
           balance { amount currencyCode }
         }
-        cost { totalAmount { amount currencyCode } }
+        ${COST_FIELDS}
       }
       userErrors { field message }
     }
@@ -161,6 +208,29 @@ function formatCheckoutUrl(checkoutUrl: string): string {
   }
 }
 
+function extractAutomaticDiscounts(lines: any[]): AutomaticDiscount[] {
+  const map = new Map<string, { amount: number; currencyCode: string }>();
+  for (const edge of lines) {
+    for (const alloc of edge.node?.discountAllocations ?? []) {
+      const isAuto =
+        alloc.__typename === "CartAutomaticDiscountAllocation" ||
+        alloc.__typename === "CartCustomDiscountAllocation" ||
+        // fallback: has title but no code (older API versions without __typename)
+        (alloc.title && !alloc.code);
+      if (!isAuto || !alloc.title) continue;
+      const prev = map.get(alloc.title) ?? { amount: 0, currencyCode: alloc.discountedAmount?.currencyCode ?? "AED" };
+      map.set(alloc.title, {
+        amount: prev.amount + parseFloat(alloc.discountedAmount?.amount ?? "0"),
+        currencyCode: prev.currencyCode,
+      });
+    }
+  }
+  return Array.from(map.entries()).map(([title, { amount, currencyCode }]) => ({
+    title,
+    discountedAmount: { amount: amount.toFixed(2), currencyCode },
+  }));
+}
+
 function isCartNotFoundError(
   userErrors: Array<{ field: string[] | null; message: string }>
 ): boolean {
@@ -171,22 +241,69 @@ function isCartNotFoundError(
   );
 }
 
+// Tracks the last error from createShopifyCart so addItem can surface it
+let _lastAddError: string | null = null;
+// Cooldown so syncCart doesn't fire on every cart open within the same session
+let _lastSyncTime = 0;
+const SYNC_COOLDOWN_MS = 120_000;
+// Gift variant image/title never changes — cache after first fetch
+const _giftVariantCache = new Map<string, Partial<CartItem>>();
+
+// ── Mutation queue ─────────────────────────────────────────────────────────
+// Shopify's Storefront API rejects concurrent mutations on the same cart.
+// All remove/update API calls run through this queue so they are serialized.
+// Optimistic UI updates still happen immediately (before enqueue).
+let _cartMutationQueue: Promise<void> = Promise.resolve();
+function enqueueCartMutation(fn: () => Promise<void>): void {
+  _cartMutationQueue = _cartMutationQueue
+    .then(fn)
+    .catch(() => {}); // swallow so the queue never gets permanently blocked
+}
+
 async function createShopifyCart(item: CartItem) {
+  _lastAddError = null;
   const line: Record<string, any> = { quantity: item.quantity, merchandiseId: item.variantId };
   if (item.sellingPlanId) line.sellingPlanId = item.sellingPlanId;
   if (item.attributes?.length) line.attributes = item.attributes;
-  const data = await storefrontApiRequest<any>(CART_CREATE_MUTATION, {
-    input: { lines: [line] },
-  });
-  if (data?.data?.cartCreate?.userErrors?.length > 0) return null;
+
+  let data: any;
+  try {
+    data = await storefrontApiRequest<any>(CART_CREATE_MUTATION, { input: { lines: [line] } });
+  } catch (err: any) {
+    _lastAddError = err?.message ?? "Network error — could not reach Shopify";
+    console.warn("[cart] cartCreate request failed:", err);
+    return null;
+  }
+  if (!data) {
+    _lastAddError = "Shopify returned no response (possibly payment issue)";
+    console.warn("[cart] cartCreate: no data returned");
+    return null;
+  }
+  const createErrors: Array<{ message: string }> = data?.data?.cartCreate?.userErrors ?? [];
+  if (createErrors.length > 0) {
+    _lastAddError = createErrors[0]?.message ?? "Could not create cart";
+    console.warn("[cart] cartCreate userErrors:", JSON.stringify(createErrors));
+    return null;
+  }
   const cart = data?.data?.cartCreate?.cart;
-  if (!cart?.checkoutUrl) return null;
-  const lineId = cart.lines.edges[0]?.node?.id;
-  if (!lineId) return null;
+  if (!cart?.id) {
+    _lastAddError = "Shopify did not return a cart — please try again";
+    console.warn("[cart] cartCreate: no cart in response");
+    return null;
+  }
+  const lines: any[] = cart?.lines?.edges ?? [];
+  const newLine = lines.find((l: any) => l.node.merchandise.id === item.variantId);
+  const lineId = newLine?.node?.id as string | undefined;
+  if (!lineId) {
+    _lastAddError = "Item added but line ID not returned — please refresh";
+    console.warn("[cart] cartCreate: no lineId in response lines");
+    return null;
+  }
   return {
     cartId: cart.id as string,
-    checkoutUrl: formatCheckoutUrl(cart.checkoutUrl),
-    lineId: lineId as string,
+    checkoutUrl: cart.checkoutUrl ? formatCheckoutUrl(cart.checkoutUrl) : `https://mls-uae.myshopify.com/cart`,
+    lineId,
+    subtotalAmount: cart.cost?.subtotalAmount ?? null,
     totalAmount: cart.cost?.totalAmount ?? null,
   };
 }
@@ -199,12 +316,21 @@ async function addLineToShopifyCart(cartId: string, item: CartItem) {
     cartId,
     lines: [line],
   });
-  const userErrors = data?.data?.cartLinesAdd?.userErrors || [];
+  const userErrors: Array<{ field: string[] | null; message: string }> = data?.data?.cartLinesAdd?.userErrors || [];
   if (isCartNotFoundError(userErrors)) return { success: false, cartNotFound: true as const };
-  if (userErrors.length > 0) return { success: false as const };
-  const lines = data?.data?.cartLinesAdd?.cart?.lines?.edges || [];
+  if (userErrors.length > 0) {
+    console.warn("[cart] cartLinesAdd userErrors:", JSON.stringify(userErrors));
+    return { success: false as const, message: userErrors[0]?.message ?? "Could not add to cart" };
+  }
+  const cartData = data?.data?.cartLinesAdd?.cart;
+  const lines: any[] = cartData?.lines?.edges || [];
   const newLine = lines.find((l: any) => l.node.merchandise.id === item.variantId);
-  return { success: true as const, lineId: newLine?.node?.id as string | undefined };
+  return {
+    success: true as const,
+    lineId: newLine?.node?.id as string | undefined,
+    subtotalAmount: cartData?.cost?.subtotalAmount ?? null,
+    totalAmount: cartData?.cost?.totalAmount ?? null,
+  };
 }
 
 async function updateShopifyCartLine(cartId: string, lineId: string, quantity: number) {
@@ -215,7 +341,12 @@ async function updateShopifyCartLine(cartId: string, lineId: string, quantity: n
   const userErrors = data?.data?.cartLinesUpdate?.userErrors || [];
   if (isCartNotFoundError(userErrors)) return { success: false, cartNotFound: true as const };
   if (userErrors.length > 0) return { success: false as const };
-  return { success: true as const };
+  const cartData = data?.data?.cartLinesUpdate?.cart;
+  return {
+    success: true as const,
+    subtotalAmount: cartData?.cost?.subtotalAmount ?? null,
+    totalAmount: cartData?.cost?.totalAmount ?? null,
+  };
 }
 
 async function removeLineFromShopifyCart(cartId: string, lineId: string) {
@@ -226,18 +357,212 @@ async function removeLineFromShopifyCart(cartId: string, lineId: string) {
   const userErrors = data?.data?.cartLinesRemove?.userErrors || [];
   if (isCartNotFoundError(userErrors)) return { success: false, cartNotFound: true as const };
   if (userErrors.length > 0) return { success: false as const };
-  return { success: true as const };
+  const cartData = data?.data?.cartLinesRemove?.cart;
+  return {
+    success: true as const,
+    subtotalAmount: cartData?.cost?.subtotalAmount ?? null,
+    totalAmount: cartData?.cost?.totalAmount ?? null,
+  };
+}
+
+async function fetchGiftVariantData(variantId: string): Promise<Partial<CartItem>> {
+  if (_giftVariantCache.has(variantId)) return _giftVariantCache.get(variantId)!;
+  try {
+    const data = await storefrontApiRequest<any>(VARIANT_LOOKUP, { id: variantId });
+    const v = data?.data?.node;
+    if (!v) return {};
+    const imgUrl = v.image?.url ?? v.product?.images?.edges?.[0]?.node?.url ?? null;
+    const imgAlt = v.image?.altText ?? null;
+    const result: Partial<CartItem> = {
+      variantTitle: v.title ?? "Free Gift",
+      product: {
+        node: {
+          id: v.product?.id ?? "",
+          title: v.product?.title ?? "Free Gift",
+          handle: v.product?.handle ?? "",
+          description: "",
+          descriptionHtml: "",
+          tags: [],
+          vendor: "",
+          productType: "",
+          availableForSale: true,
+          priceRange: {
+            minVariantPrice: { amount: "0", currencyCode: "AED" },
+            maxVariantPrice: { amount: "0", currencyCode: "AED" },
+          },
+          images: imgUrl
+            ? { edges: [{ node: { url: imgUrl, altText: imgAlt } }] }
+            : { edges: [] },
+          variants: { edges: [] },
+          options: [],
+        },
+      } as ShopifyProduct,
+    };
+    _giftVariantCache.set(variantId, result);
+    return result;
+  } catch {
+    return {};
+  }
 }
 
 const EMPTY: Pick<CartStore,
-  "discountCodes" | "giftCardCodes" | "appliedGiftCards" | "totalAmount" | "orderNote"
+  "discountCodes" | "automaticDiscounts" | "giftCardCodes" | "appliedGiftCards" | "subtotalAmount" | "totalAmount" | "orderNote"
 > = {
   discountCodes: [],
+  automaticDiscounts: [],
   giftCardCodes: [],
   appliedGiftCards: [],
+  subtotalAmount: null,
   totalAmount: null,
   orderNote: "",
 };
+
+// ── Free gift helpers ──────────────────────────────────────────────────────
+
+// Set by CartDrawer on mount from the mls_cart_drawer_config metaobject.
+const _giftIds = { sub: "", car: "" };
+export function initGiftIds(sub: string, car: string) {
+  _giftIds.sub = sub;
+  _giftIds.car = car;
+}
+
+// Pre-fetch gift variant images so they're cached before the first subscription add
+export function warmGiftCache(sub: string, car: string) {
+  if (sub) void fetchGiftVariantData(sub);
+  if (car) void fetchGiftVariantData(car);
+}
+
+function makeGiftItem(variantId: string): CartItem {
+  return {
+    lineId: null,
+    product: {
+      node: {
+        id: "", title: "Free Gift", handle: "", description: "",
+        descriptionHtml: "", tags: [], vendor: "", productType: "",
+        availableForSale: true,
+        priceRange: {
+          minVariantPrice: { amount: "0", currencyCode: "AED" },
+          maxVariantPrice: { amount: "0", currencyCode: "AED" },
+        },
+        images: { edges: [] },
+        variants: { edges: [] },
+        options: [],
+      },
+    } as ShopifyProduct,
+    variantId,
+    variantTitle: "Free Gift",
+    price: { amount: "0.00", currencyCode: "AED" },
+    quantity: 1,
+    selectedOptions: [],
+    isPending: false,
+  };
+}
+
+let _giftSyncing = false;
+// Debounce handle so rapid actions only trigger one gift sync pass
+let _giftSyncTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleSyncFreeGifts(
+  get: () => CartStore,
+  set: (p: Partial<CartStore> | ((s: CartStore) => Partial<CartStore>)) => void,
+) {
+  if (_giftSyncTimer) clearTimeout(_giftSyncTimer);
+  _giftSyncTimer = setTimeout(() => {
+    _giftSyncTimer = null;
+    void syncFreeGifts(get, set);
+  }, 150);
+}
+
+async function syncFreeGifts(
+  get: () => CartStore,
+  set: (p: Partial<CartStore> | ((s: CartStore) => Partial<CartStore>)) => void,
+) {
+  if (_giftSyncing) return;
+  _giftSyncing = true;
+  try {
+    const subId = _giftIds.sub;
+    const carId = _giftIds.car;
+    if (!subId && !carId) return;
+
+    const { items, cartId } = get();
+    if (!cartId) return;
+
+    // Only user items (exclude the gifts themselves) drive the logic
+    const userItems = items.filter((i) => i.variantId !== subId && i.variantId !== carId);
+
+    const subscriptionItems = userItems.filter((i) => !!i.sellingPlanId);
+    const subscriptionSubtotal = subscriptionItems.reduce(
+      (sum, i) => sum + parseFloat(i.price.amount) * i.quantity,
+      0,
+    );
+    const wantSub =
+      !!subId &&
+      subscriptionItems.length > 0 &&
+      subscriptionSubtotal >= 99;
+    const wantCar = !!carId && userItems.some(
+      (i) => i.product.node.title.toLowerCase().includes("carcass"),
+    );
+
+    const hasSub = items.find((i) => i.variantId === subId);
+    const hasCar = items.find((i) => i.variantId === carId);
+
+    // ── Subscription gift ──────────────────────────────────────────────────
+    if (subId) {
+      if (wantSub && !hasSub) {
+        const gift = makeGiftItem(subId);
+        // Apply cached image/title immediately if available — no waiting
+        const cachedSub = _giftVariantCache.get(subId) ?? {};
+        set((s) => ({ items: [...s.items, { ...gift, ...cachedSub, isPending: true }] }));
+        const [res, variantData] = await Promise.all([
+          addLineToShopifyCart(cartId, gift),
+          fetchGiftVariantData(subId),
+        ]);
+        set((s) => ({
+          items: res.success
+            ? s.items.map((i) => i.variantId === subId && i.isPending
+                ? { ...i, ...variantData, lineId: res.lineId ?? null, isPending: false } : i)
+            : s.items.filter((i) => !(i.variantId === subId && i.isPending)),
+        }));
+      } else if (!wantSub && hasSub?.lineId) {
+        set((s) => ({ items: s.items.filter((i) => i.variantId !== subId) }));
+        await removeLineFromShopifyCart(cartId, hasSub.lineId);
+      }
+    }
+
+    // ── Carcass gift ───────────────────────────────────────────────────────
+    if (carId) {
+      if (wantCar && !hasCar) {
+        const gift = makeGiftItem(carId);
+        // Apply cached image/title immediately if available — no waiting
+        const cachedCar = _giftVariantCache.get(carId) ?? {};
+        set((s) => ({ items: [...s.items, { ...gift, ...cachedCar, isPending: true }] }));
+        const [res, variantData] = await Promise.all([
+          addLineToShopifyCart(cartId, gift),
+          fetchGiftVariantData(carId),
+        ]);
+        set((s) => ({
+          items: res.success
+            ? s.items.map((i) => i.variantId === carId && i.isPending
+                ? { ...i, ...variantData, lineId: res.lineId ?? null, isPending: false } : i)
+            : s.items.filter((i) => !(i.variantId === carId && i.isPending)),
+        }));
+      } else if (!wantCar && hasCar?.lineId) {
+        set((s) => ({ items: s.items.filter((i) => i.variantId !== carId) }));
+        await removeLineFromShopifyCart(cartId, hasCar.lineId);
+      }
+    }
+
+    // After all gift operations: if every item is gone reset the cartId so
+    // the next addItem creates a fresh cart instead of reusing a stale one.
+    // This is intentionally inside the try (not finally) so early-returns
+    // (no gift IDs, no cartId) never incorrectly clear a valid cart.
+    if (get().items.length === 0) {
+      set({ cartId: null, checkoutUrl: null });
+    }
+  } finally {
+    _giftSyncing = false;
+  }
+}
 
 export const useCartStore = create<CartStore>()(
   persist(
@@ -249,41 +574,52 @@ export const useCartStore = create<CartStore>()(
       isSyncing: false,
       isApplyingCode: false,
       isOpen: false,
+      removingLineIds: [],
+      addItemError: null,
       ...EMPTY,
 
       setOpen: (open) => set({ isOpen: open }),
 
       addItem: async (item) => {
+        // Silently block manual addition of zero-price (free-gift) products
+        if (parseFloat(item.price.amount) === 0) return;
         const { items, cartId, clearCart } = get();
         const existing = items.find(
-          (i) => i.variantId === item.variantId && i.sellingPlanId === item.sellingPlanId
+          (i) => i.variantId === item.variantId && (i.sellingPlanId ?? null) === (item.sellingPlanId ?? null)
         );
 
         try {
           if (!cartId) {
+            // Open drawer immediately — don't make the user wait for cart creation
             set({
               items: [{ ...item, lineId: null, isPending: true }, ...get().items],
               isOpen: true,
-              isLoading: true,
             });
             const result = await createShopifyCart({ ...item, lineId: null });
             if (result) {
               set({
                 cartId: result.cartId,
                 checkoutUrl: result.checkoutUrl,
+                subtotalAmount: result.subtotalAmount,
                 totalAmount: result.totalAmount,
+                addItemError: null,
                 items: get().items.map((i) =>
                   i.variantId === item.variantId && i.isPending
                     ? { ...i, lineId: result.lineId, isPending: false }
                     : i
                 ),
               });
+              toast.success("Added to cart", { description: item.product.node.title });
             } else {
-              set({ items: get().items.filter((i) => !(i.variantId === item.variantId && i.isPending)) });
+              const remaining = get().items.filter((i) => !(i.variantId === item.variantId && i.isPending));
+              const errorMsg = _lastAddError ?? "Could not add to cart. Please try again.";
+              console.warn("[cart] Cart creation failed for variant", item.variantId, "—", errorMsg);
+              set({ items: remaining, isOpen: false, addItemError: errorMsg });
             }
           } else if (existing) {
             const newQty = existing.quantity + item.quantity;
             if (!existing.lineId) return;
+            // Optimistic qty update + open drawer immediately
             set({
               items: get().items.map((i) =>
                 i.variantId === item.variantId && i.sellingPlanId === item.sellingPlanId
@@ -291,11 +627,12 @@ export const useCartStore = create<CartStore>()(
                   : i
               ),
               isOpen: true,
-              isLoading: true,
             });
             const result = await updateShopifyCartLine(cartId, existing.lineId, newQty);
             if (result.success) {
               set({
+                subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
+                totalAmount: result.totalAmount ?? get().totalAmount,
                 items: get().items.map((i) =>
                   i.variantId === item.variantId && i.sellingPlanId === item.sellingPlanId
                     ? { ...i, isPending: false }
@@ -317,69 +654,153 @@ export const useCartStore = create<CartStore>()(
             set({
               items: [{ ...item, lineId: null, isPending: true }, ...get().items],
               isOpen: true,
-              isLoading: true,
             });
             const result = await addLineToShopifyCart(cartId, { ...item, lineId: null });
             if (result.success) {
               set({
+                subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
+                totalAmount: result.totalAmount ?? get().totalAmount,
+                addItemError: null,
                 items: get().items.map((i) =>
                   i.variantId === item.variantId && i.isPending
                     ? { ...i, lineId: result.lineId ?? null, isPending: false }
                     : i
                 ),
               });
+              toast.success("Added to cart", { description: item.product.node.title });
             } else if (result.cartNotFound) {
+              // Cart expired — reset silently; don't show empty open drawer
               clearCart();
+              set({ isOpen: false });
             } else {
-              set({ items: get().items.filter((i) => !(i.variantId === item.variantId && i.isPending)) });
+              const msg = (result as any).message ?? "Could not add to cart";
+              const remaining = get().items.filter((i) => !(i.variantId === item.variantId && i.isPending));
+              set({
+                items: remaining,
+                isOpen: remaining.length > 0,
+                addItemError: msg,
+              });
             }
           }
         } catch (err) {
-          console.error("addItem failed", err);
-          set({ items: get().items.filter((i) => !i.isPending) });
+          console.warn("[cart] addItem threw:", err);
+          const remaining = get().items.filter((i) => !i.isPending);
+          set({ items: remaining, isOpen: remaining.length > 0 });
         } finally {
-          set({ isLoading: false });
+          scheduleSyncFreeGifts(get, set);
         }
       },
 
-      updateQuantity: async (variantId, quantity) => {
+      updateQuantity: (lineId, quantity) => {
         if (quantity <= 0) {
-          await get().removeItem(variantId);
+          get().removeItem(lineId);
           return;
         }
-        const { items, cartId, clearCart } = get();
-        const item = items.find((i) => i.variantId === variantId);
-        if (!item?.lineId || !cartId) return;
-        set({ isLoading: true });
-        try {
-          const result = await updateShopifyCartLine(cartId, item.lineId, quantity);
-          if (result.success) {
-            set({ items: get().items.map((i) => i.variantId === variantId ? { ...i, quantity } : i) });
-          } else if (result.cartNotFound) {
-            clearCart();
+        const { items, clearCart } = get();
+        const item = items.find((i) => i.lineId === lineId);
+        if (!item || !lineId) return;
+        const prevQty = item.quantity;
+
+        // Optimistic: update quantity immediately
+        set({ items: get().items.map((i) => i.lineId === lineId ? { ...i, quantity } : i) });
+
+        // Serialize through queue — prevents conflicts with concurrent removes
+        enqueueCartMutation(async () => {
+          const cartId = get().cartId;
+          if (!cartId) return;
+          try {
+            const result = await updateShopifyCartLine(cartId, lineId, quantity);
+            if (result.success) {
+              set({
+                subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
+                totalAmount: result.totalAmount ?? get().totalAmount,
+              });
+              scheduleSyncFreeGifts(get, set);
+            } else if (result.cartNotFound) {
+              clearCart();
+            } else {
+              // Revert on failure
+              set({ items: get().items.map((i) => i.lineId === lineId ? { ...i, quantity: prevQty } : i) });
+            }
+          } catch {
+            set({ items: get().items.map((i) => i.lineId === lineId ? { ...i, quantity: prevQty } : i) });
           }
-        } finally {
-          set({ isLoading: false });
-        }
+        });
       },
 
-      removeItem: async (variantId) => {
-        const { items, cartId, clearCart } = get();
-        const item = items.find((i) => i.variantId === variantId);
-        if (!item?.lineId || !cartId) return;
-        set({ isLoading: true });
-        try {
-          const result = await removeLineFromShopifyCart(cartId, item.lineId);
-          if (result.success) {
-            const next = get().items.filter((i) => i.variantId !== variantId);
-            if (next.length === 0) clearCart();
-            else set({ items: next });
-          } else if (result.cartNotFound) {
-            clearCart();
+      removeItem: (lineId) => {
+        const { cartId, clearCart, removingLineIds } = get();
+        if (!lineId || !cartId) return;
+        // Guard: prevent duplicate queued call for the same line
+        if (removingLineIds.includes(lineId)) return;
+
+        // Find the item now — needed for targeted revert if the API fails
+        const removedItem = get().items.find((i) => i.lineId === lineId);
+        if (!removedItem) return;
+
+        const prevSubtotal = get().subtotalAmount;
+        const prevTotal = get().totalAmount;
+        const nextItems = get().items.filter((i) => i.lineId !== lineId);
+
+        // Optimistic: remove from UI immediately — no waiting for API
+        set({
+          items: nextItems,
+          removingLineIds: [...get().removingLineIds, lineId],
+          ...(nextItems.length === 0 ? { subtotalAmount: null, totalAmount: null } : {}),
+        });
+
+        // Serialize the Shopify API call — queued after any in-flight mutation completes.
+        // This prevents concurrent cartLinesRemove calls that Shopify rejects.
+        enqueueCartMutation(async () => {
+          try {
+            // Re-read cartId: a previous queued step may have called clearCart()
+            const currentCartId = get().cartId;
+            if (!currentCartId) {
+              // Cart was already cleared — nothing to do, item is already gone from UI
+              return;
+            }
+
+            const result = await removeLineFromShopifyCart(currentCartId, lineId);
+
+            if (result.success) {
+              if (get().items.length === 0) {
+                clearCart();
+              } else {
+                set({
+                  subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
+                  totalAmount: result.totalAmount ?? get().totalAmount,
+                });
+              }
+              // Gift sync only on confirmed success — never on optimistic state
+              scheduleSyncFreeGifts(get, set);
+
+            } else if (result.cartNotFound) {
+              clearCart();
+
+            } else {
+              // API rejected — restore only this specific item (not the whole old snapshot)
+              // so other successfully-deleted items stay gone
+              set((s) => ({
+                items: s.items.some((i) => i.lineId === lineId)
+                  ? s.items
+                  : [...s.items, removedItem],
+                subtotalAmount: prevSubtotal,
+                totalAmount: prevTotal,
+              }));
+            }
+          } catch {
+            // Network / unexpected error — restore just this item
+            set((s) => ({
+              items: s.items.some((i) => i.lineId === lineId)
+                ? s.items
+                : [...s.items, removedItem],
+              subtotalAmount: prevSubtotal,
+              totalAmount: prevTotal,
+            }));
+          } finally {
+            set((s) => ({ removingLineIds: s.removingLineIds.filter((id) => id !== lineId) }));
           }
-        } finally {
-          set({ isLoading: false });
-        }
+        });
       },
 
       clearCart: () => set({ items: [], cartId: null, checkoutUrl: null, ...EMPTY }),
@@ -389,6 +810,8 @@ export const useCartStore = create<CartStore>()(
       syncCart: async () => {
         const { cartId, isSyncing, clearCart } = get();
         if (!cartId || isSyncing) return;
+        if (Date.now() - _lastSyncTime < SYNC_COOLDOWN_MS) return;
+        _lastSyncTime = Date.now();
         set({ isSyncing: true });
         try {
           const data = await storefrontApiRequest<any>(CART_QUERY, { id: cartId });
@@ -400,12 +823,14 @@ export const useCartStore = create<CartStore>()(
             set({
               discountCodes: cart.discountCodes ?? [],
               appliedGiftCards: cart.appliedGiftCards ?? [],
+              subtotalAmount: cart.cost?.subtotalAmount ?? null,
               totalAmount: cart.cost?.totalAmount ?? null,
+              automaticDiscounts: extractAutomaticDiscounts(cart.lines?.edges ?? []),
               orderNote: cart.note ?? "",
             });
           }
         } catch (err) {
-          console.error("sync cart failed", err);
+          console.warn("[cart] syncCart failed:", err);
         } finally {
           set({ isSyncing: false });
         }
@@ -429,12 +854,36 @@ export const useCartStore = create<CartStore>()(
           const userErrors = data?.data?.cartDiscountCodesUpdate?.userErrors ?? [];
           if (userErrors.length > 0) return { success: false, error: userErrors[0].message };
           const cart = data?.data?.cartDiscountCodesUpdate?.cart;
-          const newCodes: DiscountCodeInfo[] = cart?.discountCodes ?? [];
-          set({ discountCodes: newCodes, totalAmount: cart?.cost?.totalAmount ?? get().totalAmount });
+          if (!cart) return { success: false, error: "Could not verify discount code. Please try again." };
+          const newCodes: DiscountCodeInfo[] = cart.discountCodes ?? [];
           const applied = newCodes.find((c) => c.code.toUpperCase() === trimmed);
           if (!applied?.applicable) {
-            return { success: false, error: "This discount code is invalid or expired" };
+            // Revert Shopify cart back to previous codes so invalid code doesn't linger
+            void storefrontApiRequest<any>(CART_DISCOUNT_CODES_UPDATE, {
+              cartId,
+              discountCodes: currentCodes,
+            });
+            // Ask the server for the real reason (Admin API)
+            let reason = "This discount code cannot be applied to your cart.";
+            try {
+              const items = get().items;
+              const cartTotal = items.reduce((n, i) => n + parseFloat(i.price.amount) * i.quantity, 0);
+              const currency = items[0]?.price.currencyCode ?? "AED";
+              const res = await fetch(
+                `/api/discount-check?code=${encodeURIComponent(trimmed)}&cartTotal=${cartTotal}&currency=${currency}`
+              );
+              if (res.ok) {
+                const json = await res.json() as { reason: string | null };
+                if (json.reason) reason = json.reason;
+              }
+            } catch { /* fallback to generic message */ }
+            return { success: false, error: reason };
           }
+          set({
+            discountCodes: newCodes,
+            subtotalAmount: cart.cost?.subtotalAmount ?? get().subtotalAmount,
+            totalAmount: cart.cost?.totalAmount ?? get().totalAmount,
+          });
           return { success: true };
         } finally {
           set({ isApplyingCode: false });
@@ -454,6 +903,7 @@ export const useCartStore = create<CartStore>()(
           const cart = data?.data?.cartDiscountCodesUpdate?.cart;
           set({
             discountCodes: cart?.discountCodes ?? [],
+            subtotalAmount: cart?.cost?.subtotalAmount ?? get().subtotalAmount,
             totalAmount: cart?.cost?.totalAmount ?? get().totalAmount,
           });
         } finally {
@@ -484,6 +934,7 @@ export const useCartStore = create<CartStore>()(
           set({
             giftCardCodes: newCodes,
             appliedGiftCards: appliedCards,
+            subtotalAmount: cart?.cost?.subtotalAmount ?? get().subtotalAmount,
             totalAmount: cart?.cost?.totalAmount ?? get().totalAmount,
           });
           return { success: true };
@@ -507,6 +958,7 @@ export const useCartStore = create<CartStore>()(
           set({
             giftCardCodes: remaining,
             appliedGiftCards: cart?.appliedGiftCards ?? [],
+            subtotalAmount: cart?.cost?.subtotalAmount ?? get().subtotalAmount,
             totalAmount: cart?.cost?.totalAmount ?? get().totalAmount,
           });
         } finally {
@@ -521,7 +973,7 @@ export const useCartStore = create<CartStore>()(
         try {
           await storefrontApiRequest<any>(CART_NOTE_UPDATE, { cartId, note });
         } catch (err) {
-          console.error("updateOrderNote failed", err);
+          console.warn("[cart] updateOrderNote failed:", err);
         }
       },
     }),
@@ -529,6 +981,7 @@ export const useCartStore = create<CartStore>()(
       name: "mls-shopify-cart",
       version: 4,
       storage: createJSONStorage(() => localStorage),
+      skipHydration: true, // Prevent auto-rehydrate during SSR — we call rehydrate() eagerly on the client below
       partialize: (s) => ({
         items: s.items.filter((i) => !i.isPending),
         cartId: s.cartId,
@@ -556,3 +1009,9 @@ export const useCartStore = create<CartStore>()(
     }
   )
 );
+
+// Eagerly rehydrate from localStorage on module load so the cart count is
+// available on first render without waiting for a useEffect tick.
+if (typeof window !== "undefined") {
+  useCartStore.persist.rehydrate();
+}

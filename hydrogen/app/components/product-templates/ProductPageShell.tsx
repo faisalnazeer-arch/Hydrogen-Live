@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, type ReactNode, useRef } from "react";
 import {
-  Minus, Plus, Truck, ShieldCheck, RefreshCw, Loader2, ChevronDown,
-  Share2, Copy, Check, Play,
+  Minus, Plus, Truck, ShieldCheck, RefreshCw, Loader2, ChevronDown, ChevronUp,
+  ChevronLeft, ChevronRight, Check, Play, MapPin, Phone, Clock, X, Store,
+  FlameKindling, Leaf, PackageOpen,
 } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet";
 import { Link } from "react-router";
 import mlsLogo from "~/assets/mls-logo.png";
 import { OriginBadge } from "~/components/product/OriginBadge";
@@ -17,6 +19,7 @@ import {
 import { useCartStore } from "~/stores/cartStore";
 import { useRecentlyViewed } from "~/stores/recentlyViewedStore";
 import { JudgemeReviews } from "~/components/reviews/JudgemeReviews";
+import { JudgemeWidgetEmbed } from "~/components/reviews/JudgemeWidgetEmbed";
 import { StarRating } from "~/components/reviews/StarRating";
 import { SubscriptionSelector, parseSellingPlanGroups } from "~/components/product/SubscriptionSelector";
 import { ProductCard } from "~/components/product/ProductCard";
@@ -30,7 +33,13 @@ export interface PageSettings {
   deliveryContent: string | null;
   supportTitle: string;
   supportContent: string | null;
+  dubaiDeliveryInfo: Array<{ label: string; body: string }> | null;
+  abudhabiDeliveryInfo: Array<{ label: string; body: string }> | null;
+  sharjahDeliveryInfo: Array<{ label: string; body: string }> | null;
+  badgeImage: string | null;
 }
+
+export type AccordionSection = { value: string; label: string; content: ReactNode };
 
 export interface ProductPageShellProps {
   product: any;
@@ -42,6 +51,7 @@ export interface ProductPageShellProps {
   externalId?: string | null;
   templateSuffix?: string | null;
   extraSections?: ReactNode;
+  accordionSections?: AccordionSection[];
   recommendations?: ShopifyProduct[];
   pageSettings?: PageSettings;
   globoOptionSets?: GloboOptionSet[];
@@ -63,7 +73,7 @@ function DescriptionWithToggle({ html }: { html: string }) {
         className="overflow-hidden transition-[max-height] duration-500 ease-in-out"
         style={{ maxHeight: expanded ? "none" : DESC_CLAMP_PX }}
       >
-        <div ref={innerRef} className="prose prose-sm max-w-none [&_p]:leading-relaxed"
+        <div ref={innerRef} className="prose prose-sm max-w-none [&_p]:leading-relaxed [&_table]:block [&_table]:overflow-x-auto [&_pre]:overflow-x-auto [&_img]:max-w-full"
           dangerouslySetInnerHTML={{ __html: html }} />
       </div>
       {overflow && (
@@ -108,41 +118,6 @@ function LinkifyLine({ text }: { text: string }) {
         return <span key={i}>{part}</span>;
       })}
     </>
-  );
-}
-
-// ── Social share ─────────────────────────────────────────────────────────
-function SocialShare({ title }: { title: string }) {
-  const [copied, setCopied] = useState(false);
-  const url = typeof window !== "undefined" ? window.location.href : "";
-  const text = encodeURIComponent(`Check out ${title} from MLS UAE`);
-  const enc = encodeURIComponent(url);
-
-  const copyLink = async () => {
-    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* */ }
-  };
-
-  return (
-    <div className="flex items-center gap-2">
-      <Share2 className="h-4 w-4 text-muted-foreground" />
-      <span className="text-xs font-medium text-muted-foreground">Share:</span>
-      <button type="button" onClick={copyLink} title="Copy link"
-        className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-crimson hover:text-crimson">
-        {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
-      </button>
-      <a href={`https://wa.me/?text=${text}%20${enc}`} target="_blank" rel="noopener noreferrer" title="WhatsApp"
-        className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-green-500 hover:text-green-600">
-        <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-      </a>
-      <a href={`https://twitter.com/intent/tweet?text=${text}&url=${enc}`} target="_blank" rel="noopener noreferrer" title="X"
-        className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-foreground hover:text-foreground">
-        <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.633zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-      </a>
-      <a href={`https://www.facebook.com/sharer/sharer.php?u=${enc}`} target="_blank" rel="noopener noreferrer" title="Facebook"
-        className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-blue-600 hover:text-blue-600">
-        <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-      </a>
-    </div>
   );
 }
 
@@ -234,6 +209,408 @@ function buildMediaItems(images: any[], mediaNodes: any[]): MediaItem[] {
   return images.map((img: any): MediaItem => ({ type: "image", url: img.url ?? "", altText: img.altText ?? null }));
 }
 
+// ── Nutrition helpers ─────────────────────────────────────────────────────
+// FDA daily reference values used to compute % Daily Value
+const FDA_DV: Record<string, number> = {
+  total_fat:           78,   // g
+  saturated_fat:       20,   // g
+  total_cholesterol:  300,   // mg
+  sodium:            2300,   // mg
+  total_carbohydrates: 275,  // g
+  dietary_fibers:      28,   // g
+  iron:                18,   // mg
+};
+
+const NUTRITION_ROWS: Array<{
+  ns: string; key: string; label: string; indent?: boolean; noDv?: boolean; separator?: boolean;
+}> = [
+  { ns: "nutrition", key: "total_fat",           label: "Total Fat" },
+  { ns: "nutrition", key: "saturated_fat",       label: "Saturated Fat",      indent: true },
+  { ns: "nutrition", key: "trans_fat",           label: "Trans Fat",          indent: true, noDv: true },
+  { ns: "nutrition", key: "total_cholesterol",   label: "Cholesterol" },
+  { ns: "nutrition", key: "sodium",              label: "Sodium" },
+  { ns: "nutrition", key: "total_carbohydrates", label: "Total Carbohydrate" },
+  { ns: "nutrition", key: "dietary_fibers",      label: "Dietary Fiber",      indent: true },
+  { ns: "nutrition", key: "sugar",               label: "Total Sugars",       indent: true, noDv: true },
+  { ns: "nutrition", key: "protein",             label: "Protein",            noDv: true },
+  { ns: "nutrition", key: "iron",                label: "Iron",               separator: true },
+];
+
+function getMF(variant: any, ns: string, key: string): string | null {
+  return variant?.metafields?.find((m: any) => m?.namespace === ns && m?.key === key)?.value ?? null;
+}
+
+function calcDv(rawValue: string | null, key: string): string | null {
+  const dvFactor = FDA_DV[key];
+  if (!rawValue || !dvFactor) return null;
+  const num = parseFloat(rawValue.match(/[\d.]+/)?.[0] ?? "");
+  if (isNaN(num)) return null;
+  return `${Math.round((num / dvFactor) * 100)}%`;
+}
+
+function NutritionPanel({ variant }: { variant: any }) {
+  const portion = getMF(variant, "custom", "portion_text") ?? "Per 100g";
+  const caloriesRaw = getMF(variant, "nutrition", "total_energy");
+  const caloriesNum = caloriesRaw?.match(/[\d.]+/)?.[0] ?? caloriesRaw ?? "";
+  const rows = NUTRITION_ROWS.map(r => {
+    const value = getMF(variant, r.ns, r.key);
+    return { ...r, value, dv: r.noDv ? null : calcDv(value, r.key) };
+  }).filter(r => r.value);
+
+  if (!caloriesRaw && rows.length === 0) return (
+    <p className="py-8 text-center text-sm text-muted-foreground">
+      Nutrition information not available for this variant.
+    </p>
+  );
+
+  return (
+    <div className="mx-auto w-full max-w-lg font-sans">
+      <div className="overflow-hidden rounded-xl border-[2px] border-foreground sm:rounded-2xl sm:border-[3px]">
+
+        {/* Header */}
+        <div className="border-b-[6px] border-foreground px-3 pt-2.5 pb-1.5 sm:border-b-[10px] sm:px-4 sm:pt-3 sm:pb-2">
+          <h2 className="text-2xl font-black leading-none tracking-tight sm:text-[2rem]">Nutrition Facts</h2>
+          <div className="mt-1.5 flex items-baseline justify-between gap-2 border-t border-foreground/20 pt-1 sm:mt-2 sm:pt-1.5">
+            <span className="text-xs sm:text-sm">Serving size</span>
+            <span className="text-xs font-bold sm:text-sm">{portion}</span>
+          </div>
+        </div>
+
+        {/* Calories */}
+        {caloriesNum && (
+          <div className="border-b-[4px] border-foreground px-3 py-1.5 sm:border-b-[5px] sm:px-4 sm:py-2">
+            <p className="text-[10px] font-medium text-foreground/70 sm:text-[11px]">Amount per serving</p>
+            <div className="flex items-end justify-between">
+              <span className="text-lg font-black leading-tight sm:text-2xl">Calories</span>
+              <span className="text-[2.25rem] font-black leading-none tabular-nums sm:text-5xl">{caloriesNum}</span>
+            </div>
+          </div>
+        )}
+
+        {/* % DV header */}
+        <div className="border-b border-foreground/25 px-3 py-0.5 sm:px-4">
+          <p className="text-right text-[10px] font-bold sm:text-[11px]">% Daily Value*</p>
+        </div>
+
+        {/* Nutrient rows */}
+        <div>
+          {rows.map((row) => (
+            <div key={row.key}
+              className={`flex items-baseline justify-between border-b border-foreground/15 px-3 py-0.5 text-[11px] last:border-b-0 sm:px-4 sm:py-1 sm:text-sm ${row.separator ? "border-t-[3px] border-t-foreground sm:border-t-[5px]" : ""} ${row.indent ? "ps-5 sm:ps-8" : ""}`}>
+              <span className="flex-1 leading-snug">
+                {row.indent
+                  ? <span className="text-foreground/80">{row.label} <em className="not-italic text-foreground/60 text-[10px] sm:text-xs">{row.value}</em></span>
+                  : <><strong>{row.label}</strong> <span className="font-normal">{row.value}</span></>
+                }
+              </span>
+              {!row.noDv && (
+                <span className="ml-2 shrink-0 font-bold tabular-nums text-[11px] sm:ml-3 sm:text-sm">
+                  {row.dv ?? ""}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Footnote */}
+        <div className="border-t-[3px] border-foreground px-3 py-2 sm:border-t-[5px] sm:px-4 sm:py-2.5">
+          <p className="text-[9px] leading-snug text-foreground/55 sm:text-[10px]">
+            * The % Daily Value (DV) tells you how much a nutrient in a serving of food contributes to a daily diet. 2,000 calories a day is used for general nutrition advice.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeliveryRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5 border-b border-border/50 py-3 last:border-b-0 sm:flex-row sm:gap-6">
+      <span className="w-32 shrink-0 text-[13px] font-semibold text-foreground">{label}</span>
+      <span className="text-[13px] leading-relaxed text-muted-foreground">{children}</span>
+    </div>
+  );
+}
+
+type CityTab = "dubai" | "abudhabi" | "sharjah";
+
+function DeliveryTab({ pageSettings }: { pageSettings: PageSettings | undefined }) {
+  const [city, setCity] = useState<CityTab>("dubai");
+
+  const cityTabs: Array<{ id: CityTab; label: string }> = [
+    { id: "dubai",    label: "Dubai" },
+    { id: "abudhabi", label: "Abu Dhabi" },
+    { id: "sharjah",  label: "Sharjah & Ajman" },
+  ];
+
+  type CityBlock = { label: string; body: string };
+
+  const DEFAULT_DUBAI: CityBlock[] = [
+    { label: "Delivery Time",     body: "Delivered within 2 hours between 11:00 AM and 8:30 PM daily." },
+    { label: "Last Order Time",   body: "8:30 PM is our last order cutoff, all days of the week." },
+    { label: "Delivery Fee",      body: "No minimum order value. Standard delivery fee is AED 15." },
+    { label: "Free Returns",      body: "No questions asked — return items up to 30 days from delivery, free of charge." },
+    { label: "Satisfaction",      body: "WhatsApp us within 24 hours and we will fix your experience." },
+    { label: "Tipping",           body: "There's no need to tip — we pay a living wage." },
+  ];
+  const DEFAULT_ABUDHABI: CityBlock[] = [
+    { label: "Delivery Time",   body: "Delivered within 2 hours between 11:00 AM and 8:30 PM daily." },
+    { label: "Last Order Time", body: "8:30 PM is our last order cutoff, all days of the week." },
+    { label: "Delivery Fee",    body: "No minimum order value. Standard delivery fee is AED 20." },
+    { label: "Tipping",         body: "There's no need to tip — we pay a living wage." },
+  ];
+  const DEFAULT_SHARJAH: CityBlock[] = [
+    { label: "Same Day",      body: "Orders confirmed by 1:00 PM are delivered same-day between 4:00 PM and 10:00 PM." },
+    { label: "Next Day",      body: "Orders placed after 1:00 PM are delivered the following day." },
+    { label: "Delivery Fee",  body: "No minimum order value. Standard delivery fee is AED 15." },
+    { label: "Tipping",       body: "There's no need to tip — we pay a living wage." },
+  ];
+
+  const cityContent: Record<CityTab, CityBlock[]> = {
+    dubai:    pageSettings?.dubaiDeliveryInfo    ?? DEFAULT_DUBAI,
+    abudhabi: pageSettings?.abudhabiDeliveryInfo ?? DEFAULT_ABUDHABI,
+    sharjah:  pageSettings?.sharjahDeliveryInfo  ?? DEFAULT_SHARJAH,
+  };
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-8">
+
+      {/* Delivery by city */}
+      <section>
+        <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-crimson">
+          <Truck className="h-3.5 w-3.5" />
+          {pageSettings?.deliveryTitle ?? "Delivery Information"}
+        </h3>
+
+        {/* City tabs — crimson pill active */}
+        <div className="mb-4 overflow-x-auto sm:mb-5">
+          <div className="flex min-w-max gap-1 rounded-lg border border-border p-0.5 sm:p-1">
+            {cityTabs.map(({ id, label }) => (
+              <button key={id} type="button" onClick={() => setCity(id)}
+                className={`shrink-0 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-all sm:px-3 sm:py-2 ${
+                  city === id ? "bg-crimson text-crimson-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2 sm:space-y-3">
+          {cityContent[city].map(({ label, body }) => (
+            <div key={label} className="rounded-lg border border-border/60 px-3 py-2.5 sm:px-4 sm:py-3">
+              <p className="mb-0.5 text-xs font-semibold text-foreground sm:mb-1 sm:text-sm">{label}</p>
+              <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground sm:text-sm">{body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// ── InfoTabs — shown below the product grid ────────────────────────────────
+type TabId = "nutrition" | "template" | "delivery";
+
+function InfoTabs({
+  extraSections,
+  extraSectionTitle,
+  pageSettings,
+  variant,
+}: {
+  extraSections: ReactNode | undefined;
+  extraSectionTitle: string;
+  pageSettings: PageSettings | undefined;
+  variant: any;
+}) {
+  const hasNutrition = !!getMF(variant, "nutrition", "total_energy") || NUTRITION_ROWS.some(r => getMF(variant, r.ns, r.key));
+  const hasTemplate  = !!extraSections;
+
+  // Tab order: Understanding Rubs → Nutrition Facts → Delivery Info
+  const tabs: Array<{ id: TabId; label: string; Icon: any }> = [
+    hasTemplate  && { id: "template"  as TabId, label: extraSectionTitle,              Icon: FlameKindling },
+    hasNutrition && { id: "nutrition" as TabId, label: "Nutrition Facts",              Icon: Leaf },
+                    { id: "delivery"  as TabId, label: "Delivery Info",                Icon: PackageOpen },
+  ].filter(Boolean) as Array<{ id: TabId; label: string; Icon: any }>;
+
+  const [active, setActive] = useState<TabId>(tabs[0].id);
+
+  useEffect(() => {
+    if (!tabs.find(t => t.id === active)) setActive(tabs[0].id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variant?.id]);
+
+  return (
+    <div className="border-t border-border bg-card">
+      <div className="container mx-auto px-4">
+        {/* Tab bar */}
+        <div className="flex overflow-x-auto">
+          {tabs.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActive(id)}
+              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-3 text-sm font-semibold transition-colors sm:gap-2 sm:px-5 sm:py-4 ${
+                active === id
+                  ? "border-crimson text-crimson"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        <div className="py-4 sm:py-5">
+          {active === "nutrition" && <NutritionPanel variant={variant} />}
+          {active === "template" && hasTemplate && <div>{extraSections}</div>}
+
+          {active === "delivery" && <DeliveryTab pageSettings={pageSettings} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Returns tab ───────────────────────────────────────────────────────────────
+function ReturnsTab() {
+  return (
+    <div className="mx-auto max-w-2xl">
+      <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-crimson">
+        <RefreshCw className="h-3.5 w-3.5" />
+        100% Free Replacements &amp; Returns
+      </h3>
+      <div className="divide-y divide-border/50">
+        {[
+          "Drop a WhatsApp message or send us an email within 24 hours after delivery.",
+          "We will exchange the product and deliver it again to your door, or you can pick it up if you want.",
+          "You will receive the product or a refund. Refunds will be processed within 14 working days.",
+        ].map((line, i) => (
+          <p key={i} className="py-2.5 text-xs leading-relaxed text-muted-foreground sm:py-3 sm:text-[13px]">
+            {line}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Pickup availability drawer ────────────────────────────────────────────
+interface StoreNode {
+  available: boolean;
+  pickUpTime?: string | null;
+  location: {
+    name: string;
+    address?: {
+      address1?: string | null;
+      address2?: string | null;
+      city?: string | null;
+      province?: string | null;
+      country?: string | null;
+      phone?: string | null;
+    } | null;
+  };
+}
+
+function PickupDrawer({
+  open, onClose, productTitle, variantTitle, stores,
+}: {
+  open: boolean;
+  onClose: () => void;
+  productTitle: string;
+  variantTitle: string;
+  stores: StoreNode[];
+}) {
+  const available = stores.filter((s) => s.available);
+  const unavailable = stores.filter((s) => !s.available);
+  const sorted = [...available, ...unavailable];
+
+  return (
+    <Sheet open={open} onOpenChange={onClose}>
+      <SheetContent side="right" className="flex w-full max-w-md flex-col gap-0 overflow-y-auto p-0">
+        <SheetHeader className="sticky top-0 z-10 border-b border-border bg-background px-5 py-4">
+          <div className="flex items-center justify-between">
+            <SheetTitle className="text-base font-bold">Store Availability</SheetTitle>
+            <button type="button" onClick={onClose} className="rounded-full p-1 hover:bg-muted">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mt-2 rounded-lg bg-muted/50 px-3 py-2">
+            <p className="text-sm font-semibold leading-snug">{productTitle}</p>
+            {variantTitle && variantTitle !== "Default Title" && (
+              <p className="text-xs text-muted-foreground">{variantTitle}</p>
+            )}
+          </div>
+        </SheetHeader>
+
+        <div className="flex flex-col gap-3 p-5">
+          {sorted.map((store, i) => (
+            <div
+              key={i}
+              className={`rounded-xl border p-4 transition-colors ${
+                store.available ? "border-green-200 bg-green-50/40" : "border-border bg-muted/20"
+              }`}
+            >
+              {/* Store name + status */}
+              <div className="flex items-start gap-2.5">
+                <Store className={`mt-0.5 h-4 w-4 flex-shrink-0 ${store.available ? "text-green-600" : "text-muted-foreground"}`} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold leading-snug">{store.location.name}</p>
+                  {store.available ? (
+                    <>
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-700">
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                        Pickup available
+                      </span>
+                      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3 flex-shrink-0" />
+                        {store.pickUpTime ?? "Usually ready in 2 hours"}
+                      </div>
+                    </>
+                  ) : (
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                      <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+                      Currently unavailable
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Address */}
+              {store.location.address && (
+                <div className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
+                  <MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                  <div className="leading-relaxed">
+                    {store.location.address.address1 && <p>{store.location.address.address1}</p>}
+                    {store.location.address.address2 && <p>{store.location.address.address2}</p>}
+                    {(store.location.address.city || store.location.address.province) && (
+                      <p>{[store.location.address.city, store.location.address.province].filter(Boolean).join(" ")}</p>
+                    )}
+                    {store.location.address.country && <p>{store.location.address.country}</p>}
+                  </div>
+                </div>
+              )}
+
+              {/* Phone */}
+              {store.location.address?.phone && (
+                <a
+                  href={`tel:${store.location.address.phone.replace(/\s/g, "")}`}
+                  className="mt-2.5 flex items-center gap-2 text-xs font-semibold text-crimson hover:underline"
+                >
+                  <Phone className="h-3.5 w-3.5" />
+                  {store.location.address.phone}
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 // ── Shell ─────────────────────────────────────────────────────────────────
 export function ProductPageShell({
   product,
@@ -245,6 +622,7 @@ export function ProductPageShell({
   externalId,
   templateSuffix,
   extraSections,
+  accordionSections = [],
   recommendations = [],
   pageSettings,
   globoOptionSets = [],
@@ -267,8 +645,15 @@ export function ProductPageShell({
   const [selectedVariantId, setSelectedVariantId] = useState(variants[0]?.id ?? "");
   const [activeMediaIdx, setActiveMediaIdx] = useState(0);
   const [qty, setQty] = useState(1);
+  const [specialRequest, setSpecialRequest] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [stickyVisible, setStickyVisible] = useState(false);
+  const [stickyExpanded, setStickyExpanded] = useState(false);
+  const [pickupDrawerOpen, setPickupDrawerOpen] = useState(false);
+  const thumbTrackRef = useRef<HTMLDivElement>(null);
+  const [thumbCanLeft,  setThumbCanLeft]  = useState(false);
+  const [thumbCanRight, setThumbCanRight] = useState(false);
+  const THUMB_SCROLL = 88; // scroll 1 thumb+gap per arrow click
   const atcSentinelRef = useRef<HTMLDivElement>(null);
 
   // Track this product as recently viewed
@@ -312,7 +697,7 @@ export function ProductPageShell({
 
   const sellingPlanGroups = parseSellingPlanGroups(sellingPlanGroupsRaw, discountMap);
   const addItem = useCartStore((s) => s.addItem);
-  const isLoading = useCartStore((s) => s.isLoading);
+  const [isAdding, setIsAdding] = useState(false);
 
   const variant = variants.find((v: any) => v.id === selectedVariantId) ?? variants[0];
   const currency = variant?.price.currencyCode ?? "AED";
@@ -331,6 +716,38 @@ export function ProductPageShell({
     if (idx !== -1) setActiveMediaIdx(idx);
   }, [selectedVariantId]); // eslint-disable-line
 
+  const allMedia = buildMediaItems(images, mediaNodes);
+  const activeMedia = allMedia[activeMediaIdx];
+
+  // Update left/right arrow visibility whenever media list size or scroll position changes
+  useEffect(() => {
+    const el = thumbTrackRef.current;
+    if (!el) return;
+    const update = () => {
+      setThumbCanLeft(el.scrollLeft > 1);
+      setThumbCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => { el.removeEventListener('scroll', update); ro.disconnect(); };
+  }, [allMedia.length]); // eslint-disable-line
+
+  // Scroll active thumbnail into view when selection changes
+  useEffect(() => {
+    const el = thumbTrackRef.current;
+    if (!el) return;
+    const thumb = el.children[activeMediaIdx] as HTMLElement | undefined;
+    if (!thumb) return;
+    const { offsetLeft, offsetWidth } = thumb;
+    if (offsetLeft < el.scrollLeft) {
+      el.scrollTo({ left: offsetLeft, behavior: 'smooth' });
+    } else if (offsetLeft + offsetWidth > el.scrollLeft + el.clientWidth) {
+      el.scrollTo({ left: offsetLeft + offsetWidth - el.clientWidth, behavior: 'smooth' });
+    }
+  }, [activeMediaIdx]);
+
   const hasOptions =
     product.options.length > 1 ||
     product.options.some((o: any) => o.values.length > 1 && o.values[0] !== "Default Title");
@@ -348,24 +765,32 @@ export function ProductPageShell({
     },
   };
 
-  const handleAddToCart = async () => {
-    if (!variant) return;
-    await addItem({
+  const handleAddToCart = () => {
+    if (!variant || isAdding) return;
+    const selectedPlan = selectedPlanId
+      ? sellingPlanGroups.flatMap((g) => g.plans).find((p) => p.id === selectedPlanId)
+      : null;
+    const attributes: Array<{ key: string; value: string }> = [
+      ...globoAttributes,
+      ...(specialRequest.trim() ? [{ key: "Special Request", value: specialRequest.trim() }] : []),
+    ];
+    setIsAdding(true);
+    // Fire-and-forget — drawer opens immediately, no need to await
+    void addItem({
       product: shopifyProduct, variantId: variant.id, variantTitle: variant.title,
       price: displayPrice, quantity: qty, selectedOptions: variant.selectedOptions,
       sellingPlanId: selectedPlanId ?? undefined,
-      attributes: globoAttributes.length ? globoAttributes : undefined,
+      sellingPlanName: selectedPlan?.name ?? null,
+      attributes: attributes.length ? attributes : undefined,
     });
+    setTimeout(() => setIsAdding(false), 350);
   };
-
-  const allMedia = buildMediaItems(images, mediaNodes);
-  const activeMedia = allMedia[activeMediaIdx];
 
   // Extra-sections accordion label — determined entirely by template, not by
   // which metafields have values (avoids false-positive when "understanding_rubs"
   // key name contains "rub" but the product is actually a whole-cut).
   const extraSectionTitle =
-    templateSuffix === "whole-cuts"     ? "About This Cut"  :
+    templateSuffix === "whole-cuts"     ? "Understanding Rubs"  :
     templateSuffix === "box-collections"? "About This Box"  :
     "Understanding Rubs"; // all rubs templates
 
@@ -391,19 +816,36 @@ export function ProductPageShell({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       {/* Breadcrumb */}
-      <div className="container mx-auto px-4 py-3">
-        <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Link to="/" className="transition-colors hover:text-foreground">Home</Link>
-          <span>/</span>
-          <Link to="/collections/all" className="transition-colors hover:text-foreground">{product.vendor || "Products"}</Link>
-          <span>/</span>
-          <span className="max-w-[220px] truncate font-medium text-foreground">{product.title}</span>
-        </nav>
-      </div>
+      {(() => {
+        const category = (product.collections?.nodes ?? []).find(
+          (c: any) => c.handle && c.handle !== "all" && c.handle !== "frontpage"
+        );
+        return (
+          <div className="container mx-auto px-4 py-3">
+            <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Link to="/" className="transition-colors hover:text-foreground">Home</Link>
+              <span>/</span>
+              {category ? (
+                <Link to={`/collections/${category.handle}`} className="transition-colors hover:text-foreground">
+                  {category.title}
+                </Link>
+              ) : (
+                <Link to="/collections/all" className="transition-colors hover:text-foreground">
+                  {product.vendor || "Products"}
+                </Link>
+              )}
+              <span>/</span>
+              <span className="max-w-[220px] truncate font-medium text-foreground">{product.title}</span>
+            </nav>
+          </div>
+        );
+      })()}
 
-      <div className="container mx-auto grid gap-8 px-4 pb-8 md:grid-cols-2 md:gap-12">
+      <div className="container mx-auto grid gap-6 px-4 pb-4 md:grid-cols-2 md:items-start md:gap-10">
         {/* ── Media gallery ── */}
-        <div className="flex flex-col gap-3">
+        <div className="flex min-w-0 flex-col gap-3 md:sticky md:top-36 md:self-start">
+
+          {/* Main image */}
           <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
             {activeMedia?.type === "video" && activeMedia.mp4Url ? (
               <video src={activeMedia.mp4Url} poster={activeMedia.poster ?? undefined}
@@ -423,30 +865,55 @@ export function ProductPageShell({
               )}
             </div>
           </div>
+
+          {/* Thumbnail row — below main image, all screen sizes */}
           {allMedia.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {allMedia.map((media, i) => {
-                const thumb = media.type === "image" ? shopifyImageUrl(media.url, 160) : media.type === "video" ? (media.poster ?? "") : (media as any).poster ?? "";
-                return (
-                  <button key={i} type="button" onClick={() => setActiveMediaIdx(i)}
-                    className={`relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-colors ${i === activeMediaIdx ? "border-crimson" : "border-transparent hover:border-muted-foreground"}`}>
-                    {thumb && <img src={thumb} alt="" className="h-full w-full object-cover" />}
-                    {(media.type === "video" || media.type === "external_video") && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                        <Play className="h-5 w-5 fill-white text-white" />
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
+            <div className="relative w-full">
+              {/* Left arrow */}
+              <button type="button" aria-label="Previous images"
+                onClick={() => thumbTrackRef.current?.scrollBy({ left: -THUMB_SCROLL, behavior: 'smooth' })}
+                className={`absolute left-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background shadow-md transition-all duration-200 hover:bg-muted hover:shadow-lg ${thumbCanLeft ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+
+              {/* Scrollable track — no-scrollbar hides scrollbar on all browsers */}
+              <div ref={thumbTrackRef} className="no-scrollbar flex w-full gap-2 overflow-x-auto">
+                {allMedia.map((media, i) => {
+                  const thumb = media.type === "image" ? shopifyImageUrl(media.url, 200) : media.type === "video" ? (media.poster ?? "") : (media as any).poster ?? "";
+                  const isActive = i === activeMediaIdx;
+                  return (
+                    <button key={i} type="button" onClick={() => setActiveMediaIdx(i)}
+                      className={`relative h-[80px] w-[80px] flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 ${
+                        isActive
+                          ? "border-crimson shadow-[inset_0_0_0_1px_rgba(180,0,0,0.25)]"
+                          : "border-transparent opacity-60 hover:opacity-100 hover:border-border/60"
+                      }`}>
+                      {thumb && <img src={thumb} alt="" className="h-full w-full object-cover" />}
+                      {(media.type === "video" || media.type === "external_video") && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                          <Play className="h-5 w-5 fill-white text-white" />
+                        </div>
+                      )}
+                      {isActive && <span className="absolute bottom-1 left-1/2 h-[3px] w-6 -translate-x-1/2 rounded-full bg-crimson" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Right arrow */}
+              <button type="button" aria-label="Next images"
+                onClick={() => thumbTrackRef.current?.scrollBy({ left: THUMB_SCROLL, behavior: 'smooth' })}
+                className={`absolute right-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background shadow-md transition-all duration-200 hover:bg-muted hover:shadow-lg ${thumbCanRight ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
           )}
         </div>
 
         {/* ── Product info ── */}
-        <div className="flex flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
           <div>
-            <h1 className="font-display text-2xl font-extrabold leading-tight sm:text-3xl">{product.title}</h1>
+            <h1 className="font-display text-xl font-bold leading-snug tracking-tight sm:text-2xl">{product.title}</h1>
             {displayRating.average > 0 && (
               <button type="button" onClick={() => document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth" })}
                 className="mt-2 flex items-center gap-2 transition-opacity hover:opacity-80">
@@ -461,78 +928,58 @@ export function ProductPageShell({
           {/* Price */}
           <div className="flex flex-col gap-1">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="font-display text-2xl font-bold text-crimson">{formatPrice(displayPrice?.amount ?? "0", currency)}</span>
-              {displayCompareAt && <span className="text-base text-muted-foreground line-through">{formatPrice(displayCompareAt.amount, currency)}</span>}
+              <span className="font-display text-xl font-bold text-crimson sm:text-2xl">{formatPrice(displayPrice?.amount ?? "0", currency)}</span>
+              {displayCompareAt && <span className="text-sm text-muted-foreground line-through sm:text-base">{formatPrice(displayCompareAt.amount, currency)}</span>}
               <StockBadge available={variant?.availableForSale ?? false} qty={variant?.quantityAvailable ?? null} />
             </div>
 
-            {/* Price per kg — shown from Shopify unit pricing, or custom metafield, or parsed from variant title */}
+            {/* Price per kg — updates on every variant change */}
             {(() => {
+              const pricePerKgLine = (label: string) => (
+                <p className="text-xs text-muted-foreground sm:text-sm">
+                  <span className="font-medium text-foreground">Price per kg:</span>{" "}
+                  {label}
+                </p>
+              );
+
               // 1. Shopify built-in unit price
               const unitPrice = (variant as any)?.unitPrice;
               const unitMeasure = (variant as any)?.unitPriceMeasurement;
               if (unitPrice?.amount && parseFloat(unitPrice.amount) > 0) {
                 const unit = unitMeasure?.referenceUnit ?? "kg";
-                return (
-                  <p className="text-xs text-muted-foreground">
-                    {formatPrice(unitPrice.amount, unitPrice.currencyCode)} / {unit}
-                  </p>
-                );
+                return pricePerKgLine(`${formatPrice(unitPrice.amount, unitPrice.currencyCode)} / ${unit}`);
               }
 
-              // 2. Custom metafield price_per_kg on the variant
-              const metaPerKg = (variant as any)?.metafields?.find(
-                (m: any) => m?.key === "price_per_kg"
-              )?.value;
-              if (metaPerKg) {
+              // 2. Custom metafield price_per_kg or per_kg_price on the variant
+              // Value may be a plain number ("96") or pre-formatted ("AED 96")
+              const metaPerKg =
+                (variant as any)?.metafields?.find((m: any) => m?.key === "price_per_kg")?.value ??
+                (variant as any)?.metafields?.find((m: any) => m?.key === "per_kg_price")?.value;
+              if (metaPerKg?.trim()) {
                 const numVal = parseFloat(metaPerKg);
                 if (!isNaN(numVal) && numVal > 0) {
-                  return (
-                    <p className="text-xs text-muted-foreground">
-                      {formatPrice(numVal.toString(), currency)} / kg
-                    </p>
-                  );
+                  return pricePerKgLine(formatPrice(numVal.toString(), currency));
                 }
+                // Already formatted string e.g. "AED 96"
+                return pricePerKgLine(metaPerKg.trim());
               }
 
               // 3. Parse weight from variant title and calculate (e.g. "6kg", "500g", "2.5 kg")
               if (variant?.title && displayPrice?.amount) {
                 const kgMatch = variant.title.match(/(\d+(?:\.\d+)?)\s*kg/i);
-                const gMatch  = variant.title.match(/(\d+(?:\.\d+)?)\s*g(?!$|\w)/i); // grams, not "grilled"
+                const gMatch  = variant.title.match(/(\d+(?:\.\d+)?)\s*g(?!$|\w)/i);
                 let kgValue: number | null = null;
                 if (kgMatch)  kgValue = parseFloat(kgMatch[1]);
                 else if (gMatch) kgValue = parseFloat(gMatch[1]) / 1000;
-
                 if (kgValue && kgValue > 0) {
-                  const pricePerKg = parseFloat(displayPrice.amount) / kgValue;
-                  if (pricePerKg > 0) {
-                    return (
-                      <p className="text-xs text-muted-foreground">
-                        {formatPrice(pricePerKg.toFixed(2), currency)} / kg
-                      </p>
-                    );
-                  }
+                  const ppkg = parseFloat(displayPrice.amount) / kgValue;
+                  if (ppkg > 0) return pricePerKgLine(formatPrice(ppkg.toFixed(2), currency));
                 }
               }
 
               return null;
             })()}
 
-            {/* Pickup availability */}
-            {(() => {
-              const pickupLocations = ((variant as any)?.storeAvailability?.nodes ?? [])
-                .filter((s: any) => s.available)
-                .map((s: any) => s.location?.name ?? s.location?.address?.city)
-                .filter(Boolean);
-              if (pickupLocations.length === 0) return null;
-              return (
-                <div className="flex items-center gap-2 text-xs font-medium text-green-700">
-                  <span className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
-                  Pickup available at {pickupLocations.slice(0, 2).join(", ")}
-                  {pickupLocations.length > 2 && ` +${pickupLocations.length - 2} more`}
-                </div>
-              );
-            })()}
           </div>
 
           {/* Variants */}
@@ -542,14 +989,24 @@ export function ProductPageShell({
                 if (option.values.length === 1 && option.values[0] === "Default Title") return null;
                 return (
                   <div key={option.name}>
-                    <p className="mb-2 text-sm font-semibold">{option.name}</p>
-                    <div className="flex flex-wrap gap-2">
+                    <p className="mb-1.5 text-xs font-semibold sm:mb-2 sm:text-sm">{option.name}</p>
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {option.values.map((value: any) => {
-                        const mv = variants.find((v: any) => v.selectedOptions.some((o: any) => o.name === option.name && o.value === value));
+                        const desired: Record<string, string> = Object.fromEntries(
+                          (variant?.selectedOptions ?? []).map((o: any) => [o.name, o.value])
+                        );
+                        desired[option.name] = value;
+                        const mv =
+                          variants.find((v: any) =>
+                            v.selectedOptions.every((o: any) => desired[o.name] === o.value)
+                          ) ??
+                          variants.find((v: any) =>
+                            v.selectedOptions.some((o: any) => o.name === option.name && o.value === value)
+                          );
                         const active = variant?.selectedOptions.some((o: any) => o.name === option.name && o.value === value);
                         return (
                           <button key={value} type="button" onClick={() => mv && setSelectedVariantId(mv.id)} disabled={!mv?.availableForSale}
-                            className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${active ? "border-crimson bg-crimson text-crimson-foreground" : "border-border bg-card hover:border-crimson"} disabled:opacity-40`}>
+                            className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors sm:px-3 sm:py-1.5 sm:text-sm ${active ? "border-crimson bg-crimson text-crimson-foreground" : "border-border bg-card hover:border-crimson"} disabled:opacity-40`}>
                             {value}
                           </button>
                         );
@@ -580,6 +1037,23 @@ export function ProductPageShell({
               regularPrice={variant?.price.amount ?? "0"} currency={currency} />
           )}
 
+          {/* Special Request — all templates except whole cuts */}
+          {templateSuffix !== "whole-cuts" && templateSuffix !== "abu-dhabi-10kg-aus" && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="special-request" className="text-sm font-semibold text-foreground">
+                Special Request
+              </label>
+              <textarea
+                id="special-request"
+                rows={2}
+                value={specialRequest}
+                onChange={(e) => setSpecialRequest(e.target.value)}
+                placeholder="Any special instructions for your order…"
+                className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-crimson focus:outline-none focus:ring-2 focus:ring-crimson/20"
+              />
+            </div>
+          )}
+
           {/* ATC sentinel — IntersectionObserver watches this */}
           <div ref={atcSentinelRef} aria-hidden />
 
@@ -591,9 +1065,9 @@ export function ProductPageShell({
                 <span className="w-8 text-center text-sm font-semibold">{qty}</span>
                 <button type="button" onClick={() => setQty((q) => q + 1)} className="grid h-10 w-10 place-items-center text-muted-foreground transition-colors hover:text-foreground"><Plus className="h-4 w-4" /></button>
               </div>
-              <button type="button" onClick={handleAddToCart} disabled={isLoading}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-crimson px-6 py-3 text-sm font-bold uppercase tracking-wide text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-50">
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add to Cart"}
+              <button type="button" onClick={handleAddToCart} disabled={isAdding}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-crimson px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-50 sm:px-6 sm:py-3 sm:text-sm">
+                {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add to Cart"}
               </button>
             </div>
           ) : (
@@ -603,97 +1077,222 @@ export function ProductPageShell({
             </div>
           )}
 
+          {/* Trust badge image — set badge_image in product_page_settings metaobject to show */}
+          {pageSettings?.badgeImage && (
+            <img
+              src={pageSettings.badgeImage}
+              alt="Trust badges"
+              className="mx-auto w-4/5 h-auto object-contain"
+              loading="lazy"
+            />
+          )}
+
+          {/* Pickup availability — shown below ATC */}
+          {(() => {
+            const allStores: StoreNode[] = (variant as any)?.storeAvailability?.nodes ?? [];
+            const firstAvailable = allStores.find((s) => s.available);
+            if (!firstAvailable) return null;
+            return (
+              <div className="rounded-lg border border-green-200 bg-green-50/50 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 flex-shrink-0 rounded-full bg-green-500" />
+                  <p className="text-sm font-semibold text-green-800">
+                    Pickup available at {firstAvailable.location.name}
+                  </p>
+                </div>
+                <p className="mt-0.5 ps-4 text-xs text-green-700">
+                  {firstAvailable.pickUpTime ?? "Usually ready in 2 hours"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setPickupDrawerOpen(true)}
+                  className="mt-1.5 ps-4 text-xs font-semibold text-crimson underline-offset-2 hover:underline"
+                >
+                  Check availability at other stores →
+                </button>
+              </div>
+            );
+          })()}
+
           {/* Trust badges */}
-          <div className="grid grid-cols-3 gap-3 rounded-xl border border-border bg-muted/40 p-4">
+          <div className="grid grid-cols-3 gap-2 rounded-xl border border-border p-3 sm:gap-3 sm:p-4">
             {[{ icon: Truck, label: "2-hour delivery" }, { icon: ShieldCheck, label: "100% Halal certified" }, { icon: RefreshCw, label: "Quality guarantee" }].map(({ icon: Icon, label }) => (
-              <div key={label} className="flex flex-col items-center gap-1.5 text-center">
-                <Icon className="h-6 w-6 text-crimson" />
-                <span className="text-xs font-medium text-muted-foreground">{label}</span>
+              <div key={label} className="flex flex-col items-center gap-1 text-center">
+                <Icon className="h-5 w-5 text-crimson sm:h-6 sm:w-6" />
+                <span className="text-[10px] font-medium leading-snug text-muted-foreground sm:text-xs">{label}</span>
               </div>
             ))}
           </div>
 
-          {/* Social share */}
-          <SocialShare title={product.title} />
-
-          {/* Accordions */}
-          <div className="border-t border-border pt-2">
+          {/* Description + Free Returns + Customer Support */}
+          <div className="border-t border-border">
             <AccordionItem title="Description" defaultOpen>
-              {product.descriptionHtml ? <DescriptionWithToggle html={product.descriptionHtml} /> : <p>No description available.</p>}
+              {product.descriptionHtml
+                ? <DescriptionWithToggle html={product.descriptionHtml} />
+                : <p>No description available.</p>}
             </AccordionItem>
-            <AccordionItem title={pageSettings?.deliveryTitle ?? "Delivery Info"}>
-              {pageSettings?.deliveryContent ? (
-                <ul className="space-y-2">{pageSettings.deliveryContent.split("\n").filter(Boolean).map((l, i) => <li key={i}>{l}</li>)}</ul>
-              ) : (
-                <ul className="space-y-2">
-                  <li>2-hour delivery available for orders placed before 8 PM.</li>
-                  <li>Orders are packed in insulated boxes to maintain freshness.</li>
-                  <li>All products are delivered chilled (0–4°C).</li>
-                  <li>Delivery available across UAE and major cities.</li>
-                </ul>
-              )}
+            <AccordionItem title="100% Free Returns">
+              <div className="divide-y divide-border/50">
+                {[
+                  "Drop a WhatsApp message or send us an email within 24 hours after delivery.",
+                  "We will exchange the product and deliver it again to your door, or you can pick it up if you want.",
+                  "You will receive the product or a refund. Refunds will be processed within 14 working days.",
+                ].map((line, i) => (
+                  <p key={i} className="py-2 text-xs leading-relaxed text-muted-foreground sm:py-2.5 sm:text-[13px]">
+                    {line}
+                  </p>
+                ))}
+              </div>
             </AccordionItem>
             <AccordionItem title={pageSettings?.supportTitle ?? "Customer Support"}>
-              <ul className="space-y-2">
-                {(pageSettings?.supportContent ? pageSettings.supportContent.split("\n").filter(Boolean) : ["Call or WhatsApp: +971504516403", "Support available 9 AM – 9 PM daily.", "Email: contactus@mlsuae.ae", "Hassle-free returns within 24 hours of delivery."]).map((line, i) => (
+              <ul className="space-y-1.5 text-xs text-muted-foreground sm:space-y-2 sm:text-sm">
+                {(pageSettings?.supportContent
+                  ? pageSettings.supportContent.split("\n").filter(Boolean)
+                  : ["Call or WhatsApp: +971504516403", "Support available 9 AM – 9 PM daily.", "Email: contactus@mlsuae.ae", "Hassle-free returns within 24 hours of delivery."]
+                ).map((line, i) => (
                   <li key={i}><LinkifyLine text={line} /></li>
                 ))}
               </ul>
             </AccordionItem>
-            {extraSections && (
-              <AccordionItem title={extraSectionTitle}>{extraSections}</AccordionItem>
-            )}
           </div>
+
         </div>
       </div>
 
+      {/* ── Info tabs: Understanding Rubs / Nutrition / Delivery & Support ── */}
+      <InfoTabs
+        extraSections={
+          accordionSections.length > 0
+            ? <>{accordionSections.map(s => <AccordionItem key={s.value} title={s.label}>{s.content}</AccordionItem>)}{extraSections}</>
+            : extraSections
+        }
+        extraSectionTitle={extraSectionTitle}
+        pageSettings={pageSettings}
+        variant={variant}
+      />
+
       {/* ── Sticky Add to Cart bar ── */}
-      <div className={`fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur transition-transform duration-300 ${stickyVisible ? "translate-y-0" : "translate-y-full"}`}>
-        <div className="container mx-auto flex items-center gap-3 px-4 py-3">
+      <div className={`fixed bottom-0 left-0 right-0 z-40 overflow-hidden border-t border-border bg-background/95 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur transition-transform duration-300 ${stickyVisible ? "translate-y-0" : "translate-y-full"}`}>
+
+        {/* ── Expandable panel: variants + subscription ── */}
+        <div className={`transition-all duration-300 ease-in-out ${stickyExpanded ? "max-h-[65vh] overflow-y-auto" : "max-h-0 overflow-hidden"}`}>
+          <div className="container mx-auto space-y-4 px-4 pb-4 pt-5" style={{ maxHeight: "65vh" }}>
+
+            {/* Variant options */}
+            {hasOptions && (
+              <div className="space-y-3">
+                {product.options.map((option: any) => {
+                  if (option.values.length === 1 && option.values[0] === "Default Title") return null;
+                  return (
+                    <div key={option.name}>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{option.name}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {option.values.map((value: any) => {
+                          const desired: Record<string, string> = Object.fromEntries(
+                            (variant?.selectedOptions ?? []).map((o: any) => [o.name, o.value])
+                          );
+                          desired[option.name] = value;
+                          const mv =
+                            variants.find((v: any) =>
+                              v.selectedOptions.every((o: any) => desired[o.name] === o.value)
+                            ) ??
+                            variants.find((v: any) =>
+                              v.selectedOptions.some((o: any) => o.name === option.name && o.value === value)
+                            );
+                          const active = variant?.selectedOptions.some((o: any) => o.name === option.name && o.value === value);
+                          return (
+                            <button key={value} type="button"
+                              onClick={() => { mv && setSelectedVariantId(mv.id); }}
+                              disabled={!mv?.availableForSale}
+                              className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${active ? "border-crimson bg-crimson text-crimson-foreground" : "border-border bg-card hover:border-crimson"} disabled:opacity-40`}>
+                              {value}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Subscription selector */}
+            {sellingPlanGroups.length > 0 && (
+              <SubscriptionSelector
+                groups={sellingPlanGroups}
+                selectedPlanId={selectedPlanId}
+                onSelect={setSelectedPlanId}
+                regularPrice={variant?.price.amount ?? "0"}
+                currency={currency}
+              />
+            )}
+
+            {/* Special request in sticky bar — same state as main form */}
+            {templateSuffix !== "whole-cuts" && templateSuffix !== "abu-dhabi-10kg-aus" && (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-foreground">Special Request</label>
+                <textarea
+                  rows={2}
+                  value={specialRequest}
+                  onChange={(e) => setSpecialRequest(e.target.value)}
+                  placeholder="Any special instructions…"
+                  className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-crimson focus:outline-none focus:ring-2 focus:ring-crimson/20"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Main ATC row ── */}
+        <div className="flex w-full items-center gap-2 px-3 py-2.5">
           {images[0] && (
-            <img src={shopifyImageUrl(images[0].url, 80)} alt={product.title} className="h-12 w-12 flex-shrink-0 rounded-lg object-cover" />
+            <img src={shopifyImageUrl(images[0].url, 80)} alt={product.title} className="h-9 w-9 flex-shrink-0 rounded-lg object-cover sm:h-10 sm:w-10" />
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold sm:text-sm">{product.title}</p>
+            <p className="truncate text-[11px] font-semibold sm:text-xs">{product.title}</p>
             {variant?.title && variant.title !== "Default Title" && (
-              <p className="truncate text-[11px] text-muted-foreground">{variant.title}</p>
+              <p className="truncate text-[10px] text-muted-foreground sm:text-[11px]">{variant.title}</p>
             )}
-            {selectedPlanId && sellingPlanGroups.length > 0 && (
-              <p className="truncate text-[10px] text-green-700">
-                {sellingPlanGroups[0]?.plans?.find((p: any) => p.id === selectedPlanId)?.name ?? "Subscribe & Save"}
-              </p>
-            )}
-            <p className="text-sm font-bold text-crimson">{formatPrice(displayPrice?.amount ?? "0", currency)}</p>
+            <p className="text-[11px] font-bold text-crimson sm:text-xs">{formatPrice(displayPrice?.amount ?? "0", currency)}</p>
           </div>
+
+          {/* Expand toggle */}
+          {(hasOptions || sellingPlanGroups.length > 0) && (
+            <button
+              type="button"
+              onClick={() => setStickyExpanded((e) => !e)}
+              className="flex flex-shrink-0 items-center gap-1 rounded-lg border border-crimson/60 bg-crimson/5 px-2 py-1.5 text-[11px] font-semibold text-crimson transition-colors hover:bg-crimson/10 sm:px-2.5 sm:py-2 sm:text-xs"
+            >
+              {stickyExpanded ? <ChevronDown className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> : <ChevronUp className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
+              <span>{stickyExpanded ? "Close" : "Options"}</span>
+            </button>
+          )}
+
           {variant?.availableForSale ? (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center rounded-lg border border-border">
-                <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid h-10 w-10 place-items-center text-muted-foreground hover:text-foreground"><Minus className="h-3.5 w-3.5" /></button>
-                <span className="w-7 text-center text-sm font-semibold">{qty}</span>
-                <button type="button" onClick={() => setQty((q) => q + 1)} className="grid h-10 w-10 place-items-center text-muted-foreground hover:text-foreground"><Plus className="h-3.5 w-3.5" /></button>
+            <div className="flex flex-shrink-0 items-center gap-1.5">
+              {/* Qty — hidden on very small screens, always visible on sm+ */}
+              <div className="hidden items-center rounded-lg border border-border sm:flex">
+                <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid h-9 w-8 place-items-center text-muted-foreground hover:text-foreground"><Minus className="h-3 w-3" /></button>
+                <span className="w-5 text-center text-xs font-semibold">{qty}</span>
+                <button type="button" onClick={() => setQty((q) => q + 1)} className="grid h-9 w-8 place-items-center text-muted-foreground hover:text-foreground"><Plus className="h-3 w-3" /></button>
               </div>
-              <button type="button" onClick={handleAddToCart} disabled={isLoading}
-                className="rounded-lg bg-crimson px-4 py-3 text-sm font-bold uppercase tracking-wide text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-50">
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add to Cart"}
+              <button type="button" onClick={handleAddToCart} disabled={isAdding}
+                className="flex-shrink-0 rounded-lg bg-crimson px-2.5 py-2 text-[11px] font-bold uppercase tracking-normal text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-50 sm:px-3 sm:py-2.5 sm:text-xs sm:tracking-wide">
+                {isAdding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add to Cart"}
               </button>
             </div>
           ) : (
-            <span className="rounded-lg bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">Out of Stock</span>
+            <span className="flex-shrink-0 rounded-lg bg-muted px-2.5 py-2 text-[11px] font-bold uppercase text-muted-foreground sm:px-3 sm:py-2.5 sm:text-xs">Out of Stock</span>
           )}
         </div>
-      </div>
-
-      {/* Reviews */}
-      <div id="reviews" className="container mx-auto px-4 pb-8">
-        <JudgemeReviews reviews={reviews} rating={rating} totalCount={reviewsTotalCount} handle={product.handle} externalId={externalId ?? undefined} />
       </div>
 
       {/* Recommended products */}
       {recommendations.length > 0 && (
-        <div className="container mx-auto px-4 pb-16">
-          <div className="mb-3 md:mb-6">
+        <div className="container mx-auto px-4 pt-8 pb-4">
+          <div className="mb-3 md:mb-5">
             <p className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-crimson md:mb-1 md:text-[11px]">You might also like</p>
-            <h2 className="font-display text-lg font-extrabold md:text-2xl">Recommended for You</h2>
+            <h2 className="font-display text-base font-bold leading-snug tracking-tight md:text-xl">Recommended for You</h2>
           </div>
           <HScroller>
             {recommendations.map((p) => (
@@ -706,7 +1305,28 @@ export function ProductPageShell({
       )}
 
       {/* Recently viewed */}
-      <RecentlyViewed />
+      <RecentlyViewed excludeHandle={product.handle} />
+
+      {/* Reviews — Judge.me CDN widget (shows all reviews including historical ones) */}
+      <div id="reviews" className="container mx-auto px-4 pb-6">
+        {externalId ? (
+          <JudgemeWidgetEmbed
+            externalId={externalId}
+            shopDomain="mls-uae.myshopify.com"
+          />
+        ) : (
+          <JudgemeReviews reviews={reviews} rating={rating} totalCount={reviewsTotalCount} handle={product.handle} externalId={undefined} />
+        )}
+      </div>
+
+      {/* Store pickup drawer */}
+      <PickupDrawer
+        open={pickupDrawerOpen}
+        onClose={() => setPickupDrawerOpen(false)}
+        productTitle={product.title}
+        variantTitle={variant?.title ?? ""}
+        stores={(variant as any)?.storeAvailability?.nodes ?? []}
+      />
     </div>
   );
 }

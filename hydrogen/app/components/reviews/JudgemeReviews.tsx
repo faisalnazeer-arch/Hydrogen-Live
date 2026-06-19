@@ -170,13 +170,33 @@ function WriteReviewModal({ handle, externalId, onClose }: { handle: string; ext
 // ── Main component ────────────────────────────────────────────────────────
 export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, handle, externalId, metaAverage, metaCount }: JudgemeReviewsProps) {
   const [allReviews, setAllReviews] = useState<JudgemeReview[]>(initialReviews);
+  const [clientTotal, setClientTotal] = useState<number | null>(null);
+  const [loadingFallback, setLoadingFallback] = useState(false);
   const [page, setPage] = useState(1);
   const [showWriteReview, setShowWriteReview] = useState(false);
   const fetcher = useFetcher<{ reviews: JudgemeReview[]; totalCount: number }>();
 
-  useEffect(() => { setAllReviews(initialReviews); setPage(1); }, [handle]); // eslint-disable-line
+  useEffect(() => { setAllReviews(initialReviews); setPage(1); setClientTotal(null); }, [handle]); // eslint-disable-line
 
-  const effectiveTotal = totalCount > 0 ? totalCount : (metaCount ?? 0);
+  // Client-side fallback: server may return 0 reviews when Judge.me cold-start
+  // exceeds the 2.5s critical-path timeout. Fetch after hydration instead.
+  useEffect(() => {
+    if (initialReviews.length > 0) return;
+    setLoadingFallback(true);
+    const eid = externalId ? `&eid=${encodeURIComponent(externalId)}` : "";
+    fetch(`/api/reviews/${handle}?page=1${eid}`)
+      .then((r) => r.json())
+      .then((data: any) => {
+        if (data?.reviews?.length > 0) {
+          setAllReviews(data.reviews);
+          setClientTotal(data.totalCount ?? data.reviews.length);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingFallback(false));
+  }, [handle, externalId]); // eslint-disable-line
+
+  const effectiveTotal = clientTotal ?? (totalCount > 0 ? totalCount : (metaCount ?? 0));
   const effectiveAvg = rating.average > 0 ? rating.average : (metaAverage ?? 0);
   const effectiveRating: JudgemeRatingSummary = rating.average > 0
     ? rating
@@ -216,7 +236,13 @@ export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, ha
         </div>
 
         {effectiveTotal === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">No reviews yet — be the first to review this product!</p>
+          loadingFallback ? (
+            <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading reviews…
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-muted-foreground">No reviews yet — be the first to review this product!</p>
+          )
         ) : (
           <>
             {/* Summary */}

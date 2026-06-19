@@ -1,7 +1,5 @@
 import { Truck, RefreshCw, ShieldCheck, Award } from "lucide-react";
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
 interface TrustBadge {
   id: string;
   handle: string | null;
@@ -20,9 +18,8 @@ interface RawMetaobjectNode {
   }>;
 }
 
-const DEFAULT_ICONS = [RefreshCw, Truck, ShieldCheck, Award];
-
-// ── Parser ─────────────────────────────────────────────────────────────────
+const DEFAULT_ICONS = [Truck, ShieldCheck, Award, RefreshCw];
+const ICON_FILTER = "invert(15%) sepia(80%) saturate(400%) hue-rotate(340deg)";
 
 function parseBadges(nodes: RawMetaobjectNode[]): TrustBadge[] {
   return nodes
@@ -30,9 +27,7 @@ function parseBadges(nodes: RawMetaobjectNode[]): TrustBadge[] {
       const fieldMap = Object.fromEntries(node.fields.map((f) => [f.key, f]));
       const heading = fieldMap["heading"]?.value ?? null;
       const subTitle = fieldMap["sub_title"]?.value ?? null;
-
       if (!heading && !subTitle) return null;
-
       return {
         id: node.id,
         handle: node.handle ?? null,
@@ -44,8 +39,6 @@ function parseBadges(nodes: RawMetaobjectNode[]): TrustBadge[] {
     .filter((b): b is TrustBadge => b !== null);
 }
 
-// ── Component ──────────────────────────────────────────────────────────────
-
 interface TrustBadgesProps {
   badges?: RawMetaobjectNode[];
   centered?: boolean;
@@ -53,43 +46,93 @@ interface TrustBadgesProps {
 
 export function TrustBadges({ badges: rawBadges = [], centered = false }: TrustBadgesProps) {
   const parsed = parseBadges(rawBadges);
+  if (parsed.length === 0) return null;
 
   return (
-    <section className="border-b border-border bg-bone">
-      <div className={`container mx-auto px-4 py-6 md:py-8 ${centered ? "flex flex-wrap justify-center gap-3 md:gap-6" : "grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-6"}`}>
-        {parsed.map((badge, i) => (
-          <DynamicBadge key={badge.id} badge={badge} index={i} centered={centered} />
-        ))}
+    <section className="border-b border-border bg-background py-6 md:py-8">
+      <div className="container mx-auto px-4">
+
+        {/* ── Mobile: icon-above-text, 3 across ── */}
+        <div className="grid sm:hidden" style={{ gridTemplateColumns: `repeat(${parsed.length}, 1fr)` }}>
+          {parsed.map((badge, i) => {
+            const Icon = DEFAULT_ICONS[i % DEFAULT_ICONS.length];
+            return (
+              <div
+                key={badge.id}
+                className={`flex flex-col items-center gap-1.5 px-2 text-center${i > 0 ? " border-l border-border" : ""}`}
+              >
+                <div className="grid h-8 w-8 place-items-center rounded-lg bg-crimson/10 text-crimson">
+                  {badge.iconUrl ? (
+                    <img
+                      src={badge.iconUrl}
+                      alt={badge.heading ?? ""}
+                      className="h-4 w-4 object-contain"
+                      style={{ filter: ICON_FILTER }}
+                    />
+                  ) : (
+                    <Icon className="h-4 w-4" />
+                  )}
+                </div>
+                {badge.heading && (
+                  <p className="text-[10px] font-bold leading-tight text-foreground">
+                    {badge.heading}
+                  </p>
+                )}
+                {badge.subTitle && (
+                  <p className="text-[9px] leading-tight text-muted-foreground">
+                    {badge.subTitle}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Desktop: full-width columns, icon-left, generous padding ── */}
+        <div
+          className="hidden divide-x divide-border sm:grid"
+          style={{ gridTemplateColumns: `repeat(${parsed.length}, 1fr)` }}
+        >
+          {parsed.map((badge, i) => {
+            const Icon = DEFAULT_ICONS[i % DEFAULT_ICONS.length];
+            return (
+              <div
+                key={badge.id}
+                className="group flex items-center justify-center gap-4 px-8 transition-colors duration-200 hover:bg-crimson/[0.03]"
+              >
+                {/* Icon box */}
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-crimson/10 text-crimson shadow-sm transition-shadow duration-200 group-hover:shadow-md">
+                  {badge.iconUrl ? (
+                    <img
+                      src={badge.iconUrl}
+                      alt={badge.heading ?? ""}
+                      className="h-6 w-6 object-contain"
+                      style={{ filter: ICON_FILTER }}
+                    />
+                  ) : (
+                    <Icon className="h-6 w-6" />
+                  )}
+                </div>
+
+                {/* Text */}
+                <div className="min-w-0">
+                  {badge.heading && (
+                    <p className="text-sm font-bold leading-tight text-foreground">
+                      {badge.heading}
+                    </p>
+                  )}
+                  {badge.subTitle && (
+                    <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
+                      {badge.subTitle}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
       </div>
     </section>
-  );
-}
-
-// ── Dynamic badge — text from Shopify API (T Lab syncs translations here) ─
-
-function DynamicBadge({ badge, index, centered }: { badge: TrustBadge; index: number; centered?: boolean }) {
-  const FallbackIcon = DEFAULT_ICONS[index % DEFAULT_ICONS.length];
-  return (
-    <div className={`flex flex-col items-center gap-2 rounded-lg bg-background/60 p-4 text-center md:bg-transparent md:p-0 ${centered ? "w-[140px] md:w-[160px]" : "md:flex-row md:gap-3 md:text-start"}`}>
-      <div className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-full bg-crimson/10 text-crimson md:h-12 md:w-12">
-        {badge.iconUrl ? (
-          <img src={badge.iconUrl} alt={badge.heading ?? ""} className="h-6 w-6 object-contain" />
-        ) : (
-          <FallbackIcon className="h-5 w-5" />
-        )}
-      </div>
-      <div className={`min-w-0 ${centered ? "text-center" : "md:text-start"}`}>
-        {badge.heading && (
-          <div className="font-display text-[13px] font-bold leading-tight md:text-sm">
-            {badge.heading}
-          </div>
-        )}
-        {badge.subTitle && (
-          <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground md:text-xs">
-            {badge.subTitle}
-          </div>
-        )}
-      </div>
-    </div>
   );
 }

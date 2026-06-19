@@ -13,17 +13,24 @@ import { OptionButton } from "@/components/shared/OptionButton";
 import { useQuickBuyStore } from "@/stores/quickBuyStore";
 import { useCartStore } from "@/stores/cartStore";
 import { formatPrice, shopifyImageUrl } from "@/lib/shopify";
-import { toast } from "sonner";
 import {
   SubscriptionSelector,
   parseSellingPlanGroups,
   type SellingPlanGroup,
 } from "@/components/product/SubscriptionSelector";
 
+// Per-handle cache so re-opening the same product is instant (no spinner)
+type PlanData = {
+  groups: SellingPlanGroup[];
+  variantAllocations: Record<string, Record<string, string>>;
+};
+const _planCache = new Map<string, PlanData>();
+
 export function QuickBuyDrawer() {
   const { product, isOpen, close } = useQuickBuyStore();
   const addItem = useCartStore((s) => s.addItem);
-  const isLoading = useCartStore((s) => s.isLoading);
+  const addItemError = useCartStore((s) => s.addItemError);
+  const [isAdding, setIsAdding] = useState(false);
 
   const node = product?.node;
   const variants = useMemo(
@@ -52,7 +59,9 @@ export function QuickBuyDrawer() {
     setQty(1);
   }, [node, variants]);
 
-  // Fetch selling plans on-demand via server route (uses authenticated storefront client)
+  // Load selling plans for the current product.
+  // Cache hit → instant (no spinner). Miss → fetch with one auto-retry.
+  // AbortController cancels in-flight requests when product changes or drawer unmounts.
   useEffect(() => {
     if (!node?.handle) {
       setSelectedPlanId(null);
@@ -60,23 +69,63 @@ export function QuickBuyDrawer() {
       setVariantAllocations({});
       return;
     }
+
+    // Clear any error left from a previous product
+    useCartStore.setState({ addItemError: null });
+
+    const cached = _planCache.get(node.handle);
+    if (cached) {
+      setSelectedPlanId(null);
+      setSellingPlanGroups(cached.groups);
+      setVariantAllocations(cached.variantAllocations);
+      return;
+    }
+
     setSelectedPlanId(null);
     setSellingPlanGroups([]);
     setVariantAllocations({});
     setFetchingPlans(true);
 
-    fetch(`/api/selling-plans/${node.handle}`)
-      .then((res) => res.json() as Promise<{ groups: any[]; discountMap: Record<string, number>; variantAllocations: Record<string, Record<string, string>> }>)
-      .then((data) => {
-        setSellingPlanGroups(parseSellingPlanGroups(data.groups ?? [], data.discountMap ?? {}));
-        setVariantAllocations(data.variantAllocations ?? {});
-      })
-      .catch((err) => {
-        console.error("[QuickBuy] selling plans fetch failed:", err);
-      })
-      .finally(() => {
-        setFetchingPlans(false);
-      });
+    const ac = new AbortController();
+
+    const load = async (): Promise<void> => {
+      try {
+        for (let attempt = 0; attempt <= 1; attempt++) {
+          if (ac.signal.aborted) return;
+          try {
+            const res = await fetch(`/api/selling-plans/${node.handle}`, { signal: ac.signal });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json() as {
+              groups: any[];
+              discountMap: Record<string, number>;
+              variantAllocations: Record<string, Record<string, string>>;
+            };
+            const groups = parseSellingPlanGroups(data.groups ?? [], data.discountMap ?? {});
+            const allocs = data.variantAllocations ?? {};
+            _planCache.set(node.handle, { groups, variantAllocations: allocs });
+            setSellingPlanGroups(groups);
+            setVariantAllocations(allocs);
+            return;
+          } catch (err: any) {
+            if (ac.signal.aborted || err?.name === "AbortError") return;
+            if (attempt < 1) {
+              await new Promise<void>((r) => setTimeout(r, 400));
+              continue;
+            }
+            console.warn("[QuickBuy] Failed to load subscription plans:", err);
+          }
+        }
+      } finally {
+        if (!ac.signal.aborted) setFetchingPlans(false);
+      }
+    };
+
+    load();
+
+    return () => {
+      ac.abort();
+      setFetchingPlans(false);
+    };
   }, [node?.handle]);
 
   const matched = variants.find((v) =>
@@ -112,9 +161,12 @@ export function QuickBuyDrawer() {
   if (!node) return null;
   const img = node.images.edges[0]?.node;
 
-  const handleAdd = async () => {
-    if (!matched) return;
-    await addItem({
+  const handleAdd = () => {
+    if (!matched || isAdding) return;
+    useCartStore.setState({ addItemError: null });
+    setIsAdding(true);
+    // Fire-and-forget — drawer opens immediately
+    void addItem({
       product: product!,
       variantId: matched.id,
       variantTitle: matched.title,
@@ -125,24 +177,26 @@ export function QuickBuyDrawer() {
       sellingPlanId: selectedPlanId ?? undefined,
       sellingPlanName: activePlan?.name ?? null,
     });
-    toast.success("Added to cart", {
-      description: `${node.title}${matched.title !== "Default Title" ? ` · ${matched.title}` : ""}${activePlan ? ` · ${activePlan.name}` : ""}`,
-    });
-    close();
+    // Brief button lock to prevent double-submit, then close QuickBuy
+    setTimeout(() => {
+      setIsAdding(false);
+      const { isOpen: cartIsOpen, addItemError: err } = useCartStore.getState();
+      if (cartIsOpen && !err) close();
+    }, 350);
   };
 
   return (
     <Sheet open={isOpen} onOpenChange={(o) => !o && close()}>
       <SheetContent className="flex w-[96vw] max-w-[440px] flex-col p-0 sm:max-w-md">
-        <SheetHeader className="border-b border-border px-4 py-2 sm:px-6 sm:py-4">
-          <SheetTitle className="font-display text-sm sm:text-xl">Quick Buy</SheetTitle>
-          <SheetDescription className="text-[11px] sm:text-sm">Choose options and add to cart</SheetDescription>
+        <SheetHeader className="border-b border-border px-4 py-2.5 sm:px-5">
+          <SheetTitle className="font-display text-base">Quick Buy</SheetTitle>
+          <SheetDescription className="sr-only">Select options and add to cart</SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto px-4 py-3 sm:p-6">
-          <div className="flex gap-3 sm:gap-4">
+        <div className="flex-1 overflow-y-auto px-4 py-2 sm:px-5 sm:py-3">
+          <div className="flex gap-3">
             {img && (
-              <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-muted sm:h-28 sm:w-28">
+              <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-md bg-muted sm:h-20 sm:w-20">
                 <img
                   src={shopifyImageUrl(img.url, 300)}
                   alt={img.altText ?? node.title}
@@ -237,14 +291,24 @@ export function QuickBuyDrawer() {
         </div>
 
         <div className="border-t border-border px-4 py-2.5 sm:p-4">
+          {addItemError && (
+            <div className="mb-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {addItemError}
+            </div>
+          )}
           <Button
             onClick={handleAdd}
-            disabled={!matched?.availableForSale || isLoading}
+            disabled={!matched?.availableForSale || isAdding || fetchingPlans}
             size="sm"
             className="h-9 w-full bg-crimson text-xs text-crimson-foreground hover:bg-rich-red sm:h-11 sm:text-sm"
           >
-            {isLoading ? (
+            {isAdding ? (
               <Loader2 className="h-4 w-4 animate-spin" />
+            ) : fetchingPlans ? (
+              <>
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                Loading options…
+              </>
             ) : (
               <>
                 <ShoppingBag className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />

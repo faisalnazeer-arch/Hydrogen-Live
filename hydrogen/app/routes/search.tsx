@@ -63,10 +63,10 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     variables: { query: q, first: 24, language: "EN" as const, country: "AE" as const },
   });
 
-  const products: ShopifyProduct[] = (data?.search?.nodes ?? []).map(
-    (node: any) => ({ node }),
-  );
-  return { q, products, total: data?.search?.totalCount ?? products.length };
+  const products: ShopifyProduct[] = (data?.search?.nodes ?? [])
+    .filter((node: any) => parseFloat(node.priceRange?.minVariantPrice?.amount ?? "0") > 0)
+    .map((node: any) => ({ node }));
+  return { q, products, total: products.length };
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => [
