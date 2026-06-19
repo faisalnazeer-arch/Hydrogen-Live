@@ -21,7 +21,7 @@ function parseSlide(node: any): ParsedSlide | null {
   const desktopImage = getImageUrl(f, "desktop_image");
   if (!desktopImage) return null;
 
-  const scrollTarget = getField(f, "scroll_target");
+  let scrollTarget = getField(f, "scroll_target");
 
   let ctaUrl: string | null = null;
   if (!scrollTarget) {
@@ -30,6 +30,17 @@ function parseSlide(node: any): ParsedSlide | null {
       try { ctaUrl = JSON.parse(rawLink)?.url ?? rawLink; } catch { ctaUrl = rawLink; }
     }
     if (!ctaUrl) ctaUrl = getField(f, "cta_url");
+
+    // Hash link (e.g. "#products") → treat as in-page scroll target
+    if (ctaUrl?.startsWith("#")) {
+      scrollTarget = ctaUrl.slice(1);
+      ctaUrl = null;
+    }
+  }
+
+  // Default: scroll to the product grid section below when no CTA is configured
+  if (!scrollTarget && !ctaUrl) {
+    scrollTarget = "products";
   }
 
   return {
