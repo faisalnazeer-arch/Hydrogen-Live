@@ -39,15 +39,8 @@ function parseSlides(nodes: RawMetaobjectNode[]): HeroSlide[] {
     .map((node) => {
       const fieldMap = Object.fromEntries(node.fields.map((f) => [f.key, f]));
 
-      const desktopImage =
-        fieldMap["desktop_image"]?.reference?.image ??
-        fieldMap["hero_image_1"]?.reference?.image ??
-        null;
-
-      const mobileImage =
-        fieldMap["mobile_image"]?.reference?.image ??
-        fieldMap["hero_image_2"]?.reference?.image ??
-        null;
+      const desktopImage = fieldMap["desktop_image"]?.reference?.image ?? null;
+      const mobileImage  = fieldMap["mobile_image"]?.reference?.image  ?? null;
 
       if (!desktopImage && !mobileImage) return null;
 
@@ -66,8 +59,8 @@ function parseSlides(nodes: RawMetaobjectNode[]): HeroSlide[] {
         id: node.id,
         desktopImage,
         mobileImage,
-        content: fieldMap["content"]?.value ?? null,
-        buttonText: fieldMap["button_text"]?.value ?? null,
+        content:    fieldMap["content"]?.value      ?? null,
+        buttonText: fieldMap["button_text"]?.value  ?? null,
         buttonUrl,
       } satisfies HeroSlide;
     })
@@ -172,10 +165,8 @@ export function HeroBanner({ slides: rawSlides = [] }: HeroBannerProps) {
 
 function SlideItem({ slide, active, priority }: { slide: HeroSlide; active: boolean; priority?: boolean }) {
   const hasContent = slide.content || slide.buttonText;
-
-  return (
+  const inner = (
     <div className="relative w-full" style={{ flexShrink: 0 }}>
-      {/* Images are natural-size (no cropping) — the image height drives the slide height */}
       {slide.mobileImage && (
         <img
           src={slide.mobileImage.url}
@@ -219,6 +210,21 @@ function SlideItem({ slide, active, priority }: { slide: HeroSlide; active: bool
       </div>
     </div>
   );
+
+  if (slide.buttonUrl) {
+    return (
+      <Link
+        to={slide.buttonUrl}
+        className="block cursor-pointer"
+        style={{ flexShrink: 0, width: "100%" }}
+        draggable={false}
+      >
+        {inner}
+      </Link>
+    );
+  }
+
+  return inner;
 }
 
 // ── Dynamic metaobject content ─────────────────────────────────────────────

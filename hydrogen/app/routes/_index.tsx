@@ -496,7 +496,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     )
     .slice(0, 6);
 
-  const storeReviews: JudgemeReview[] = (reviewsData as any)?.reviews ?? [];
+  const storeReviews: JudgemeReview[] = ((reviewsData as any)?.reviews ?? []).filter((r: JudgemeReview) => r.rating >= 4);
   const reviewTotalCount: number = (reviewsData as any)?.total_count ?? 0;
   const reviewAverage: number = (shopStats as any)?.average ?? 0;
 
