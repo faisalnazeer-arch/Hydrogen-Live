@@ -10,10 +10,6 @@ interface LocaleState {
 
 function readInitialLocale(): Locale {
   if (typeof document === "undefined") return "en";
-  // Check URL path first (/ar/... prefix), then cookie
-  if (window.location.pathname.startsWith("/ar/") || window.location.pathname === "/ar") {
-    return "ar";
-  }
   const m = document.cookie.match(/(?:^|;\s*)lang=([a-z]{2})/);
   return m?.[1] === "ar" ? "ar" : "en";
 }
@@ -25,14 +21,9 @@ export const useLocaleStore = create<LocaleState>()((set) => ({
     if (typeof document !== "undefined") {
       const secure = window.location.protocol === "https:" ? ";Secure" : "";
       document.cookie = `lang=${locale};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax${secure}`;
-
-      const currentPath = window.location.pathname;
-      const search = window.location.search;
-      // Strip any existing /ar prefix then add it back if switching to Arabic
-      const basePath = currentPath.replace(/^\/ar(\/|$)/, "/") || "/";
-      // Always use /ar/ (with trailing slash) so the ar.$ splat route matches
-      const targetPath = locale === "ar" ? `/ar${basePath}` : basePath;
-      window.location.href = targetPath + search;
+      // Hard reload so the server sees the new cookie and returns translated content.
+      // Use location.href assigned to itself to force a true HTTP request (not cached).
+      window.location.href = window.location.href;
     }
   },
 }));
