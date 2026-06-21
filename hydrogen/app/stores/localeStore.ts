@@ -32,8 +32,6 @@ export const useLocaleStore = create<LocaleState>()((set) => ({
         target += window.location.search;
       }
 
-      // Replace the current history entry so the browser back button does not
-      // land on the pre-switch locale URL after switching language.
       window.location.replace(target);
     }
   },
@@ -42,15 +40,21 @@ export const useLocaleStore = create<LocaleState>()((set) => ({
 export const dirFor = (l: Locale): Dir => (l === "ar" ? "rtl" : "ltr");
 
 /**
- * Returns a function that prefixes internal paths with /ar/ when the locale
- * is Arabic. Uses the root loader data (server-safe, no hydration mismatch).
+ * Returns a path-prefixer function that prepends /ar/ when locale is Arabic.
+ * Reads locale from the root loader (SSR-safe). Falls back to Zustand store
+ * (picks up cookie on client if root data is unavailable).
  */
 export function useLocalePath() {
-  const data = useRouteLoaderData("root") as { locale?: "ar" | "en" } | undefined;
-  const locale = data?.locale ?? "en";
-  return (path: string): string => {
-    if (locale !== "ar") return path;
-    if (path.startsWith("/ar")) return path; // already prefixed
-    return `/ar${path.startsWith("/") ? path : `/${path}`}`;
+  // Root loader provides the server-detected locale — no hydration mismatch.
+  const rootData = useRouteLoaderData("root") as { locale?: Locale } | undefined;
+  // Zustand fallback — correct after client hydration reads the cookie.
+  const storeLocale = useLocaleStore((s) => s.locale);
+  const locale: Locale = rootData?.locale ?? storeLocale;
+
+  return (path: string | null | undefined): string => {
+    const p = path ?? "/";
+    if (locale !== "ar") return p;
+    if (p.startsWith("/ar")) return p;
+    return `/ar${p.startsWith("/") ? p : `/${p}`}`;
   };
 }
