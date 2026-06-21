@@ -1,14 +1,15 @@
 import { redirect } from "@shopify/remix-oxygen";
 import type { LoaderFunctionArgs } from "@shopify/remix-oxygen";
 
-// Handles any /ar/* URL: sets lang=ar cookie and redirects to the locale-free path.
-// This ensures old mlsuae.ae /ar/ deep-links and bookmarks continue to work on Hydrogen.
-export async function loader({ request, params }: LoaderFunctionArgs) {
+// Fallback for any /ar/* URL that has no specific route (e.g. old bookmarks).
+// Strips /ar prefix from the ORIGINAL encoded pathname so the Location header
+// stays valid ASCII/percent-encoded — never contains raw Arabic characters.
+export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
-  const rest = (params as Record<string, string>)["*"] ?? "";
-  const newPath = rest ? `/${rest}` : "/";
+  // url.pathname is already percent-encoded by the browser; just strip /ar prefix.
+  const stripped = url.pathname.replace(/^\/ar/, "") || "/";
 
-  return redirect(`${newPath}${url.search}`, {
+  return redirect(`${stripped}${url.search}`, {
     status: 302,
     headers: {
       "Set-Cookie": "lang=ar; Path=/; Max-Age=31536000; SameSite=Lax",
