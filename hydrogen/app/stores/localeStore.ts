@@ -21,15 +21,19 @@ export const useLocaleStore = create<LocaleState>()((set) => ({
     if (typeof document !== "undefined") {
       const secure = window.location.protocol === "https:" ? ";Secure" : "";
       document.cookie = `lang=${locale};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax${secure}`;
+
+      let target: string;
       if (locale === "ar") {
-        // Navigate to /ar so the URL reflects the Arabic locale.
-        window.location.href = "/ar";
+        target = "/ar";
       } else {
-        // Strip /ar prefix if present, otherwise reload at current path without it.
         const current = window.location.pathname;
-        const stripped = current.startsWith("/ar/") ? current.slice(3) : current === "/ar" ? "/" : current;
-        window.location.href = stripped + window.location.search;
+        target = current.startsWith("/ar/") ? current.slice(3) || "/" : current === "/ar" ? "/" : current;
+        target += window.location.search;
       }
+
+      // Replace the current history entry so the browser back button does not
+      // land on the pre-switch locale URL after switching language.
+      window.location.replace(target);
     }
   },
 }));
