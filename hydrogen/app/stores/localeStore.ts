@@ -8,23 +8,30 @@ interface LocaleState {
   setLocale: (l: Locale) => void;
 }
 
-// Read the cookie synchronously at module-load time so the store starts
-// with the correct locale — avoids the post-hydration flash where the UI
-// briefly shows "EN" before the useEffect fires and corrects it to "AR".
-function readCookieLocale(): Locale {
+function readInitialLocale(): Locale {
   if (typeof document === "undefined") return "en";
+  // Check URL path first (/ar/... prefix), then cookie
+  if (window.location.pathname.startsWith("/ar/") || window.location.pathname === "/ar") {
+    return "ar";
+  }
   const m = document.cookie.match(/(?:^|;\s*)lang=([a-z]{2})/);
   return m?.[1] === "ar" ? "ar" : "en";
 }
 
 export const useLocaleStore = create<LocaleState>()((set) => ({
-  locale: readCookieLocale(),
+  locale: readInitialLocale(),
   setLocale: (locale) => {
     set({ locale });
     if (typeof document !== "undefined") {
       const secure = window.location.protocol === "https:" ? ";Secure" : "";
       document.cookie = `lang=${locale};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax${secure}`;
-      window.location.reload();
+
+      const currentPath = window.location.pathname;
+      const search = window.location.search;
+      // Strip any existing /ar prefix then add it back if switching to Arabic
+      const basePath = currentPath.replace(/^\/ar(\/|$)/, "/") || "/";
+      const targetPath = locale === "ar" ? `/ar${basePath === "/" ? "" : basePath}` : basePath;
+      window.location.href = targetPath + search;
     }
   },
 }));

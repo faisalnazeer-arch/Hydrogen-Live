@@ -25,8 +25,19 @@ export default {
         AppSession.init(request, [env.SESSION_SECRET]),
       ]);
 
+      // Detect locale from URL prefix (/ar/...) first, then fall back to cookie.
+      // URL-based locale takes priority so the browser address bar always reflects the language.
+      const reqUrl = new URL(request.url);
+      const hasArPrefix = reqUrl.pathname === "/ar" || reqUrl.pathname.startsWith("/ar/");
       const langCookie = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
-      const language = langCookie === "ar" ? "AR" : "EN";
+      const language = (hasArPrefix || langCookie === "ar") ? "AR" : "EN";
+
+      // Rewrite the request URL by stripping the /ar prefix so React Router routes match normally.
+      if (hasArPrefix) {
+        const stripped = reqUrl.pathname.replace(/^\/ar(\/|$)/, "/") || "/";
+        reqUrl.pathname = stripped;
+        request = new Request(reqUrl.toString(), request);
+      }
 
       const { storefront: baseStorefront } = createStorefrontClient({
         cache,
@@ -117,6 +128,10 @@ export default {
 
       if (session.isPending) {
         response.headers.set("Set-Cookie", await session.commit());
+      }
+      // Keep the lang cookie in sync when navigating via /ar URL prefix
+      if (hasArPrefix && langCookie !== "ar") {
+        response.headers.append("Set-Cookie", "lang=ar;path=/;max-age=31536000;SameSite=Lax");
       }
       return response;
     } catch (error) {

@@ -10,11 +10,13 @@ export async function storefrontApiRequest<T = any>(
   query: string,
   variables: Record<string, any> = {}
 ): Promise<{ data: T } | undefined> {
+  const isAr = variables.language === "AR";
   const response = await fetch(SHOPIFY_STOREFRONT_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Shopify-Storefront-Access-Token": SHOPIFY_STOREFRONT_TOKEN,
+      ...(isAr ? { "Accept-Language": "ar" } : {}),
     },
     body: JSON.stringify({ query, variables }),
   });
@@ -126,7 +128,8 @@ export const PRODUCT_FRAGMENT = `
 
 export const COLLECTION_PRODUCTS_QUERY = `
   ${PRODUCT_FRAGMENT}
-  query CollectionProducts($handle: String!, $first: Int!) {
+  query CollectionProducts($handle: String!, $first: Int!, $language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
     collection(handle: $handle) {
       id
       title
@@ -141,7 +144,8 @@ export const COLLECTION_PRODUCTS_QUERY = `
 
 export const PRODUCTS_QUERY = `
   ${PRODUCT_FRAGMENT}
-  query Products($first: Int!, $query: String) {
+  query Products($first: Int!, $query: String, $language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
     products(first: $first, query: $query) {
       edges { node { ...ProductCard } }
     }
@@ -150,7 +154,8 @@ export const PRODUCTS_QUERY = `
 
 export const PRODUCT_BY_HANDLE_QUERY = `
   ${PRODUCT_FRAGMENT}
-  query ProductByHandle($handle: String!) {
+  query ProductByHandle($handle: String!, $language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
     product(handle: $handle) {
       ...ProductCard
       descriptionHtml
@@ -161,7 +166,8 @@ export const PRODUCT_BY_HANDLE_QUERY = `
 
 export const SEARCH_PRODUCTS_QUERY = `
   ${PRODUCT_FRAGMENT}
-  query SearchProducts($query: String!, $first: Int!) {
+  query SearchProducts($query: String!, $first: Int!, $language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
     products(first: $first, query: $query) {
       edges { node { ...ProductCard } }
     }

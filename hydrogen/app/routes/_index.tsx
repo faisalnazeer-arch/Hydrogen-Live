@@ -401,6 +401,9 @@ function pickReels(edges: any[]): ReelProduct[] {
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
   const af = (q: string) => context.adminFetch(q).then((d: any) => d?.nodes ?? {});
+  const langCookie = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
+  const language = (langCookie === "ar" ? "AR" : "EN") as "AR" | "EN";
+  const country = "AE" as const;
 
   const [
     heroRes, badgesRes, priceSecRes, priceTileRes, reelSecRes,
@@ -445,7 +448,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   if (allHandles.length > 0) {
     await Promise.all(allHandles.map(async (handle) => {
       try {
-        const res = await context.storefront.query(COLLECTION_PRODUCTS_QUERY, { variables: { handle, first: 20 } });
+        const res = await context.storefront.query(COLLECTION_PRODUCTS_QUERY, { variables: { handle, first: 20, language, country } });
         productsByHandle.set(handle, (res?.collection?.products?.edges ?? [])
           .filter((e: any) => parseFloat(e.node?.priceRange?.minVariantPrice?.amount ?? "0") > 0));
       } catch { /* ignore missing collection */ }
@@ -478,7 +481,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   if (saleSection) {
     try {
       const res = await context.storefront.query(COLLECTION_PRODUCTS_QUERY, {
-        variables: { handle: saleSection.collectionHandle, first: 20 },
+        variables: { handle: saleSection.collectionHandle, first: 20, language, country },
       });
       saleProducts = (res?.collection?.products?.edges ?? [])
         .filter((e: any) => parseFloat(e.node?.priceRange?.minVariantPrice?.amount ?? "0") > 0);
