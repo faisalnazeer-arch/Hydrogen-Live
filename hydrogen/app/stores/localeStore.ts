@@ -30,7 +30,8 @@ export const useLocaleStore = create<LocaleState>()((set) => ({
       const search = window.location.search;
       // Strip any existing /ar prefix then add it back if switching to Arabic
       const basePath = currentPath.replace(/^\/ar(\/|$)/, "/") || "/";
-      const targetPath = locale === "ar" ? `/ar${basePath === "/" ? "" : basePath}` : basePath;
+      // Always use /ar/ (with trailing slash) so the ar.$ splat route matches
+      const targetPath = locale === "ar" ? `/ar${basePath}` : basePath;
       window.location.href = targetPath + search;
     }
   },
