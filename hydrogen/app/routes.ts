@@ -31,6 +31,8 @@ export default hydrogenRoutes([
   route('cart.js', 'routes/cart[.]js.tsx'),
   route('apps/loggedincustomer', 'routes/apps.loggedincustomer.tsx'),
   route('apps/pushowl/sdks/service-worker.js', 'routes/apps.pushowl.sdks.service-worker[.]js.tsx'),
+  route('sitemap.xml', 'routes/sitemap[.]xml.tsx'),
+  route('robots.txt', 'routes/robots[.]txt.tsx'),
   route('search', 'routes/search.tsx', { id: 'search' }),
   route('collections/:handle', 'routes/collections.$handle.tsx'),
   route('blogs/all', 'routes/blogs.all.tsx'),

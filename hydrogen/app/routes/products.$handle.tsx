@@ -495,10 +495,49 @@ function renderTemplate(suffix: string | null | undefined, props: any) {
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
-  const title = `${data?.product?.title ?? "Product"} — MLS UAE`;
-  const description = (data?.product?.description ?? "Premium halal meat delivered across UAE.").slice(0, 160);
-  const image = data?.product?.images?.edges?.[0]?.node?.url;
+  const product = data?.product;
+  const title = `${product?.title ?? "Product"} — MLS UAE`;
+  const description = (product?.description ?? "Premium halal meat delivered across UAE.").slice(0, 160);
+  const image = product?.images?.edges?.[0]?.node?.url ?? product?.images?.nodes?.[0]?.url;
   const canonical = `https://mlsuae.ae${location.pathname}`;
+
+  const variants = product?.variants?.nodes ?? product?.variants?.edges?.map((e: any) => e.node) ?? [];
+  const firstVariant = variants[0];
+  const price = firstVariant?.price?.amount ?? product?.priceRange?.minVariantPrice?.amount ?? "0";
+  const currency = firstVariant?.price?.currencyCode ?? product?.priceRange?.minVariantPrice?.currencyCode ?? "AED";
+  const inStock = product?.availableForSale !== false;
+
+  const jsonLd = {
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    name: product?.title ?? "",
+    description,
+    url: canonical,
+    ...(image ? { image: [image] } : {}),
+    brand: { "@type": "Brand", name: "MLS UAE" },
+    offers: variants.length
+      ? variants.map((v: any) => ({
+          "@type": "Offer",
+          priceCurrency: v.price?.currencyCode ?? currency,
+          price: v.price?.amount ?? price,
+          availability: v.availableForSale
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+          url: canonical,
+          itemCondition: "https://schema.org/NewCondition",
+        }))
+      : {
+          "@type": "Offer",
+          priceCurrency: currency,
+          price,
+          availability: inStock
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+          url: canonical,
+          itemCondition: "https://schema.org/NewCondition",
+        },
+  };
+
   return [
     { title },
     { name: "description", content: description },
@@ -508,6 +547,11 @@ export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
     ...(image ? [{ property: "og:image", content: image }] : []),
     { property: "og:url", content: canonical },
     { tagName: "link", rel: "canonical", href: canonical },
+    {
+      tagName: "script",
+      type: "application/ld+json",
+      children: JSON.stringify(jsonLd),
+    },
   ];
 };
 

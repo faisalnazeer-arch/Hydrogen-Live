@@ -370,6 +370,30 @@ function parseCollectionSectionConfig(nodes: any[]): { heading: string; subHeadi
   return { heading, subHeading: (f.sub_heading?.value ?? "") as string };
 }
 
+const HOME_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "MLS UAE",
+  url: "https://mlsuae.ae",
+  logo: "https://mlsuae.ae/logo.png",
+  description: "Premium halal meats — Wagyu, Angus, lamb and more — delivered across the UAE.",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "Marasi Drive, Business Bay",
+    addressLocality: "Dubai",
+    addressCountry: "AE",
+  },
+  contactPoint: {
+    "@type": "ContactPoint",
+    telephone: "+971504516403",
+    contactType: "customer service",
+  },
+  sameAs: [
+    "https://www.instagram.com/mlsuae",
+    "https://www.facebook.com/mlsuae",
+  ],
+};
+
 export const meta: MetaFunction = () => [
   { title: "MLS UAE — Premium Meats" },
   { name: "description", content: "Premium Wagyu, Angus, lamb and more — delivered." },
@@ -378,6 +402,7 @@ export const meta: MetaFunction = () => [
   { property: "og:description", content: "Premium Wagyu, Angus, lamb and more — delivered across the UAE." },
   { property: "og:url", content: "https://mlsuae.ae/" },
   { tagName: "link", rel: "canonical", href: "https://mlsuae.ae/" },
+  { tagName: "script", type: "application/ld+json", children: JSON.stringify(HOME_JSON_LD) },
 ];
 
 

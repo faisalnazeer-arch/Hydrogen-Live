@@ -187,6 +187,17 @@ export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
   const description = data?.collection?.description ?? "";
   const image = (data?.collection as any)?.image?.url as string | undefined;
   const canonical = `https://mlsuae.ae${location.pathname}`;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://mlsuae.ae/" },
+      { "@type": "ListItem", position: 2, name: "Collections", item: "https://mlsuae.ae/collections" },
+      { "@type": "ListItem", position: 3, name: data?.collection?.title ?? "Collection", item: canonical },
+    ],
+  };
+
   return [
     { title },
     { name: "description", content: description },
@@ -196,6 +207,7 @@ export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
     ...(image ? [{ property: "og:image", content: image }] : []),
     { property: "og:url", content: canonical },
     { tagName: "link", rel: "canonical", href: canonical },
+    { tagName: "script", type: "application/ld+json", children: JSON.stringify(jsonLd) },
   ];
 };
 
