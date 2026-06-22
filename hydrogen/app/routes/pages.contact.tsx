@@ -55,27 +55,47 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: "Please enter a valid email address." };
 
   try {
+    const baseUrl = `https://${SHOPIFY_STORE_PERMANENT_DOMAIN}`;
+
+    // Step 1 — GET the contact page to acquire CSRF token + session cookie.
+    // Shopify's contact form requires an authenticity_token and a matching session.
+    const getRes = await fetch(`${baseUrl}/contact`, {
+      headers: { Accept: "text/html" },
+    });
+    const html = await getRes.text();
+    const sessionCookie = getRes.headers.get("set-cookie") ?? "";
+    const csrfMatch = html.match(/name="authenticity_token"[^>]*value="([^"]+)"/);
+    const csrfToken = csrfMatch?.[1] ?? "";
+
+    // Step 2 — POST with CSRF token and forwarded session cookie.
     const body = new URLSearchParams({
       form_type: "contact",
       utf8: "✓",
+      authenticity_token: csrfToken,
       "contact[name]": name,
       "contact[email]": email,
       "contact[phone]": phone,
       "contact[body]": message,
     });
-    const res = await fetch(`https://${SHOPIFY_STORE_PERMANENT_DOMAIN}/contact`, {
+    const postRes = await fetch(`${baseUrl}/contact`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json",
+        ...(sessionCookie ? { Cookie: sessionCookie } : {}),
       },
       body: body.toString(),
+      redirect: "manual",
     });
-    if (!res.ok) {
-      console.warn("[contact] Shopify contact endpoint returned", res.status);
-      return { ok: false, error: "Could not send your message. Please contact us directly via WhatsApp or email." };
+
+    // Shopify redirects to /contact?customer_posted=true on success.
+    // Any 2xx or 3xx means the message was accepted.
+    const location = postRes.headers.get("location") ?? "";
+    if (postRes.status < 400 || location.includes("customer_posted")) {
+      return { ok: true };
     }
-    return { ok: true };
+
+    console.warn("[contact] Shopify contact endpoint returned", postRes.status, location);
+    return { ok: false, error: "Could not send your message. Please contact us directly via WhatsApp or email." };
   } catch (err) {
     console.error("[contact] Failed to submit:", err);
     return { ok: false, error: "Could not send your message. Please contact us directly via WhatsApp or email." };
