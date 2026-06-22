@@ -301,7 +301,7 @@ async function createShopifyCart(item: CartItem) {
   }
   return {
     cartId: cart.id as string,
-    checkoutUrl: cart.checkoutUrl ? formatCheckoutUrl(cart.checkoutUrl) : `https://mls-uae.myshopify.com/cart`,
+    checkoutUrl: cart.checkoutUrl ? formatCheckoutUrl(cart.checkoutUrl) : null,
     lineId,
     subtotalAmount: cart.cost?.subtotalAmount ?? null,
     totalAmount: cart.cost?.totalAmount ?? null,

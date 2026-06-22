@@ -43,6 +43,7 @@ export function CartDrawer() {
     removingLineIds,
     updateQuantity,
     removeItem,
+    checkoutUrl,
     getCheckoutUrl,
     syncCart,
     discountCodes,
@@ -66,6 +67,7 @@ export function CartDrawer() {
       removingLineIds: s.removingLineIds,
       updateQuantity: s.updateQuantity,
       removeItem: s.removeItem,
+      checkoutUrl: s.checkoutUrl,
       getCheckoutUrl: s.getCheckoutUrl,
       syncCart: s.syncCart,
       discountCodes: s.discountCodes,
@@ -551,7 +553,7 @@ export function CartDrawer() {
                   variant="primary"
                   size="lg"
                   onClick={handleCheckout}
-                  disabled={items.some((i) => i.isPending) || removingLineIds.length > 0}
+                  disabled={items.some((i) => i.isPending) || removingLineIds.length > 0 || !checkoutUrl}
                   className="w-full"
                 >
                   {t("cart.checkout")}
