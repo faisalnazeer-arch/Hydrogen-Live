@@ -1,46 +1,35 @@
 export function LpCertificationsSection({ node }: { node: any }) {
-  const f = Object.fromEntries((node?.fields ?? []).map((x: any) => [x.key, x]));
-  const heading = f.heading?.value ?? "";
-  const subHeading = f.sub_heading?.value ?? "";
-  const background = f.background?.value ?? "light";
-  const items: any[] = f.items?.references?.nodes ?? [];
+  const f: any[] = node.fields ?? [];
+  const heading = f.find((x: any) => x.key === "heading")?.value ?? "";
+  const items: any[] = f.find((x: any) => x.key === "items")?.references?.nodes ?? [];
 
   if (items.length === 0 && !heading) return null;
 
-  const isDark = background === "dark";
-
   return (
-    <section className={`py-12 md:py-16 ${isDark ? "bg-charcoal text-white" : "bg-[#f5f5f5] text-foreground"}`}>
-      <div className="container mx-auto px-4 text-center">
+    <section className="py-10">
+      <div className="container mx-auto px-4">
         {heading && (
-          <h2 className={`font-display text-xl font-extrabold md:text-2xl mb-1 ${isDark ? "text-white" : ""}`}>
+          <h2 className="mb-6 text-center font-display text-xl font-extrabold text-foreground md:text-2xl">
             {heading}
           </h2>
         )}
-        {subHeading && (
-          <p className={`text-sm mb-8 ${isDark ? "text-white/70" : "text-muted-foreground"}`}>
-            {subHeading}
-          </p>
-        )}
-        <div className="flex flex-wrap justify-center gap-8 md:gap-14">
-          {items.map((item: any) => {
-            const fi = Object.fromEntries((item?.fields ?? []).map((x: any) => [x.key, x]));
-            const imgUrl = fi.image?.reference?.image?.url ?? null;
-            const label = fi.label?.value ?? "";
+        <div className="flex flex-wrap justify-center gap-6">
+          {items.map((item: any, i: number) => {
+            const fi: any[] = item.fields ?? [];
+            const label = fi.find((x: any) => x.key === "label")?.value ?? "";
+            const imgUrl = fi.find((x: any) => x.key === "image")?.reference?.image?.url;
             return (
-              <div key={item.id} className="flex flex-col items-center gap-3 max-w-[140px]">
+              <div key={i} className="flex flex-col items-center gap-2 text-center">
                 {imgUrl && (
                   <img
                     src={imgUrl}
                     alt={label}
-                    className="h-28 w-28 object-contain rounded-lg"
+                    loading="lazy"
+                    decoding="async"
+                    className="h-16 w-16 object-contain"
                   />
                 )}
-                {label && (
-                  <p className={`text-xs text-center leading-snug ${isDark ? "text-white/80" : "text-muted-foreground"}`}>
-                    {label}
-                  </p>
-                )}
+                {label && <p className="max-w-[120px] text-xs text-muted-foreground">{label}</p>}
               </div>
             );
           })}

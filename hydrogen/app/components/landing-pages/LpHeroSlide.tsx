@@ -8,10 +8,6 @@ function getImageUrl(fields: any[], key: string): string | null {
   return fields?.find((f: any) => f.key === key)?.reference?.image?.url ?? null;
 }
 
-function getCollectionHandle(fields: any[], key: string): string | null {
-  return fields?.find((f: any) => f.key === key)?.reference?.handle ?? null;
-}
-
 interface ParsedSlide {
   desktopImage: string;
   mobileImage: string | null;
@@ -25,23 +21,33 @@ function parseSlide(node: any): ParsedSlide | null {
   const desktopImage = getImageUrl(f, "desktop_image");
   if (!desktopImage) return null;
 
-  const collectionHandle = getCollectionHandle(f, "collection");
-  const rawScroll = getField(f, "scroll_target");
+  let scrollTarget = getField(f, "scroll_target");
 
   let ctaUrl: string | null = null;
-  // Collection field → link to that collection page
-  if (collectionHandle) {
-    ctaUrl = `/collections/${collectionHandle}`;
-  } else {
+  if (!scrollTarget) {
     const rawLink = getField(f, "cta_link");
     if (rawLink) {
       try { ctaUrl = JSON.parse(rawLink)?.url ?? rawLink; } catch { ctaUrl = rawLink; }
     }
     if (!ctaUrl) ctaUrl = getField(f, "cta_url");
+
+    // Hash link (e.g. "#products") → treat as in-page scroll target
+    if (ctaUrl?.startsWith("#")) {
+      scrollTarget = ctaUrl.slice(1);
+      ctaUrl = null;
+    }
+
+    // Internal links on LP pages → scroll to products instead of navigating away
+    if (ctaUrl && !ctaUrl.startsWith("http")) {
+      scrollTarget = "products";
+      ctaUrl = null;
+    }
   }
 
-  // If no URL, always scroll to #products (scroll_target field or bare banner)
-  const scrollTarget = !ctaUrl ? "products" : null;
+  // Default: scroll to the product grid section below when no CTA is configured
+  if (!scrollTarget && !ctaUrl) {
+    scrollTarget = "products";
+  }
 
   return {
     desktopImage,
@@ -81,7 +87,9 @@ export function LpHeroSlide({ node }: { node: any }) {
           type="button"
           className="block w-full cursor-pointer"
           onClick={() => {
-            const el = document.getElementById(slide.scrollTarget!);
+            const el =
+              document.getElementById(slide.scrollTarget!) ??
+              document.getElementById("products");
             if (el) el.scrollIntoView({ behavior: "smooth" });
           }}
         >
