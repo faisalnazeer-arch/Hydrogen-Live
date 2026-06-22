@@ -48,7 +48,7 @@ export function FirstOrderGift({ data }: Props) {
   if (!data || data.items.length === 0) return null;
 
   return (
-    <section className="bg-background py-6 md:py-8">
+    <section className="bg-background py-8 md:py-12">
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-5xl">
 

@@ -462,9 +462,26 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
   const collectionSectionConfig = parseCollectionSectionConfig(data?.collectionSectionConfig?.nodes ?? []);
   const rawSection = buildFeaturedSection(parsedWithProducts);
-  const featuredSection = rawSection && collectionSectionConfig
+  const mergedSection = rawSection && collectionSectionConfig
     ? { ...rawSection, title: collectionSectionConfig.heading, subTitle: collectionSectionConfig.subHeading || undefined }
     : rawSection;
+
+  // Deduplicate products across tabs so the same item won't appear in both Lamb and Mutton (or any overlapping collections)
+  const seenTabIds = new Set<string>();
+  const featuredSection = mergedSection
+    ? {
+        ...mergedSection,
+        tabs: mergedSection.tabs.map(tab => ({
+          ...tab,
+          products: tab.products.filter((p: any) => {
+            const id = p.node?.id;
+            if (!id || seenTabIds.has(id)) return false;
+            seenTabIds.add(id);
+            return true;
+          }),
+        })),
+      }
+    : mergedSection;
   const collectionCards = parseFeaturedCollectionList(data?.featuredCollectionList?.nodes ?? []);
   const firstOrderGift = parseFirstOrderGift(data?.firstOrderGift?.nodes ?? []);
   const priceSection = parsePriceRangeSection(data?.priceRangeSection?.nodes ?? []);

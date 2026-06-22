@@ -35,7 +35,7 @@ export function ReelsCarousel({ reels, label, heading }: { reels: ReelProduct[];
   if (shuffled.length === 0) return null;
 
   return (
-    <section className="container mx-auto px-4 py-6 md:py-8">
+    <section className="container mx-auto px-4 py-8 md:py-12">
       <div className="mb-4 text-center md:mb-5">
         <div className="mb-1.5 flex items-center justify-center gap-3">
           <span className="h-px w-6 rounded-full bg-crimson" />

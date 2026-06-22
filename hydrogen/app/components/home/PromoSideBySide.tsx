@@ -36,9 +36,21 @@ export function PromoSideBySide({ promo }: PromoSideBySideProps) {
   if (!promo) return null;
 
   return (
-    <section className="container mx-auto px-4 py-6 md:py-8">
+    <section className="container mx-auto px-4 py-8 md:py-12">
       <div className="grid overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)] md:grid-cols-2">
-        {/* Text side */}
+        {/* Image side — left on desktop, below text on mobile */}
+        {promo.imageUrl && (
+          <div className="relative order-last min-h-[260px] overflow-hidden bg-charcoal md:order-first md:min-h-[340px]">
+            <img
+              src={promo.imageUrl}
+              alt={promo.imageAlt ?? promo.heading}
+              className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-700 hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-charcoal/20 via-transparent to-transparent" />
+          </div>
+        )}
+
+        {/* Text side — right on desktop */}
         <div className="flex flex-col justify-center gap-3 p-6 md:gap-4 md:p-10">
           {promo.badgeText && (
             <span className="w-fit rounded-full bg-gold/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-gold">
@@ -66,17 +78,6 @@ export function PromoSideBySide({ promo }: PromoSideBySideProps) {
             </div>
           )}
         </div>
-
-        {/* Image side */}
-        {promo.imageUrl && (
-          <div className="relative min-h-[220px] overflow-hidden bg-charcoal md:min-h-0">
-            <img
-              src={promo.imageUrl}
-              alt={promo.imageAlt ?? promo.heading}
-              className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 hover:scale-105"
-            />
-          </div>
-        )}
       </div>
     </section>
   );
