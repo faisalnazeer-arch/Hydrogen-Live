@@ -166,7 +166,7 @@ function HeroSection({ image, quote }: { image: string; quote: string }) {
         <div className="max-w-2xl pb-5 md:pb-7">
           {/* Badge */}
           <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-gold/90">
-            MLS UAE · Est. 1979
+            MLS UAE · Est. 1977
           </span>
           <h1 className="font-display text-2xl font-extrabold uppercase leading-tight tracking-tight text-white drop-shadow-sm md:text-3xl lg:text-[2.6rem]">
             {quote}
@@ -214,7 +214,7 @@ function StorySection({ heading, subheading, description, image }: {
             <div className="absolute inset-0 bg-gradient-to-br from-charcoal via-charcoal to-crimson/20" />
           )}
           <span className="absolute bottom-3 left-3 rounded-full bg-crimson px-3 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-white shadow-sm">
-            Est. 1979
+            Est. 1977
           </span>
         </div>
 
@@ -310,7 +310,7 @@ function TimelineSection({ title, subtitle, items }: { title: string; subtitle: 
       <div className="container mx-auto px-4">
         {/* Header */}
         <div ref={ref} className="mb-8 text-center md:mb-10" style={fadeUp(visible)}>
-          <Eyebrow label="Since 1979" light center />
+          <Eyebrow label="Since 1977" light center />
           <h2 className="mt-2 font-display text-xl font-bold leading-snug tracking-tight text-off-white md:text-2xl">{title}</h2>
           {subtitle && <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-off-white/55">{subtitle}</p>}
         </div>
