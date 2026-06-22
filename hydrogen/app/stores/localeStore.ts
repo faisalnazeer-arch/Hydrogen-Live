@@ -7,15 +7,14 @@ export type Dir = "ltr" | "rtl";
 interface LocaleState {
   locale: Locale;
   setLocale: (l: Locale) => void;
-}
-
-function readInitialLocale(): Locale {
-  if (typeof window === "undefined") return "en";
-  return window.location.pathname.startsWith("/ar") ? "ar" : "en";
+  _syncLocale: (l: Locale) => void;
 }
 
 export const useLocaleStore = create<LocaleState>()((set) => ({
-  locale: readInitialLocale(),
+  // Always initialize to "en" so server and client match on first render.
+  // LocaleSync in root.tsx calls _syncLocale after hydration to set the real locale.
+  locale: "en",
+  _syncLocale: (l) => set({ locale: l }),
   setLocale: (locale) => {
     set({ locale });
     if (typeof document !== "undefined") {

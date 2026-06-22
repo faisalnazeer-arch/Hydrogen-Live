@@ -661,16 +661,18 @@ function PageLoader() {
 }
 
 function LocaleSync() {
-  const locale = useLocaleStore((s) => s.locale);
+  const { locale } = useLoaderData<typeof loader>();
+  const syncLocale = useLocaleStore((s) => s._syncLocale);
 
-  // Keep html[lang] and html[dir] in sync whenever locale changes.
-  // The inline <script> in <head> handles the initial paint; this effect
-  // covers runtime switches without a full reload edge case.
+  // After hydration: sync the Zustand locale store from the server-detected
+  // locale (from root loader) so all components using useLocaleStore stay
+  // consistent without causing a server/client hydration mismatch.
   useEffect(() => {
+    syncLocale(locale);
     const html = document.documentElement;
     html.lang = locale;
     html.dir = dirFor(locale);
-  }, [locale]);
+  }, [locale, syncLocale]);
 
   return null;
 }
