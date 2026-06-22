@@ -753,7 +753,7 @@ function MobileMenuDrawer({
       </div>
       <div className="shrink-0 px-3 pb-3">
         <a href="https://mlsuae.ae/customer_authentication/redirect?locale=en&region_country=AE"
-          className="flex w-full items-center justify-center rounded-lg bg-crimson py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors hover:bg-crimson/90"
+          className="flex w-full items-center justify-center rounded-lg bg-crimson py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors hover:bg-rich-red"
           style={{ color: '#ffffff' }}
         >Login / Sign Up</a>
       </div>

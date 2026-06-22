@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet";
 import { Link } from "react-router";
-import mlsLogo from "~/assets/mls-logo.png";
 import { OriginBadge } from "~/components/product/OriginBadge";
 import { StockBadge } from "~/components/product/StockBadge";
 import {
@@ -654,6 +653,7 @@ export function ProductPageShell({
   const images = product.images.nodes;
   const mediaNodes = product.media?.nodes ?? [];
   const origin = getOriginFromTags(product.tags);
+  const isFrozen = product.tags?.some((t: string) => t.toLowerCase() === "frozen") ?? false;
   const addToRecentlyViewed = useRecentlyViewed((s) => s.add);
 
   const [selectedVariantId, setSelectedVariantId] = useState(variants[0]?.id ?? "");
@@ -871,11 +871,13 @@ export function ProductPageShell({
               <img src={shopifyImageUrl(activeMedia.url, 800)} alt={activeMedia.altText ?? product.title}
                 className="h-full w-full object-cover transition-opacity duration-300" key={activeMediaIdx} />
             ) : null}
-            <img src={mlsLogo} alt="" aria-hidden className="absolute right-4 top-4 h-10 w-auto opacity-60" />
             <div className="absolute left-4 top-4 flex flex-col gap-1.5">
               <OriginBadge origin={origin} />
               {variant?.compareAtPrice && (
                 <span className="inline-flex rounded-sm bg-crimson px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-crimson-foreground">{t("product.sale")}</span>
+              )}
+              {isFrozen && (
+                <span className="inline-flex rounded-sm bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">Frozen</span>
               )}
             </div>
           </div>

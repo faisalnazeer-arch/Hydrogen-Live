@@ -187,9 +187,10 @@ export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, ha
     fetch(`/api/reviews/${handle}?page=1${eid}`)
       .then((r) => r.json())
       .then((data: any) => {
-        if (data?.reviews?.length > 0) {
-          setAllReviews(data.reviews);
-          setClientTotal(data.totalCount ?? data.reviews.length);
+        const filtered = (data?.reviews ?? []).filter((r: any) => r.rating >= 4);
+        if (filtered.length > 0) {
+          setAllReviews(filtered);
+          setClientTotal(data.totalCount ?? filtered.length);
         }
       })
       .catch(() => {})
@@ -208,7 +209,8 @@ export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, ha
     if (fetcher.state === "idle" && fetcher.data?.reviews?.length) {
       setAllReviews((prev) => {
         const existing = new Set(prev.map((r) => r.id));
-        return [...prev, ...fetcher.data!.reviews.filter((r) => !existing.has(r.id))];
+        const incoming = fetcher.data!.reviews.filter((r) => r.rating >= 4 && !existing.has(r.id));
+        return [...prev, ...incoming];
       });
     }
   }, [fetcher.state, fetcher.data]);

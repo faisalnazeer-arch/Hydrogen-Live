@@ -19,5 +19,6 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     externalId,
   );
 
-  return Response.json({ reviews: data.reviews, totalCount: data.total_count ?? 0 });
+  const filtered = (data.reviews ?? []).filter((r: any) => r.rating >= 4);
+  return Response.json({ reviews: filtered, totalCount: data.total_count ?? 0 });
 }

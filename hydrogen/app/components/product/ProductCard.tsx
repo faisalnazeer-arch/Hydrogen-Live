@@ -55,6 +55,8 @@ export const ProductCard = memo(function ProductCard({ product, onQuickView, rat
     variants.length > 1 ||
     node.options.some((o) => o.values.length > 1 && o.values[0] !== "Default Title");
 
+  const isFrozen = node.tags?.some((t) => t.toLowerCase() === "frozen") ?? false;
+
   const metaRating = parseRatingMetafields(node.metafields);
   const avgRating = (ratingOverride?.average ?? 0) > 0 ? ratingOverride!.average : metaRating.average;
   const reviewCount = (ratingOverride?.count ?? 0) > 0 ? ratingOverride!.count : metaRating.count;
@@ -105,13 +107,18 @@ export const ProductCard = memo(function ProductCard({ product, onQuickView, rat
           />
         )}
 
-        {/* Top-left: savings badge */}
-        {maxSavings > 0.01 && (
-          <div className="absolute left-2 top-2">
-            <span className="inline-flex items-center gap-1 rounded-sm bg-crimson px-2 py-0.5 text-[10px] font-bold text-white">
-              <Tag className="h-2.5 w-2.5" />
-              Up to {currency} {maxSavings.toFixed(2)} off
-            </span>
+        {/* Top-left: savings + frozen badges */}
+        {(maxSavings > 0.01 || isFrozen) && (
+          <div className="absolute left-2 top-2 flex flex-col gap-1">
+            {maxSavings > 0.01 && (
+              <span className="inline-flex items-center gap-1 rounded-sm bg-crimson px-2 py-0.5 text-[10px] font-bold text-white">
+                <Tag className="h-2.5 w-2.5" />
+                Up to {currency} {maxSavings.toFixed(2)} off
+              </span>
+            )}
+            {isFrozen && (
+              <span className="inline-flex rounded-sm bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">Frozen</span>
+            )}
           </div>
         )}
 

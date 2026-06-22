@@ -450,7 +450,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     sellingPlanGroupsRaw: data.product.sellingPlanGroups?.nodes ?? [],
     discountMap,
     externalId: externalId ?? null,
-    reviews: (reviewsFetchResult as any).reviews ?? [],
+    reviews: ((reviewsFetchResult as any).reviews ?? []).filter((r: any) => r.rating >= 4),
     reviewsTotalCount: (reviewsFetchResult as any).total_count ?? 0,
     rating: initialRating,
     lazyData,
