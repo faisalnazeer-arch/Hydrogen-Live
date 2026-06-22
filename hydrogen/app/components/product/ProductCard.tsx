@@ -82,6 +82,7 @@ export const ProductCard = memo(function ProductCard({ product, onQuickView, rat
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
+      suppressHydrationWarning
       className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card transition-shadow hover:shadow-[var(--shadow-card)]"
     >
       {/* ── Image ── */}

@@ -238,15 +238,7 @@ function DynamicContent({ slide, active }: { slide: HeroSlide; active: boolean }
 
   return (
     <div className="flex h-full items-center">
-      <style>{`
-        @keyframes hero-in { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes hero-out { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(28px); } }
-        .hero-active { animation: hero-in 0.6s cubic-bezier(0.22,1,0.36,1) both; }
-        .hero-active .hero-eyebrow { animation: hero-in 0.5s ease-out 0.1s both; }
-        .hero-active .hero-headline { animation: hero-in 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both; }
-        .hero-active .hero-cta { animation: hero-in 0.5s ease-out 0.25s both; }
-        .hero-inactive { opacity:0; transform:translateY(28px); }
-      `}</style>
+      <style dangerouslySetInnerHTML={{ __html: `@keyframes hero-in{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}@keyframes hero-out{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(28px)}}.hero-active{animation:hero-in 0.6s cubic-bezier(0.22,1,0.36,1) both}.hero-active .hero-eyebrow{animation:hero-in 0.5s ease-out 0.1s both}.hero-active .hero-headline{animation:hero-in 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both}.hero-active .hero-cta{animation:hero-in 0.5s ease-out 0.25s both}.hero-inactive{opacity:0;transform:translateY(28px)}` }} />
       <div className="container mx-auto px-4">
         <div className={cn("max-w-2xl", active ? "hero-active" : "hero-inactive")}>
           {eyebrow && (

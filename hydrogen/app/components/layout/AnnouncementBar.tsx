@@ -13,7 +13,7 @@ export function AnnouncementBar({ messages = [] }: AnnouncementBarProps) {
           ))}
         </div>
       </div>
-      <style>{`@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }`}</style>
+      <style dangerouslySetInnerHTML={{ __html: `@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }` }} />
     </div>
   );
 }
