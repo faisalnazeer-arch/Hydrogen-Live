@@ -39,7 +39,7 @@ export function LpReviewsCarousel({ nodes }: { nodes: any[] }) {
         {doubled.map((r, i) => (
           <div
             key={i}
-            className="mx-2 w-72 flex-shrink-0 rounded-xl bg-white p-5 shadow-sm sm:w-80"
+            className="mx-2 w-72 flex-shrink-0 rounded-xl p-5 shadow-sm sm:w-80" style={{ backgroundColor: "#F7ECEA" }}
           >
             <div className="mb-2 flex gap-0.5">
               {Array.from({ length: 5 }).map((_, si) => (
