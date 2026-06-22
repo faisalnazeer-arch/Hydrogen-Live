@@ -522,9 +522,11 @@ function RichpanelWidget() {
 
 function PageLoader() {
   const navigation = useNavigation();
-  const { faviconUrl } = useLoaderData<typeof loader>();
+  const { faviconUrl, locale } = useLoaderData<typeof loader>();
   const loading = navigation.state !== "idle";
   const iconSrc = faviconUrl || DEFAULT_FAVICON;
+  const isAr = locale === "ar";
+
   return (
     <>
       <style>{`
@@ -564,33 +566,52 @@ function PageLoader() {
           <img src={iconSrc} alt="" style={{ height: 52, width: "auto", objectFit: "contain" }} />
         </div>
 
-        {/* M → L → S sequential drop-bounce */}
-        <div style={{ display: "flex", alignItems: "baseline", gap: 2, lineHeight: 1 }}>
-          {(["M", "L", "S"] as const).map((letter, i) => (
-            <span
-              key={letter}
-              style={{
-                display: "block",
-                fontSize: 88,
-                fontWeight: 900,
-                letterSpacing: "-0.05em",
-                color: "oklch(0.18 0.005 240)",
-                fontFamily: "var(--font-display, 'Georgia', serif)",
-                animation: `_mls-drop 0.48s cubic-bezier(0.22,1,0.36,1) ${0.12 + i * 0.28}s both`,
+        {isAr ? (
+          /* Arabic: مسقط → للمواشي sequential drop-bounce */
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0, lineHeight: 1.15, direction: "rtl" }}>
+            {(["مسقط", "للمواشي"] as const).map((word, i) => (
+              <span
+                key={word}
+                style={{
+                  display: "block",
+                  fontSize: i === 0 ? 72 : 52,
+                  fontWeight: 900,
+                  color: "oklch(0.18 0.005 240)",
+                  fontFamily: "var(--font-display, 'Georgia', serif)",
+                  animation: `_mls-drop 0.48s cubic-bezier(0.22,1,0.36,1) ${0.12 + i * 0.28}s both`,
+                }}
+              >{word}</span>
+            ))}
+          </div>
+        ) : (
+          /* English: M → L → S sequential drop-bounce */
+          <div style={{ display: "flex", alignItems: "baseline", gap: 2, lineHeight: 1 }}>
+            {(["M", "L", "S"] as const).map((letter, i) => (
+              <span
+                key={letter}
+                style={{
+                  display: "block",
+                  fontSize: 88,
+                  fontWeight: 900,
+                  letterSpacing: "-0.05em",
+                  color: "oklch(0.18 0.005 240)",
+                  fontFamily: "var(--font-display, 'Georgia', serif)",
+                  animation: `_mls-drop 0.48s cubic-bezier(0.22,1,0.36,1) ${0.12 + i * 0.28}s both`,
               }}
             >{letter}</span>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
-        {/* Crimson line sweeps left → right after S lands */}
+        {/* Crimson line sweeps after last item lands */}
         <div style={{
           height: 3,
-          width: 110,
+          width: isAr ? 168 : 110,
           background: "oklch(0.36 0.18 27)",
           borderRadius: 9999,
           transformOrigin: "left center",
           marginTop: 8,
-          animation: "_mls-bar 0.35s ease-out 1.0s both",
+          animation: `_mls-bar 0.35s ease-out ${isAr ? "0.84s" : "1.0s"} both`,
         }} />
 
         {/* Tagline */}
@@ -598,11 +619,12 @@ function PageLoader() {
           marginTop: 12,
           fontSize: 9,
           fontWeight: 800,
-          letterSpacing: "0.32em",
+          letterSpacing: isAr ? "0.08em" : "0.32em",
           color: "oklch(0.18 0.005 240 / 0.35)",
-          textTransform: "uppercase",
-          animation: "_mls-tag 0.35s ease-out 1.2s both",
-        }}>Premium Quality Meats</p>
+          textTransform: isAr ? "none" : "uppercase",
+          direction: isAr ? "rtl" : "ltr",
+          animation: `_mls-tag 0.35s ease-out ${isAr ? "1.04s" : "1.2s"} both`,
+        }}>{isAr ? "جودة لحوم فاخرة" : "Premium Quality Meats"}</p>
 
         {/* Staggered crimson dots */}
         <div style={{ display: "flex", gap: 7, marginTop: 40 }}>
