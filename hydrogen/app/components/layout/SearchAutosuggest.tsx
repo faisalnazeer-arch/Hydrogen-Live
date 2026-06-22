@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useLocalePath } from "@/stores/localeStore";
+import { useT } from "@/i18n/strings";
 import { Search, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { storefrontApiRequest, shopifyImageUrl, formatPrice } from "@/lib/shopify";
@@ -43,11 +44,13 @@ interface Props {
 }
 
 export function SearchAutosuggest({
-  placeholder = "Search beef, lamb, wagyu, mince…",
+  placeholder,
   onNavigate,
   defaultQuery = "",
 }: Props) {
   const lp = useLocalePath();
+  const t = useT();
+  const resolvedPlaceholder = placeholder ?? t("search.placeholder");
   const [q, setQ] = useState(defaultQuery);
   const [debounced, setDebounced] = useState("");
   const [open, setOpen] = useState(false);
@@ -98,7 +101,7 @@ export function SearchAutosuggest({
             onChange={(e) => { setQ(e.target.value); setOpen(true); }}
             onFocus={() => { if (q.trim().length >= 2) setOpen(true); }}
             type="search"
-            placeholder={placeholder}
+            placeholder={resolvedPlaceholder}
             className="w-full rounded-full border border-border bg-card py-2 pl-10 pr-4 text-sm outline-none focus:border-crimson"
           />
           {isFetching && (
@@ -111,7 +114,7 @@ export function SearchAutosuggest({
         <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-popover shadow-xl">
           {products.length === 0 && !isFetching ? (
             <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-              No matches for "{debounced}"
+              {t("search.no_matches")} &ldquo;{debounced}&rdquo;
             </div>
           ) : (
             <>
@@ -151,7 +154,7 @@ export function SearchAutosuggest({
                             )}
                             {!p.availableForSale && (
                               <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
-                                Out of stock
+                                {t("search.out_of_stock")}
                               </span>
                             )}
                           </div>
@@ -166,7 +169,7 @@ export function SearchAutosuggest({
                 onClick={() => submit(q)}
                 className="block w-full border-t border-border bg-card px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-crimson transition-colors hover:bg-muted"
               >
-                See all results for "{debounced}" →
+                {t("search.see_all_for")} &ldquo;{debounced}&rdquo; →
               </button>
             </>
           )}

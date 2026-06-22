@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { detectLanguage } from "~/lib/locale";
+import { useT } from "~/i18n/strings";
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import type { ShouldRevalidateFunctionArgs } from "react-router";
 import { useLoaderData, useNavigate, useNavigation, useFetcher } from "react-router";
@@ -139,6 +140,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 
 /* ─── Description ─────────────────────────────────────────────────────────── */
 function CollectionDescription({ text }: { text: string }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const [isMultiLine, setIsMultiLine] = useState(false);
   const ref = useRef<HTMLParagraphElement>(null);
@@ -168,7 +170,7 @@ function CollectionDescription({ text }: { text: string }) {
           onClick={() => setExpanded((e) => !e)}
           className="mt-1 text-xs font-semibold text-crimson hover:underline"
         >
-          {expanded ? "Read Less ↑" : "Read More ↓"}
+          {expanded ? t("collection.read_less") : t("collection.read_more")}
         </button>
       )}
     </div>
@@ -185,6 +187,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 /* ─── Main route component ────────────────────────────────────────────────── */
 export default function Collection() {
   const { collection, sortIdx, pageInfo } = useLoaderData<typeof loader>();
+  const t = useT();
 
   const navigate    = useNavigate();
   const navigation  = useNavigation();
@@ -304,7 +307,7 @@ export default function Collection() {
                 onClick={() => setFiltersOpen(true)}
                 className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium lg:hidden"
               >
-                <SlidersHorizontal className="h-4 w-4" /> Filters
+                <SlidersHorizontal className="h-4 w-4" /> {t("collection.filters")}
                 {(selectedOrigins.length + selectedCuts.length) > 0 && (
                   <span className="grid h-5 w-5 place-items-center rounded-full bg-crimson text-[10px] font-bold text-white">
                     {selectedOrigins.length + selectedCuts.length}
@@ -313,7 +316,7 @@ export default function Collection() {
               </button>
               {/* Count — desktop only inline */}
               <span className="hidden text-sm text-muted-foreground lg:block">
-                {filtered.length} of {allProducts.length} products{hasMore ? "+" : ""}
+                {filtered.length} {t("collection.products_of")} {allProducts.length} {t("collection.products_label")}{hasMore ? "+" : ""}
               </span>
               {/* Right: Sort */}
               <div className="relative ml-auto">
@@ -327,8 +330,14 @@ export default function Collection() {
                   }}
                   className="appearance-none rounded-lg border border-border bg-card py-2 pl-3 pr-8 text-sm font-medium"
                 >
-                  {SORT_OPTIONS.map((o, i) => (
-                    <option key={i} value={i}>{o.label}</option>
+                  {[
+                    t("collection.sort_featured"),
+                    t("collection.sort_price_low"),
+                    t("collection.sort_price_high"),
+                    t("collection.sort_newest"),
+                    t("collection.sort_best_selling"),
+                  ].map((label, i) => (
+                    <option key={i} value={i}>{label}</option>
                   ))}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -336,7 +345,7 @@ export default function Collection() {
             </div>
             {/* Count — mobile only, below the row */}
             <p className="mt-1.5 text-xs text-muted-foreground lg:hidden">
-              {filtered.length} of {allProducts.length} products{hasMore ? "+" : ""}
+              {filtered.length} {t("collection.products_of")} {allProducts.length} {t("collection.products_label")}{hasMore ? "+" : ""}
             </p>
           </div>
 
@@ -346,7 +355,7 @@ export default function Collection() {
               <div className="absolute inset-0 bg-black/40" onClick={() => setFiltersOpen(false)} />
               <div className="relative ml-auto h-full w-72 overflow-y-auto bg-card p-5 shadow-xl">
                 <div className="mb-4 flex items-center justify-between">
-                  <span className="font-semibold">Filters</span>
+                  <span className="font-semibold">{t("collection.filters")}</span>
                   <button type="button" onClick={() => setFiltersOpen(false)}><X className="h-5 w-5" /></button>
                 </div>
                 <FilterPanel
@@ -366,9 +375,9 @@ export default function Collection() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-              <p className="text-lg font-medium">No products match your filters</p>
+              <p className="text-lg font-medium">{t("collection.no_products")}</p>
               <button type="button" onClick={clearAll} className="mt-3 text-sm text-crimson underline">
-                Clear filters
+                {t("collection.clear_filters")}
               </button>
             </div>
           ) : (
@@ -394,7 +403,7 @@ export default function Collection() {
                     onClick={handleLoadMore}
                     className="inline-flex items-center gap-2 rounded-lg border border-crimson px-8 py-3 text-sm font-semibold text-crimson transition-colors hover:bg-crimson hover:text-white"
                   >
-                    Load More Products
+                    {t("collection.load_more")}
                   </button>
                 </div>
               )}
@@ -409,7 +418,7 @@ export default function Collection() {
               {/* End of results */}
               {!hasMore && allProducts.length > PAGE_SIZE && (
                 <p className="mt-10 text-center text-sm text-muted-foreground">
-                  All {allProducts.length} products loaded
+                  {allProducts.length} {t("collection.all_loaded")}
                 </p>
               )}
             </>
@@ -452,6 +461,7 @@ function FilterSection({ title, children, defaultOpen = true }: { title: string;
 }
 
 function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedOrigins, toggleOrigin, cutCounts, selectedCuts, toggleCut, onClearAll }: FilterPanelProps) {
+  const t = useT();
   const activeCount = selectedOrigins.length + selectedCuts.length + (priceMax < globalMax ? 1 : 0);
   const sortedOrigins = Object.keys(originCounts).sort((a, b) =>
     (ORIGIN_LABELS[a]?.label ?? a).localeCompare(ORIGIN_LABELS[b]?.label ?? b)
@@ -462,7 +472,7 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
     <div className="flex flex-col gap-0">
       <div className="mb-4 flex items-center justify-between">
         <p className="font-bold">
-          Filters{" "}
+          {t("collection.filters")}{" "}
           {activeCount > 0 && (
             <span className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-crimson text-[10px] text-white">
               {activeCount}
@@ -471,12 +481,12 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
         </p>
         {activeCount > 0 && (
           <button type="button" onClick={onClearAll} className="text-xs text-crimson hover:underline">
-            Clear all
+            {t("collection.clear_all")}
           </button>
         )}
       </div>
 
-      <FilterSection title="Price (AED)">
+      <FilterSection title={t("collection.price_range")}>
         <input
           type="range" min={0} max={globalMax} value={priceMax}
           onChange={(e) => setMaxPrice(parseInt(e.target.value) === globalMax ? null : parseInt(e.target.value))}
@@ -489,7 +499,7 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
       </FilterSection>
 
       {sortedOrigins.length > 0 && (
-        <FilterSection title="Shop by Origin">
+        <FilterSection title={t("collection.shop_origin")}>
           <div className="flex flex-col gap-1">
             {sortedOrigins.map((code) => {
               const info  = ORIGIN_LABELS[code];
@@ -509,7 +519,7 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
       )}
 
       {sortedCuts.length > 0 && (
-        <FilterSection title="Shop by Cuts">
+        <FilterSection title={t("collection.shop_cuts")}>
           <div className="flex flex-col gap-1">
             {sortedCuts.map((cut) => {
               const count   = cutCounts[cut];

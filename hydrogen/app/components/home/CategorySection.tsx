@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { useLocalePath } from "@/stores/localeStore";
+import { useT } from "@/i18n/strings";
 import type { ShopifyProduct } from "@/lib/shopify";
 import { ProductCard } from "@/components/product/ProductCard";
 import { HScroller } from "./HScroller";
@@ -27,6 +28,7 @@ export function CategorySection({
   tabs,
 }: CategorySectionProps) {
   const lp = useLocalePath();
+  const t = useT();
   const [activeIdx, setActiveIdx] = useState(0);
 
   const hasTabs = tabs && tabs.length > 1;
@@ -82,14 +84,14 @@ export function CategorySection({
           to={lp(`/collections/${viewAllHandle}`)}
           className="inline-flex items-center gap-1 text-xs font-semibold text-crimson underline-offset-2 hover:underline md:text-sm"
         >
-          View all →
+          {t("collection.view_all")}
         </Link>
       </div>
 
       {/* Products */}
       {visibleProducts.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card/50 px-6 py-12 text-center text-muted-foreground">
-          No products in this tab.
+          {t("collection.no_products_tab")}
         </div>
       ) : (
         <HScroller>

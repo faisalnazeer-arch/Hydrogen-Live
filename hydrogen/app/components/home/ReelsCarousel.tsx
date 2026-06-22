@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Link } from "react-router";
 import { useLocalePath } from "@/stores/localeStore";
+import { useT } from "@/i18n/strings";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, X, Volume2, VolumeX, ChevronUp, ChevronDown, ShoppingBag } from "lucide-react";
 import {
@@ -13,7 +14,10 @@ import { HScroller } from "./HScroller";
 import { cn } from "@/lib/utils";
 
 
-export function ReelsCarousel({ reels, label = "Watch & Shop", heading = "MLS Reels" }: { reels: ReelProduct[]; label?: string; heading?: string }) {
+export function ReelsCarousel({ reels, label, heading }: { reels: ReelProduct[]; label?: string; heading?: string }) {
+  const t = useT();
+  const resolvedLabel = label ?? t("home.reels_sub");
+  const resolvedHeading = heading ?? t("home.reels");
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   // Start with original order (same on server + client) then shuffle after hydration
   const [shuffled, setShuffled] = useState<ReelProduct[]>(reels);
@@ -35,10 +39,10 @@ export function ReelsCarousel({ reels, label = "Watch & Shop", heading = "MLS Re
       <div className="mb-4 text-center md:mb-5">
         <div className="mb-1.5 flex items-center justify-center gap-3">
           <span className="h-px w-6 rounded-full bg-crimson" />
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">{label}</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">{resolvedLabel}</p>
           <span className="h-px w-6 rounded-full bg-crimson" />
         </div>
-        <h2 className="font-display text-2xl font-bold leading-snug tracking-tight md:text-3xl">{heading}</h2>
+        <h2 className="font-display text-2xl font-bold leading-snug tracking-tight md:text-3xl">{resolvedHeading}</h2>
       </div>
 
       <HScroller>
@@ -131,6 +135,7 @@ function ReelsPlayer({
   onClose: () => void;
 }) {
   const lp = useLocalePath();
+  const t = useT();
   const [index, setIndex] = useState(startIndex);
   const [muted, setMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -263,7 +268,7 @@ function ReelsPlayer({
             onClick={onClose}
           >
             <Link to={lp(`/products/${reel.handle}`)}>
-              <ShoppingBag className="mr-2 h-4 w-4" /> Shop this
+              <ShoppingBag className="mr-2 h-4 w-4" /> {t("common.shop_this")}
             </Link>
           </Button>
         </div>

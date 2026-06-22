@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, type ReactNode, useRef } from "react";
 import { useLocalePath } from "@/stores/localeStore";
+import { useT } from "@/i18n/strings";
 import {
   Minus, Plus, Truck, ShieldCheck, RefreshCw, Loader2, ChevronDown, ChevronUp,
   ChevronLeft, ChevronRight, Check, Play, MapPin, Phone, Clock, X, Store,
@@ -62,6 +63,7 @@ const DESC_CLAMP_PX = 120;
 
 // ── Description with read more ──────────────────────────────────────────────
 function DescriptionWithToggle({ html }: { html: string }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const innerRef = useRef<HTMLDivElement>(null);
   const [overflow, setOverflow] = useState(false);
@@ -80,7 +82,7 @@ function DescriptionWithToggle({ html }: { html: string }) {
       {overflow && (
         <button type="button" onClick={() => setExpanded((e) => !e)}
           className="mt-2 text-xs font-semibold text-crimson hover:underline">
-          {expanded ? "View less ↑" : "View more ↓"}
+          {expanded ? t("product.view_less") : t("product.view_more")}
         </button>
       )}
     </div>
@@ -124,6 +126,7 @@ function LinkifyLine({ text }: { text: string }) {
 
 // ── Back in stock ─────────────────────────────────────────────────────────
 function BackInStock({ productHandle, variantId }: { productHandle: string; variantId: string }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -152,30 +155,30 @@ function BackInStock({ productHandle, variantId }: { productHandle: string; vari
     return (
       <button type="button" onClick={() => setOpen(true)}
         className="w-full rounded-lg border border-dashed border-crimson/50 py-3 text-sm font-semibold text-crimson transition-colors hover:border-crimson hover:bg-crimson/5">
-        🔔 Notify me when available
+        {t("product.notify_me")}
       </button>
     );
   }
   return (
     <div className="rounded-xl border border-border bg-muted/40 p-4">
-      <p className="mb-3 text-sm font-semibold">Get notified when back in stock</p>
+      <p className="mb-3 text-sm font-semibold">{t("product.notify_heading")}</p>
       {status === "success" ? (
-        <p className="text-sm font-medium text-green-700">✓ You're on the list! We'll email you when it's available.</p>
+        <p className="text-sm font-medium text-green-700">{t("product.notify_success")}</p>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-          <input type="text" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} required
+          <input type="text" placeholder={t("product.name_placeholder")} value={name} onChange={(e) => setName(e.target.value)} required
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-crimson" />
-          <input type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} required
+          <input type="email" placeholder={t("product.email_placeholder")} value={email} onChange={(e) => setEmail(e.target.value)} required
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-crimson" />
           {errorMsg && <p className="text-xs text-destructive">{errorMsg}</p>}
           <div className="flex gap-2">
             <button type="submit" disabled={status === "loading"}
               className="flex-1 rounded-lg bg-crimson py-2 text-sm font-bold text-crimson-foreground hover:bg-rich-red disabled:opacity-50">
-              {status === "loading" ? "Submitting…" : "Notify Me"}
+              {status === "loading" ? t("product.submitting") : t("product.notify_submit")}
             </button>
             <button type="button" onClick={() => setOpen(false)}
               className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground">
-              Cancel
+              {t("common.cancel")}
             </button>
           </div>
         </form>
@@ -336,12 +339,13 @@ function DeliveryRow({ label, children }: { label: string; children: React.React
 type CityTab = "dubai" | "abudhabi" | "sharjah";
 
 function DeliveryTab({ pageSettings }: { pageSettings: PageSettings | undefined }) {
+  const t = useT();
   const [city, setCity] = useState<CityTab>("dubai");
 
   const cityTabs: Array<{ id: CityTab; label: string }> = [
-    { id: "dubai",    label: "Dubai" },
-    { id: "abudhabi", label: "Abu Dhabi" },
-    { id: "sharjah",  label: "Sharjah & Ajman" },
+    { id: "dubai",    label: t("product.city_dubai") },
+    { id: "abudhabi", label: t("product.city_abudhabi") },
+    { id: "sharjah",  label: t("product.city_sharjah") },
   ];
 
   type CityBlock = { label: string; body: string };
@@ -380,7 +384,7 @@ function DeliveryTab({ pageSettings }: { pageSettings: PageSettings | undefined 
       <section>
         <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-crimson">
           <Truck className="h-3.5 w-3.5" />
-          {pageSettings?.deliveryTitle ?? "Delivery Information"}
+          {pageSettings?.deliveryTitle ?? t("product.delivery_info_title")}
         </h3>
 
         {/* City tabs — crimson pill active */}
@@ -424,14 +428,15 @@ function InfoTabs({
   pageSettings: PageSettings | undefined;
   variant: any;
 }) {
+  const t = useT();
   const hasNutrition = !!getMF(variant, "nutrition", "total_energy") || NUTRITION_ROWS.some(r => getMF(variant, r.ns, r.key));
   const hasTemplate  = !!extraSections;
 
   // Tab order: Understanding Rubs → Nutrition Facts → Delivery Info
   const tabs: Array<{ id: TabId; label: string; Icon: any }> = [
     hasTemplate  && { id: "template"  as TabId, label: extraSectionTitle,              Icon: FlameKindling },
-    hasNutrition && { id: "nutrition" as TabId, label: "Nutrition Facts",              Icon: Leaf },
-                    { id: "delivery"  as TabId, label: "Delivery Info",                Icon: PackageOpen },
+    hasNutrition && { id: "nutrition" as TabId, label: t("product.nutrition_tab"),     Icon: Leaf },
+                    { id: "delivery"  as TabId, label: t("product.delivery_info"),     Icon: PackageOpen },
   ].filter(Boolean) as Array<{ id: TabId; label: string; Icon: any }>;
 
   const [active, setActive] = useState<TabId>(tabs[0].id);
@@ -477,11 +482,12 @@ function InfoTabs({
 
 // ── Returns tab ───────────────────────────────────────────────────────────────
 function ReturnsTab() {
+  const t = useT();
   return (
     <div className="mx-auto max-w-2xl">
       <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-crimson">
         <RefreshCw className="h-3.5 w-3.5" />
-        100% Free Replacements &amp; Returns
+        {t("product.free_returns_title")}
       </h3>
       <div className="divide-y divide-border/50">
         {[
@@ -524,6 +530,7 @@ function PickupDrawer({
   variantTitle: string;
   stores: StoreNode[];
 }) {
+  const t = useT();
   const available = stores.filter((s) => s.available);
   const unavailable = stores.filter((s) => !s.available);
   const sorted = [...available, ...unavailable];
@@ -533,7 +540,7 @@ function PickupDrawer({
       <SheetContent side="right" className="flex w-full max-w-md flex-col gap-0 overflow-y-auto p-0">
         <SheetHeader className="sticky top-0 z-10 border-b border-border bg-background px-5 py-4">
           <div className="flex items-center justify-between">
-            <SheetTitle className="text-base font-bold">Store Availability</SheetTitle>
+            <SheetTitle className="text-base font-bold">{t("product.store_availability")}</SheetTitle>
             <button type="button" onClick={onClose} className="rounded-full p-1 hover:bg-muted">
               <X className="h-4 w-4" />
             </button>
@@ -563,17 +570,17 @@ function PickupDrawer({
                     <>
                       <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-700">
                         <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                        Pickup available
+                        {t("product.pickup_available")}
                       </span>
                       <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3 flex-shrink-0" />
-                        {store.pickUpTime ?? "Usually ready in 2 hours"}
+                        {store.pickUpTime ?? t("product.usually_ready")}
                       </div>
                     </>
                   ) : (
                     <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
                       <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
-                      Currently unavailable
+                      {t("product.unavailable")}
                     </span>
                   )}
                 </div>
@@ -629,6 +636,7 @@ export function ProductPageShell({
   globoOptionSets = [],
 }: ProductPageShellProps) {
   const lp = useLocalePath();
+  const t = useT();
   const [globoAttributes, setGloboAttributes] = useState<Array<{ key: string; value: string }>>([]);
   const handleGloboChange = useCallback((attrs: Array<{ key: string; value: string }>) => setGloboAttributes(attrs), []);
 
@@ -825,7 +833,7 @@ export function ProductPageShell({
         return (
           <div className="container mx-auto px-4 py-3">
             <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Link to={lp("/")} className="transition-colors hover:text-foreground">Home</Link>
+              <Link to={lp("/")} className="transition-colors hover:text-foreground">{t("common.home")}</Link>
               <span>/</span>
               {category ? (
                 <Link to={lp(`/collections/${category.handle}`)} className="transition-colors hover:text-foreground">
@@ -863,7 +871,7 @@ export function ProductPageShell({
             <div className="absolute left-4 top-4 flex flex-col gap-1.5">
               <OriginBadge origin={origin} />
               {variant?.compareAtPrice && (
-                <span className="inline-flex rounded-sm bg-crimson px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-crimson-foreground">Sale</span>
+                <span className="inline-flex rounded-sm bg-crimson px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-crimson-foreground">{t("product.sale")}</span>
               )}
             </div>
           </div>
@@ -921,7 +929,7 @@ export function ProductPageShell({
                 className="mt-2 flex items-center gap-2 transition-opacity hover:opacity-80">
                 <StarRating rating={displayRating.average} size="sm" />
                 <span className="text-xs text-muted-foreground underline-offset-2 hover:underline">
-                  {displayRating.average.toFixed(1)} · {displayCount} {displayCount === 1 ? "review" : "reviews"}
+                  {displayRating.average.toFixed(1)} · {displayCount} {displayCount === 1 ? t("product.review_singular") : t("product.review_plural")}
                 </span>
               </button>
             )}
@@ -939,7 +947,7 @@ export function ProductPageShell({
             {(() => {
               const pricePerKgLine = (label: string) => (
                 <p className="text-xs text-muted-foreground sm:text-sm">
-                  <span className="font-medium text-foreground">Price per kg:</span>{" "}
+                  <span className="font-medium text-foreground">{t("product.price_per_kg")}</span>{" "}
                   {label}
                 </p>
               );
@@ -1024,7 +1032,7 @@ export function ProductPageShell({
           {globoLoading && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Loading options…
+              {t("product.loading_options")}
             </div>
           )}
           {liveGloboSets.length > 0 && (
@@ -1043,14 +1051,14 @@ export function ProductPageShell({
           {templateSuffix !== "whole-cuts" && templateSuffix !== "abu-dhabi-10kg-aus" && (
             <div className="flex flex-col gap-1.5">
               <label htmlFor="special-request" className="text-sm font-semibold text-foreground">
-                Special Request
+                {t("product.special_request")}
               </label>
               <textarea
                 id="special-request"
                 rows={2}
                 value={specialRequest}
                 onChange={(e) => setSpecialRequest(e.target.value)}
-                placeholder="Any special instructions for your order…"
+                placeholder={t("product.special_request_ph")}
                 className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-crimson focus:outline-none focus:ring-2 focus:ring-crimson/20"
               />
             </div>
@@ -1069,12 +1077,12 @@ export function ProductPageShell({
               </div>
               <button type="button" onClick={handleAddToCart} disabled={isAdding}
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-crimson px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-50 sm:px-6 sm:py-3 sm:text-sm">
-                {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add to Cart"}
+                {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : t("product.add_to_cart")}
               </button>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              <button type="button" disabled className="w-full rounded-lg bg-muted py-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">Out of Stock</button>
+              <button type="button" disabled className="w-full rounded-lg bg-muted py-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">{t("product.out_of_stock")}</button>
               <BackInStock productHandle={product.handle} variantId={variant?.id ?? ""} />
             </div>
           )}
@@ -1099,18 +1107,18 @@ export function ProductPageShell({
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 flex-shrink-0 rounded-full bg-green-500" />
                   <p className="text-sm font-semibold text-green-800">
-                    Pickup available at {firstAvailable.location.name}
+                    {t("product.pickup_at")} {firstAvailable.location.name}
                   </p>
                 </div>
                 <p className="mt-0.5 ps-4 text-xs text-green-700">
-                  {firstAvailable.pickUpTime ?? "Usually ready in 2 hours"}
+                  {firstAvailable.pickUpTime ?? t("product.usually_ready")}
                 </p>
                 <button
                   type="button"
                   onClick={() => setPickupDrawerOpen(true)}
                   className="mt-1.5 ps-4 text-xs font-semibold text-crimson underline-offset-2 hover:underline"
                 >
-                  Check availability at other stores →
+                  {t("product.check_other_stores")}
                 </button>
               </div>
             );
@@ -1118,22 +1126,22 @@ export function ProductPageShell({
 
           {/* Trust badges */}
           <div className="grid grid-cols-3 gap-2 rounded-xl border border-border p-3 sm:gap-3 sm:p-4">
-            {[{ icon: Truck, label: "2-hour delivery" }, { icon: ShieldCheck, label: "100% Halal certified" }, { icon: RefreshCw, label: "Quality guarantee" }].map(({ icon: Icon, label }) => (
-              <div key={label} className="flex flex-col items-center gap-1 text-center">
+            {[{ icon: Truck, labelKey: "product.trust_delivery" as const }, { icon: ShieldCheck, labelKey: "product.trust_halal" as const }, { icon: RefreshCw, labelKey: "product.trust_quality" as const }].map(({ icon: Icon, labelKey }) => (
+              <div key={labelKey} className="flex flex-col items-center gap-1 text-center">
                 <Icon className="h-5 w-5 text-crimson sm:h-6 sm:w-6" />
-                <span className="text-[10px] font-medium leading-snug text-muted-foreground sm:text-xs">{label}</span>
+                <span className="text-[10px] font-medium leading-snug text-muted-foreground sm:text-xs">{t(labelKey)}</span>
               </div>
             ))}
           </div>
 
           {/* Description + Free Returns + Customer Support */}
           <div className="border-t border-border">
-            <AccordionItem title="Description" defaultOpen>
+            <AccordionItem title={t("product.description")} defaultOpen>
               {product.descriptionHtml
                 ? <DescriptionWithToggle html={product.descriptionHtml} />
-                : <p>No description available.</p>}
+                : <p>{t("product.no_desc")}</p>}
             </AccordionItem>
-            <AccordionItem title="100% Free Returns">
+            <AccordionItem title={t("product.free_returns_title")}>
               <div className="divide-y divide-border/50">
                 {[
                   "Drop a WhatsApp message or send us an email within 24 hours after delivery.",
@@ -1146,7 +1154,7 @@ export function ProductPageShell({
                 ))}
               </div>
             </AccordionItem>
-            <AccordionItem title={pageSettings?.supportTitle ?? "Customer Support"}>
+            <AccordionItem title={pageSettings?.supportTitle ?? t("product.support_title")}>
               <ul className="space-y-1.5 text-xs text-muted-foreground sm:space-y-2 sm:text-sm">
                 {(pageSettings?.supportContent
                   ? pageSettings.supportContent.split("\n").filter(Boolean)
@@ -1232,12 +1240,12 @@ export function ProductPageShell({
             {/* Special request in sticky bar — same state as main form */}
             {templateSuffix !== "whole-cuts" && templateSuffix !== "abu-dhabi-10kg-aus" && (
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-foreground">Special Request</label>
+                <label className="text-xs font-semibold text-foreground">{t("product.special_request")}</label>
                 <textarea
                   rows={2}
                   value={specialRequest}
                   onChange={(e) => setSpecialRequest(e.target.value)}
-                  placeholder="Any special instructions…"
+                  placeholder={t("product.special_request_ph")}
                   className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-crimson focus:outline-none focus:ring-2 focus:ring-crimson/20"
                 />
               </div>
@@ -1266,7 +1274,7 @@ export function ProductPageShell({
               className="flex flex-shrink-0 items-center gap-1 rounded-lg border border-crimson/60 bg-crimson/5 px-2 py-1.5 text-[11px] font-semibold text-crimson transition-colors hover:bg-crimson/10 sm:px-2.5 sm:py-2 sm:text-xs"
             >
               {stickyExpanded ? <ChevronDown className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> : <ChevronUp className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
-              <span>{stickyExpanded ? "Close" : "Options"}</span>
+              <span>{stickyExpanded ? t("common.close") : t("product.options")}</span>
             </button>
           )}
 
@@ -1280,11 +1288,11 @@ export function ProductPageShell({
               </div>
               <button type="button" onClick={handleAddToCart} disabled={isAdding}
                 className="flex-shrink-0 rounded-lg bg-crimson px-2.5 py-2 text-[11px] font-bold uppercase tracking-normal text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-50 sm:px-3 sm:py-2.5 sm:text-xs sm:tracking-wide">
-                {isAdding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add to Cart"}
+                {isAdding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("product.add_to_cart")}
               </button>
             </div>
           ) : (
-            <span className="flex-shrink-0 rounded-lg bg-muted px-2.5 py-2 text-[11px] font-bold uppercase text-muted-foreground sm:px-3 sm:py-2.5 sm:text-xs">Out of Stock</span>
+            <span className="flex-shrink-0 rounded-lg bg-muted px-2.5 py-2 text-[11px] font-bold uppercase text-muted-foreground sm:px-3 sm:py-2.5 sm:text-xs">{t("product.out_of_stock")}</span>
           )}
         </div>
       </div>
@@ -1293,8 +1301,8 @@ export function ProductPageShell({
       {recommendations.length > 0 && (
         <div className="container mx-auto px-4 pt-8 pb-4">
           <div className="mb-3 md:mb-5">
-            <p className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-crimson md:mb-1 md:text-[11px]">You might also like</p>
-            <h2 className="font-display text-base font-bold leading-snug tracking-tight md:text-xl">Recommended for You</h2>
+            <p className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-crimson md:mb-1 md:text-[11px]">{t("product.you_might_like")}</p>
+            <h2 className="font-display text-base font-bold leading-snug tracking-tight md:text-xl">{t("product.recommended")}</h2>
           </div>
           <HScroller>
             {recommendations.map((p) => (

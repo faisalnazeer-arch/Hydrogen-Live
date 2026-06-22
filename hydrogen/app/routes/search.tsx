@@ -3,6 +3,7 @@ import { useLoaderData } from "react-router";
 import { SearchAutosuggest } from "~/components/layout/SearchAutosuggest";
 import { ProductCard } from "~/components/product/ProductCard";
 import type { ShopifyProduct } from "~/lib/shopify";
+import { useT } from "~/i18n/strings";
 
 // Uses Shopify's dedicated search API — same relevance engine as predictiveSearch
 const SEARCH_QUERY = `#graphql
@@ -75,15 +76,16 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => [
 
 export default function Search() {
   const { q, products, total } = useLoaderData<typeof loader>();
+  const t = useT();
 
   return (
     <main className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="mb-4 font-display text-2xl font-extrabold md:text-3xl">
           {q ? (
-            <>Results for <span className="text-crimson">"{q}"</span></>
+            <>{t("search.results_for")} <span className="text-crimson">&ldquo;{q}&rdquo;</span></>
           ) : (
-            "Search"
+            t("search.heading")
           )}
         </h1>
         <div className="max-w-xl">
@@ -94,8 +96,8 @@ export default function Search() {
       {q && (
         <p className="mb-6 text-sm text-muted-foreground">
           {total === 0
-            ? "No products found"
-            : `${total} product${total !== 1 ? "s" : ""} found`}
+            ? t("search.no_products")
+            : `${total} ${total !== 1 ? t("search.products_found") : t("search.product_found")}`}
         </p>
       )}
 
@@ -107,14 +109,14 @@ export default function Search() {
         </div>
       ) : q ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <p className="text-lg font-semibold">No results for "{q}"</p>
+          <p className="text-lg font-semibold">{t("search.no_results_for")} &ldquo;{q}&rdquo;</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Try different keywords or browse our collections
+            {t("search.try_different")}
           </p>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
-          <p>Type something above to search products</p>
+          <p>{t("search.type_something")}</p>
         </div>
       )}
     </main>
