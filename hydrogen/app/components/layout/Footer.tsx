@@ -235,7 +235,7 @@ function LinkList({ links }: { links: FooterLink[] }) {
               {l.label}
             </a>
           ) : (
-            <Link to={lp(l.url)} className="text-off-white/80 hover:text-gold">
+            <Link to={lp(l.url)} className="text-off-white/80 hover:text-white">
               {l.label}
             </Link>
           )}
