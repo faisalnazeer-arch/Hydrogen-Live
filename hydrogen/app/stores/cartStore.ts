@@ -470,7 +470,7 @@ function scheduleSyncFreeGifts(
   if (_giftSyncTimer) clearTimeout(_giftSyncTimer);
   _giftSyncTimer = setTimeout(() => {
     _giftSyncTimer = null;
-    void syncFreeGifts(get, set);
+    enqueueCartMutation(() => syncFreeGifts(get, set));
   }, 150);
 }
 
@@ -915,10 +915,12 @@ export const useCartStore = create<CartStore>()(
           });
           const cart = data?.data?.cartDiscountCodesUpdate?.cart;
           set({
-            discountCodes: cart?.discountCodes ?? [],
+            discountCodes: cart?.discountCodes ?? discountCodes,
             subtotalAmount: cart?.cost?.subtotalAmount ?? get().subtotalAmount,
             totalAmount: cart?.cost?.totalAmount ?? get().totalAmount,
           });
+        } catch {
+          toast.error("Could not remove discount code", { description: "Please try again." });
         } finally {
           set({ isApplyingCode: false });
         }

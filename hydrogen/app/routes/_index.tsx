@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
-import { useLoaderData } from "react-router";
+import { useLoaderData, useRouteError, isRouteErrorResponse } from "react-router";
 import { detectLanguage } from "../lib/locale";
 import { useT } from "../i18n/strings";
 import { HeroBanner } from "../components/home/HeroBanner";
@@ -626,5 +626,21 @@ export default function Home() {
       <RecentlyViewed />
       <HomeReviews reviews={storeReviews} totalCount={reviewTotalCount} averageRating={reviewAverage} />
     </>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const is5xx = isRouteErrorResponse(error) && error.status >= 500;
+  return (
+    <div className="container mx-auto px-4 py-20 text-center">
+      <p className="text-5xl font-black text-crimson">{is5xx ? "500" : "!"}</p>
+      <h1 className="mt-3 text-xl font-bold">Something went wrong</h1>
+      <p className="mt-2 text-sm text-muted-foreground">We hit an unexpected error. Please try refreshing the page.</p>
+      <button type="button" onClick={() => window.location.reload()}
+        className="mt-6 inline-block rounded-lg bg-crimson px-6 py-3 text-sm font-bold text-white hover:bg-rich-red">
+        Refresh
+      </button>
+    </div>
   );
 }

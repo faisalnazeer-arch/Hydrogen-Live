@@ -174,9 +174,10 @@ export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, ha
   const [loadingFallback, setLoadingFallback] = useState(false);
   const [page, setPage] = useState(1);
   const [showWriteReview, setShowWriteReview] = useState(false);
+  const [noMoreFiltered, setNoMoreFiltered] = useState(false);
   const fetcher = useFetcher<{ reviews: JudgemeReview[]; totalCount: number }>();
 
-  useEffect(() => { setAllReviews(initialReviews); setPage(1); setClientTotal(null); }, [handle]); // eslint-disable-line
+  useEffect(() => { setAllReviews(initialReviews); setPage(1); setClientTotal(null); setNoMoreFiltered(false); }, [handle]); // eslint-disable-line
 
   // Client-side fallback: server may return 0 reviews when Judge.me cold-start
   // exceeds the 2.5s critical-path timeout. Fetch after hydration instead.
@@ -203,15 +204,19 @@ export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, ha
     ? rating
     : { average: effectiveAvg, count: effectiveTotal, histogram: [0, 0, 0, 0, 0] };
 
-  const hasMore = allReviews.length < effectiveTotal;
+  const hasMore = !noMoreFiltered && allReviews.length < effectiveTotal;
 
   useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data?.reviews?.length) {
-      setAllReviews((prev) => {
-        const existing = new Set(prev.map((r) => r.id));
-        const incoming = fetcher.data!.reviews.filter((r) => r.rating >= 4 && !existing.has(r.id));
-        return [...prev, ...incoming];
-      });
+    if (fetcher.state !== "idle" || fetcher.data?.reviews === undefined) return;
+    const reviews = fetcher.data.reviews;
+    setAllReviews((prev) => {
+      const existing = new Set(prev.map((r) => r.id));
+      const incoming = reviews.filter((r) => r.rating >= 4 && !existing.has(r.id));
+      return incoming.length > 0 ? [...prev, ...incoming] : prev;
+    });
+    // If the API page returned results but none passed the ≥4 filter, stop showing Load More
+    if (reviews.length === 0 || reviews.filter((r) => r.rating >= 4).length === 0) {
+      setNoMoreFiltered(true);
     }
   }, [fetcher.state, fetcher.data]);
 

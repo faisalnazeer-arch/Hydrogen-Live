@@ -2,7 +2,7 @@ import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { detectLanguage } from "~/lib/locale";
 import { redirect } from "@shopify/remix-oxygen";
 import type { ShouldRevalidateFunctionArgs } from "react-router";
-import { useLoaderData, Await } from "react-router";
+import { useLoaderData, Await, useRouteError, isRouteErrorResponse } from "react-router";
 import { Suspense } from "react";
 import { type ShopifyProduct } from "~/lib/shopify";
 import { fetchJudgemeReviews, fetchJudgemeRating, buildRatingSummary } from "~/lib/judgeme";
@@ -30,13 +30,16 @@ const PAGE_SETTINGS_QUERY = `
 // templateSuffix is not exposed by the Storefront API — fetch it via Admin API instead.
 // We include handle in the result so we can match the exact product even if search
 // returns multiple candidates.
-const ADMIN_TEMPLATE_SUFFIX_QUERY = (handle: string) => `
+const ADMIN_TEMPLATE_SUFFIX_QUERY = (handle: string) => {
+  const safeHandle = handle.replace(/[^a-z0-9-]/gi, "");
+  return `
   query {
-    products(first: 5, query: "handle:'${handle}'") {
+    products(first: 5, query: "handle:'${safeHandle}'") {
       edges { node { handle templateSuffix } }
     }
   }
 `;
+};
 
 // One metaobject per template suffix (type: "product_template_settings").
 // Each instance must have a "template_suffix" field to identify which template it configures.
@@ -491,9 +494,39 @@ function renderTemplate(suffix: string | null | undefined, props: any) {
   }
 }
 
-export const meta: MetaFunction<typeof loader> = ({ data }) => {
-  return [{ title: `${data?.product?.title ?? "Product"} — MLS UAE` }];
+export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
+  const title = `${data?.product?.title ?? "Product"} — MLS UAE`;
+  const description = (data?.product?.description ?? "Premium halal meat delivered across UAE.").slice(0, 160);
+  const image = data?.product?.images?.edges?.[0]?.node?.url;
+  const canonical = `https://mlsuae.ae${location.pathname}`;
+  return [
+    { title },
+    { name: "description", content: description },
+    { property: "og:type", content: "product" },
+    { property: "og:title", content: title },
+    { property: "og:description", content: description },
+    ...(image ? [{ property: "og:image", content: image }] : []),
+    { property: "og:url", content: canonical },
+    { tagName: "link", rel: "canonical", href: canonical },
+  ];
 };
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const is404 = isRouteErrorResponse(error) && error.status === 404;
+  return (
+    <div className="container mx-auto px-4 py-20 text-center">
+      <p className="text-5xl font-black text-crimson">{is404 ? "404" : "!"}</p>
+      <h1 className="mt-3 text-xl font-bold">{is404 ? "Product not found" : "Something went wrong"}</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {is404 ? "This product doesn't exist or has been removed." : "We hit an unexpected error. Please try again."}
+      </p>
+      <a href="/" className="mt-6 inline-block rounded-lg bg-crimson px-6 py-3 text-sm font-bold text-white hover:bg-rich-red">
+        Back to Home
+      </a>
+    </div>
+  );
+}
 
 export default function Product() {
   const { templateSuffix, lazyData, reviews, reviewsTotalCount, rating, ...criticalProps } = useLoaderData<typeof loader>();

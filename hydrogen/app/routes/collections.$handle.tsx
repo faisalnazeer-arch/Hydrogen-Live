@@ -3,7 +3,7 @@ import { detectLanguage } from "~/lib/locale";
 import { useT, type TKey } from "~/i18n/strings";
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import type { ShouldRevalidateFunctionArgs } from "react-router";
-import { useLoaderData, useNavigate, useNavigation, useFetcher } from "react-router";
+import { useLoaderData, useNavigate, useNavigation, useFetcher, useRouteError, isRouteErrorResponse } from "react-router";
 import { SlidersHorizontal, X, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { getOriginFromProduct, ORIGIN_LABELS, type ShopifyProduct } from "~/lib/shopify";
 import { ProductCard } from "~/components/product/ProductCard";
@@ -547,6 +547,23 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
 }
 
 /* ─── Skeleton Card ────────────────────────────────────────────────────────── */
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const is404 = isRouteErrorResponse(error) && error.status === 404;
+  return (
+    <div className="container mx-auto px-4 py-20 text-center">
+      <p className="text-5xl font-black text-crimson">{is404 ? "404" : "!"}</p>
+      <h1 className="mt-3 text-xl font-bold">{is404 ? "Collection not found" : "Something went wrong"}</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {is404 ? "This collection doesn't exist or has been removed." : "We hit an unexpected error. Please try again."}
+      </p>
+      <a href="/" className="mt-6 inline-block rounded-lg bg-crimson px-6 py-3 text-sm font-bold text-white hover:bg-rich-red">
+        Back to Home
+      </a>
+    </div>
+  );
+}
+
 function SkeletonCard() {
   return (
     <div className="flex flex-col overflow-hidden rounded-md border border-border bg-card shadow-sm">
