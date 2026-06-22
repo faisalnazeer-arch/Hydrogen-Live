@@ -128,6 +128,7 @@ export function JudgemeWidgetEmbed({ externalId, shopDomain }: Props) {
   const [loaded, setLoaded] = useState(false);
   const widgetRef = useRef<HTMLDivElement>(null);
   const scriptsInjected = useRef(false);
+  const deepObserverRef = useRef<MutationObserver | null>(null);
 
   // Dep array [externalId, shopDomain] — NOT empty — because ProductPageShell
   // has a scroll-linked IntersectionObserver that re-renders the parent on every
@@ -197,6 +198,7 @@ export function JudgemeWidgetEmbed({ externalId, shopDomain }: Props) {
           initReviewSliders(el);
         });
         deepObserver.observe(el, { childList: true, subtree: true });
+        deepObserverRef.current = deepObserver;
       }
     });
     observer.observe(el, { childList: true });
@@ -209,6 +211,8 @@ export function JudgemeWidgetEmbed({ externalId, shopDomain }: Props) {
 
     return () => {
       observer.disconnect();
+      deepObserverRef.current?.disconnect();
+      deepObserverRef.current = null;
       clearTimeout(fallback);
     };
   }, [externalId]);

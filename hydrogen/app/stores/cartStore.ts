@@ -459,6 +459,7 @@ function makeGiftItem(variantId: string): CartItem {
 }
 
 let _giftSyncing = false;
+let _isCreatingCart = false;
 // Debounce handle so rapid actions only trigger one gift sync pass
 let _giftSyncTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -590,31 +591,38 @@ export const useCartStore = create<CartStore>()(
 
         try {
           if (!cartId) {
-            // Open drawer immediately — don't make the user wait for cart creation
-            set({
-              items: [{ ...item, lineId: null, isPending: true }, ...get().items],
-              isOpen: true,
-            });
-            const result = await createShopifyCart({ ...item, lineId: null });
-            if (result) {
+            // Guard: prevent two simultaneous createShopifyCart calls (rapid double-tap)
+            if (_isCreatingCart) return;
+            _isCreatingCart = true;
+            try {
+              // Open drawer immediately — don't make the user wait for cart creation
               set({
-                cartId: result.cartId,
-                checkoutUrl: result.checkoutUrl,
-                subtotalAmount: result.subtotalAmount,
-                totalAmount: result.totalAmount,
-                addItemError: null,
-                items: get().items.map((i) =>
-                  i.variantId === item.variantId && i.isPending
-                    ? { ...i, lineId: result.lineId, isPending: false }
-                    : i
-                ),
+                items: [{ ...item, lineId: null, isPending: true }, ...get().items],
+                isOpen: true,
               });
-              toast.success("Added to cart", { description: item.product.node.title });
-            } else {
-              const remaining = get().items.filter((i) => !(i.variantId === item.variantId && i.isPending));
-              const errorMsg = _lastAddError ?? "Could not add to cart. Please try again.";
-              console.warn("[cart] Cart creation failed for variant", item.variantId, "—", errorMsg);
-              set({ items: remaining, isOpen: false, addItemError: errorMsg });
+              const result = await createShopifyCart({ ...item, lineId: null });
+              if (result) {
+                set({
+                  cartId: result.cartId,
+                  checkoutUrl: result.checkoutUrl,
+                  subtotalAmount: result.subtotalAmount,
+                  totalAmount: result.totalAmount,
+                  addItemError: null,
+                  items: get().items.map((i) =>
+                    i.variantId === item.variantId && i.isPending
+                      ? { ...i, lineId: result.lineId, isPending: false }
+                      : i
+                  ),
+                });
+                toast.success("Added to cart", { description: item.product.node.title });
+              } else {
+                const remaining = get().items.filter((i) => !(i.variantId === item.variantId && i.isPending));
+                const errorMsg = _lastAddError ?? "Could not add to cart. Please try again.";
+                console.warn("[cart] Cart creation failed for variant", item.variantId, "—", errorMsg);
+                set({ items: remaining, isOpen: false, addItemError: errorMsg });
+              }
+            } finally {
+              _isCreatingCart = false;
             }
           } else if (existing) {
             const newQty = existing.quantity + item.quantity;
@@ -685,7 +693,8 @@ export const useCartStore = create<CartStore>()(
         } catch (err) {
           console.warn("[cart] addItem threw:", err);
           const remaining = get().items.filter((i) => !i.isPending);
-          set({ items: remaining, isOpen: remaining.length > 0 });
+          set({ items: remaining, isOpen: remaining.length > 0, addItemError: "Could not add to cart. Please try again." });
+          toast.error("Could not add to cart", { description: "Please check your connection and try again." });
         } finally {
           scheduleSyncFreeGifts(get, set);
         }
