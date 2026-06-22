@@ -10,9 +10,8 @@ interface LocaleState {
 }
 
 function readInitialLocale(): Locale {
-  if (typeof document === "undefined") return "en";
-  const m = document.cookie.match(/(?:^|;\s*)lang=([a-z]{2})/);
-  return m?.[1] === "ar" ? "ar" : "en";
+  if (typeof window === "undefined") return "en";
+  return window.location.pathname.startsWith("/ar") ? "ar" : "en";
 }
 
 export const useLocaleStore = create<LocaleState>()((set) => ({

@@ -486,6 +486,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* Microsoft Clarity — session recording & heatmaps */}
         <script dangerouslySetInnerHTML={{ __html: `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","o54b753gku");` }} />
         {/* PushOwl + Brevo — web push notifications */}
+        {/* Shim window.Shopify so PushOwl can identify the store in headless mode */}
+        <script dangerouslySetInnerHTML={{ __html: `window.Shopify=window.Shopify||{};window.Shopify.shop=window.Shopify.shop||'mls-uae.myshopify.com';` }} />
         <script async src="https://cdn.shopify.com/extensions/00bb358e-e093-46ce-a5ef-3b66f0295001/pushowl-brevo-email-push-sms-82/assets/pushowl-shopify.js" />
       </head>
       <body>
