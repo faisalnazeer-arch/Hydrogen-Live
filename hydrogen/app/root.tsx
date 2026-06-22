@@ -68,6 +68,7 @@ export interface FooterLink {
 }
 
 export interface FooterSettings {
+  companyName: string;
   brandText: string;
   instagramUrl: string;
   facebookUrl: string;
@@ -254,8 +255,9 @@ function parseFooterSettings(nodes: any[]): FooterSettings | null {
   if (!node) return null;
   const f = Object.fromEntries(node.fields.map((x: any) => [x.key, x]));
   return {
-    brandText:      f.brand_text?.value      ?? "",
-    instagramUrl:   f.instagram_url?.value   ?? "",
+    companyName:    f.company_name?.value     ?? "",
+    brandText:      f.brand_text?.value       ?? "",
+    instagramUrl:   f.instagram_url?.value    ?? "",
     facebookUrl:    f.facebook_url?.value    ?? "",
     twitterUrl:     f.twitter_url?.value     ?? "",
     tiktokUrl:      f.tiktok_url?.value      ?? "",

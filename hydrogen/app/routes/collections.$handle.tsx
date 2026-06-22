@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { detectLanguage } from "~/lib/locale";
-import { useT } from "~/i18n/strings";
+import { useT, type TKey } from "~/i18n/strings";
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import type { ShouldRevalidateFunctionArgs } from "react-router";
 import { useLoaderData, useNavigate, useNavigation, useFetcher } from "react-router";
@@ -9,30 +9,35 @@ import { getOriginFromProduct, ORIGIN_LABELS, type ShopifyProduct } from "~/lib/
 import { ProductCard } from "~/components/product/ProductCard";
 
 // ── Cut keywords — checked against product title + tags ───────────────────────
-const CUT_KEYWORDS: Array<{ key: string; label: string }> = [
-  { key: "mince",      label: "Mince"        },
-  { key: "mishkak",   label: "Mishkak"      },
-  { key: "cubes",     label: "Cubes"        },
-  { key: "chops",     label: "Chops"        },
-  { key: "steak",     label: "Steak"        },
-  { key: "ribs",      label: "Ribs"         },
-  { key: "shank",     label: "Shanks"       },
-  { key: "rack",      label: "Rack"         },
-  { key: "burger",    label: "Burgers"      },
-  { key: "leg",       label: "Leg"          },
-  { key: "shoulder",  label: "Shoulder"     },
-  { key: "fillet",    label: "Fillet"       },
-  { key: "biryani",   label: "Biryani Cut"  },
-  { key: "curry cut", label: "Curry Cut"    },
-  { key: "bone-in",   label: "Bone-in"      },
-  { key: "boneless",  label: "Boneless"     },
-  { key: "whole",     label: "Whole"        },
-  { key: "tenderloin",label: "Tenderloin"   },
-  { key: "slice",     label: "Sliced"       },
-  { key: "neck",      label: "Neck"         },
-  { key: "breast",    label: "Breast"       },
-  { key: "loin",      label: "Loin"         },
+const CUT_KEYWORDS: Array<{ key: string; label: string; labelKey: string }> = [
+  { key: "mince",      label: "Mince",        labelKey: "cut.mince"      },
+  { key: "mishkak",    label: "Mishkak",      labelKey: "cut.mishkak"    },
+  { key: "cubes",      label: "Cubes",        labelKey: "cut.cubes"      },
+  { key: "chops",      label: "Chops",        labelKey: "cut.chops"      },
+  { key: "steak",      label: "Steak",        labelKey: "cut.steak"      },
+  { key: "ribs",       label: "Ribs",         labelKey: "cut.ribs"       },
+  { key: "shank",      label: "Shanks",       labelKey: "cut.shank"      },
+  { key: "rack",       label: "Rack",         labelKey: "cut.rack"       },
+  { key: "burger",     label: "Burgers",      labelKey: "cut.burger"     },
+  { key: "leg",        label: "Leg",          labelKey: "cut.leg"        },
+  { key: "shoulder",   label: "Shoulder",     labelKey: "cut.shoulder"   },
+  { key: "fillet",     label: "Fillet",       labelKey: "cut.fillet"     },
+  { key: "biryani",    label: "Biryani Cut",  labelKey: "cut.biryani"    },
+  { key: "curry cut",  label: "Curry Cut",    labelKey: "cut.curry_cut"  },
+  { key: "bone-in",    label: "Bone-in",      labelKey: "cut.bone_in"    },
+  { key: "boneless",   label: "Boneless",     labelKey: "cut.boneless"   },
+  { key: "whole",      label: "Whole",        labelKey: "cut.whole"      },
+  { key: "tenderloin", label: "Tenderloin",   labelKey: "cut.tenderloin" },
+  { key: "slice",      label: "Sliced",       labelKey: "cut.slice"      },
+  { key: "neck",       label: "Neck",         labelKey: "cut.neck"       },
+  { key: "breast",     label: "Breast",       labelKey: "cut.breast"     },
+  { key: "loin",       label: "Loin",         labelKey: "cut.loin"       },
 ];
+
+// Map English label → translation key for use in FilterPanel display
+const CUT_LABEL_KEY: Record<string, string> = Object.fromEntries(
+  CUT_KEYWORDS.map(({ label, labelKey }) => [label, labelKey])
+);
 
 function getProductCuts(tags: string[], title: string): string[] {
   const search = `${title} ${tags.join(" ")}`.toLowerCase();
@@ -524,10 +529,12 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
             {sortedCuts.map((cut) => {
               const count   = cutCounts[cut];
               const checked = selectedCuts.includes(cut);
+              const lk = CUT_LABEL_KEY[cut];
+              const displayLabel = lk ? t(lk as TKey) : cut;
               return (
                 <label key={cut} className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted ${checked ? "bg-crimson/5 font-medium text-crimson" : ""}`}>
                   <input type="checkbox" checked={checked} onChange={() => toggleCut(cut)} className="h-4 w-4 accent-crimson flex-shrink-0" />
-                  <span className="flex-1">{cut}</span>
+                  <span className="flex-1">{displayLabel}</span>
                   <span className="text-xs text-muted-foreground">({count})</span>
                 </label>
               );
