@@ -4,6 +4,7 @@ import { ShieldCheck, User, Star, X, Loader2 } from "lucide-react";
 import type { JudgemeReview, JudgemeRatingSummary } from "~/lib/judgeme";
 import { StarRating } from "./StarRating";
 import { cn } from "~/lib/utils";
+import { useT } from "~/i18n/strings";
 
 interface JudgemeReviewsProps {
   reviews: JudgemeReview[];
@@ -89,6 +90,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (n: number) 
 // ── Write review modal ───────────────────────────────────────────────────
 function WriteReviewModal({ handle, externalId, onClose }: { handle: string; externalId?: string; onClose: () => void }) {
   const fetcher = useFetcher<{ success?: boolean; error?: string }>();
+  const t = useT();
   const [rating, setRating] = useState(5);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -112,7 +114,7 @@ function WriteReviewModal({ handle, externalId, onClose }: { handle: string; ext
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-background shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h3 className="font-display text-lg font-bold">Write a Review</h3>
+          <h3 className="font-display text-lg font-bold">{t("review.write")}</h3>
           <button type="button" onClick={onClose} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted">
             <X className="h-4 w-4" />
           </button>
@@ -121,43 +123,43 @@ function WriteReviewModal({ handle, externalId, onClose }: { handle: string; ext
           {submitted ? (
             <div className="py-8 text-center">
               <div className="mb-3 text-4xl">🎉</div>
-              <p className="text-lg font-bold">Thank you for your review!</p>
-              <p className="mt-1 text-sm text-muted-foreground">Your review has been submitted and is pending approval.</p>
-              <button type="button" onClick={onClose} className="mt-4 rounded-lg bg-crimson px-6 py-2 text-sm font-bold text-crimson-foreground hover:bg-rich-red">Close</button>
+              <p className="text-lg font-bold">{t("review.thank_you")}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("review.pending_approval")}</p>
+              <button type="button" onClick={onClose} className="mt-4 rounded-lg bg-crimson px-6 py-2 text-sm font-bold text-crimson-foreground hover:bg-rich-red">{t("common.close")}</button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
-                <label className="mb-1.5 block text-sm font-semibold">Rating <span className="text-crimson">*</span></label>
+                <label className="mb-1.5 block text-sm font-semibold">{t("review.label_rating")} <span className="text-crimson">*</span></label>
                 <StarPicker value={rating} onChange={setRating} />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-semibold">Name <span className="text-crimson">*</span></label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Your full name"
+                <label htmlFor="review-name" className="mb-1.5 block text-sm font-semibold">{t("review.label_name")} <span className="text-crimson">*</span></label>
+                <input id="review-name" type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder={t("review.name_placeholder")}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-crimson" />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-semibold">Email <span className="text-crimson">*</span></label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="your@email.com"
+                <label htmlFor="review-email" className="mb-1.5 block text-sm font-semibold">{t("review.label_email")} <span className="text-crimson">*</span></label>
+                <input id="review-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="your@email.com"
                   className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-crimson" />
-                <p className="mt-1 text-[10px] text-muted-foreground">Not displayed publicly.</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">{t("review.email_not_public")}</p>
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-semibold">Review Title</label>
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Summarise your experience"
+                <label htmlFor="review-title" className="mb-1.5 block text-sm font-semibold">{t("review.label_title")}</label>
+                <input id="review-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("review.title_placeholder")}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-crimson" />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-semibold">Review <span className="text-crimson">*</span></label>
-                <textarea value={body} onChange={(e) => setBody(e.target.value)} required rows={4}
-                  placeholder="Tell others about your experience…"
+                <label htmlFor="review-body" className="mb-1.5 block text-sm font-semibold">{t("review.label_body")} <span className="text-crimson">*</span></label>
+                <textarea id="review-body" value={body} onChange={(e) => setBody(e.target.value)} required rows={4}
+                  placeholder={t("review.body_placeholder")}
                   className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-crimson" />
               </div>
               {serverError && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">{serverError}</p>}
               <button type="submit" disabled={isSubmitting || !rating || !name || !email || !body}
                 className="flex items-center justify-center gap-2 rounded-lg bg-crimson py-3 text-sm font-bold text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-50">
                 {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isSubmitting ? "Submitting…" : "Submit Review"}
+                {isSubmitting ? t("review.submitting") : t("review.submit")}
               </button>
             </form>
           )}
@@ -169,6 +171,7 @@ function WriteReviewModal({ handle, externalId, onClose }: { handle: string; ext
 
 // ── Main component ────────────────────────────────────────────────────────
 export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, handle, externalId, metaAverage, metaCount }: JudgemeReviewsProps) {
+  const t = useT();
   const [allReviews, setAllReviews] = useState<JudgemeReview[]>(initialReviews);
   const [clientTotal, setClientTotal] = useState<number | null>(null);
   const [loadingFallback, setLoadingFallback] = useState(false);
@@ -196,7 +199,7 @@ export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, ha
       })
       .catch(() => {})
       .finally(() => setLoadingFallback(false));
-  }, [handle, externalId]); // eslint-disable-line
+  }, [handle, externalId, initialReviews.length]); // eslint-disable-line
 
   const effectiveTotal = clientTotal ?? (totalCount > 0 ? totalCount : (metaCount ?? 0));
   const effectiveAvg = rating.average > 0 ? rating.average : (metaAverage ?? 0);
@@ -235,20 +238,20 @@ export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, ha
 
       <section className="border-t border-border pt-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-bold">Customer Reviews</h2>
+          <h2 className="text-lg font-bold">{t("review.customer_reviews")}</h2>
           <button type="button" onClick={() => setShowWriteReview(true)}
             className="rounded-lg border border-crimson px-4 py-2 text-sm font-semibold text-crimson transition-colors hover:bg-crimson hover:text-crimson-foreground">
-            ✍ Write a Review
+            {t("review.write_cta")}
           </button>
         </div>
 
         {effectiveTotal === 0 ? (
           loadingFallback ? (
             <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading reviews…
+              <Loader2 className="h-4 w-4 animate-spin" /> {t("review.loading")}
             </div>
           ) : (
-            <p className="py-8 text-center text-sm text-muted-foreground">No reviews yet — be the first to review this product!</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{t("review.no_reviews")}</p>
           )
         ) : (
           <>
@@ -281,7 +284,7 @@ export function JudgemeReviews({ reviews: initialReviews, rating, totalCount, ha
               <div className="mt-6 flex justify-center">
                 <button type="button" onClick={loadMore} disabled={fetcher.state === "loading"}
                   className={cn("rounded-lg border border-border px-6 py-2.5 text-sm font-medium transition-colors hover:border-crimson hover:text-crimson disabled:opacity-50")}>
-                  {fetcher.state === "loading" ? "Loading…" : `Load more (${effectiveTotal - allReviews.length} remaining)`}
+                  {fetcher.state === "loading" ? t("review.loading_more") : `Load more (${effectiveTotal - allReviews.length} ${t("review.remaining")})`}
                 </button>
               </div>
             )}

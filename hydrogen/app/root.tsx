@@ -421,7 +421,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
     const faviconUrl = footerSettings?.faviconUrl ?? null;
     return { mainMenu, secondaryMenu, mobileMenu, mobileCategoriesMenu, footerSettings, footerMenuCols, announcementMessages, cartDrawerConfig, navItemImages, mobileBanners, faviconUrl, locale: (language === "AR" ? "ar" : "en") as "ar" | "en" };
-  } catch {
+  } catch (e) {
+    console.error("[root loader]", e);
     return {
       mainMenu: [] as NavEntry[],
       secondaryMenu: [] as NavEntry[],
@@ -685,6 +686,8 @@ export function ErrorBoundary() {
         <title>{is404 ? "Page Not Found — MLS UAE" : "Something went wrong — MLS UAE"}</title>
         <link rel="stylesheet" href={styles} />
         <Links />
+        {/* Restore lang/dir from cookie so Arabic users see RTL even on error pages */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var m=document.cookie.match(/(?:^|;\\s*)lang=([a-z]{2})/);if(m&&m[1]==='ar'){document.documentElement.lang='ar';document.documentElement.dir='rtl';}}catch(e){}})();` }} />
       </head>
       <body style={{ margin: 0, background: "#FAF9F6", fontFamily: "Helvetica Neue, Helvetica, Arial, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
         <div style={{ textAlign: "center", padding: "2rem", maxWidth: 480 }}>

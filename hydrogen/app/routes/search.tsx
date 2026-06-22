@@ -4,6 +4,7 @@ import { SearchAutosuggest } from "~/components/layout/SearchAutosuggest";
 import { ProductCard } from "~/components/product/ProductCard";
 import type { ShopifyProduct } from "~/lib/shopify";
 import { useT } from "~/i18n/strings";
+import { detectLanguage } from "~/lib/locale";
 
 // Uses Shopify's dedicated search API — same relevance engine as predictiveSearch
 const SEARCH_QUERY = `#graphql
@@ -60,8 +61,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const q = url.searchParams.get("q")?.trim() ?? "";
   if (!q) return { q, products: [] as ShopifyProduct[], total: 0 };
 
+  const language = detectLanguage(request);
   const data = await context.storefront.query(SEARCH_QUERY, {
-    variables: { query: q, first: 24, language: "EN" as const, country: "AE" as const },
+    variables: { query: q, first: 24, language, country: "AE" as const },
   });
 
   const products: ShopifyProduct[] = (data?.search?.nodes ?? [])

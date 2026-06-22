@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useLocalePath } from "@/stores/localeStore";
 import {
   Sheet,
@@ -109,7 +109,6 @@ export function CartDrawer() {
   const [giftCardInput, setGiftCardInput] = useState("");
   const [giftCardError, setGiftCardError] = useState<string | null>(null);
   const [noteValue, setNoteValue] = useState(orderNote);
-  const noteSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Defer syncCart so the drawer opens and renders immediately with cached data,
   // then silently refreshes discount codes / gift cards in the background.
@@ -186,7 +185,6 @@ export function CartDrawer() {
   };
 
   const handleNoteSave = () => {
-    if (noteSaveTimer.current) clearTimeout(noteSaveTimer.current);
     updateOrderNote(noteValue);
     setNoteOpen(false);
   };
@@ -203,14 +201,14 @@ export function CartDrawer() {
     {
       id: "discount",
       icon: <Ticket className="h-5 w-5" />,
-      label: "Discount code",
+      label: t("cart.tab_discount"),
       badge: discountCodes.filter((d) => d.applicable).length || undefined,
     },
-    { id: "delivery", icon: <Truck className="h-5 w-5" />, label: "Delivery info" },
+    { id: "delivery", icon: <Truck className="h-5 w-5" />, label: t("cart.tab_delivery") },
     {
       id: "note",
       icon: <FileText className="h-5 w-5" />,
-      label: "Order note",
+      label: t("cart.tab_note"),
       badge: orderNote ? 1 : undefined,
     },
   ];
@@ -231,7 +229,7 @@ export function CartDrawer() {
             >
               <Truck className="h-3.5 w-3.5" />
               <span className="rotate-180 [writing-mode:vertical-rl] text-[8px] font-bold uppercase tracking-widest">
-                Delivery
+                {t("cart.delivery_float")}
               </span>
             </button>
           </div>
@@ -248,8 +246,8 @@ export function CartDrawer() {
                 <Truck className="h-4 w-4" />
               </div>
               <div className="flex-1">
-                <h2 className="font-display text-sm font-bold">Delivery &amp; Offers</h2>
-                <p className="text-[11px] text-muted-foreground">What&apos;s available for your order</p>
+                <h2 className="font-display text-sm font-bold">{t("cart.delivery_title")}</h2>
+                <p className="text-[11px] text-muted-foreground">{t("cart.delivery_sub")}</p>
               </div>
               <button
                 type="button"
@@ -277,7 +275,7 @@ export function CartDrawer() {
             {/* panel footer */}
             <div className="border-t border-border px-3 py-3">
               <Button variant="primary" size="lg" onClick={() => setDeliveryOpen(false)} className="w-full">
-                Close
+                {t("common.close")}
               </Button>
             </div>
           </div>
@@ -336,6 +334,9 @@ export function CartDrawer() {
                           <img
                             src={shopifyImageUrl(img.url, 200)}
                             alt={img.altText ?? item.product.node.title}
+                            width={80}
+                            height={80}
+                            loading="lazy"
                             className="h-full w-full object-cover"
                           />
                         )}
@@ -376,7 +377,7 @@ export function CartDrawer() {
                         {item.sellingPlanId && (
                           <div className="flex items-center gap-1 text-xs text-green-700">
                             <RefreshCw className="h-3 w-3 flex-shrink-0" />
-                            <span>{item.sellingPlanName ?? "Subscribe & Save"}</span>
+                            <span>{item.sellingPlanName ?? t("subscription.subscribe_save")}</span>
                           </div>
                         )}
 
@@ -384,7 +385,7 @@ export function CartDrawer() {
                           {isGift ? (
                             /* Free gift — no qty selector or remove button */
                             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
-                              🎁 Free Gift
+                              {t("cart.free_gift")}
                             </span>
                           ) : (
                             /* Normal item controls */
@@ -418,7 +419,7 @@ export function CartDrawer() {
                               </span>
                             )}
                             <span className={`font-bold ${isGift ? "text-emerald-600 text-xs" : "text-crimson"}`}>
-                              {isGift ? "FREE" : formatPrice(
+                              {isGift ? t("cart.free") : formatPrice(
                                 parseFloat(item.price.amount) * item.quantity,
                                 item.price.currencyCode,
                               )}
@@ -472,7 +473,7 @@ export function CartDrawer() {
                       value={discountInput}
                       onChange={(e) => { setDiscountInput(e.target.value); setDiscountError(null); }}
                       onKeyDown={(e) => e.key === "Enter" && handleApplyDiscount()}
-                      placeholder="Enter discount code"
+                      placeholder={t("cart.discount_placeholder")}
                       className="h-8 text-xs"
                       disabled={isApplyingCode}
                     />
@@ -483,7 +484,7 @@ export function CartDrawer() {
                       disabled={isApplyingCode || !discountInput.trim()}
                       className="h-8 shrink-0 px-3 text-xs"
                     >
-                      {isApplyingCode ? <Loader2 className="h-3 w-3 animate-spin" /> : "Apply"}
+                      {isApplyingCode ? <Loader2 className="h-3 w-3 animate-spin" /> : t("cart.apply")}
                     </Button>
                   </div>
                   {discountError && (
@@ -501,7 +502,7 @@ export function CartDrawer() {
                               ? <CheckCircle className="h-3 w-3 shrink-0 text-emerald-600" />
                               : <XCircle className="h-3 w-3 shrink-0 text-destructive" />}
                             <span className={dc.applicable ? "font-semibold" : "text-muted-foreground line-through"}>{dc.code}</span>
-                            {!dc.applicable && <span className="text-destructive">invalid</span>}
+                            {!dc.applicable && <span className="text-destructive">{t("cart.discount_invalid")}</span>}
                           </span>
                           <button
                             type="button"
@@ -530,7 +531,7 @@ export function CartDrawer() {
                     </div>
                     <div className="flex items-center justify-between text-sm text-emerald-600 mb-0.5">
                       <span className="font-medium flex items-center gap-1">
-                        You save
+                        {t("cart.you_save")}
                         {savingsPct > 0 && (
                           <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold leading-none">
                             {savingsPct}%
@@ -543,7 +544,7 @@ export function CartDrawer() {
                 )}
                 <div className="mb-1 flex items-center justify-between">
                   <span className="text-base font-bold">
-                    {savings > 0 ? "Total" : t("cart.subtotal")}
+                    {savings > 0 ? t("cart.total") : t("cart.subtotal")}
                   </span>
                   <span className="font-display text-xl font-bold text-crimson">
                     {formatPrice(displayTotal, displayCurrency)}
@@ -574,7 +575,7 @@ export function CartDrawer() {
                 }`}
               >
                 <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                  <span className="text-sm font-semibold">Order note</span>
+                  <span className="text-sm font-semibold">{t("cart.tab_note")}</span>
                   <button
                     type="button"
                     aria-label="Close"
@@ -588,14 +589,14 @@ export function CartDrawer() {
                   <Textarea
                     value={noteValue}
                     onChange={(e) => setNoteValue(e.target.value)}
-                    placeholder="Add a note for your order…"
+                    placeholder={t("cart.note_placeholder")}
                     rows={5}
                     className="resize-none text-sm"
                   />
                 </div>
                 <div className="px-4 pb-4">
                   <Button variant="primary" size="lg" onClick={handleNoteSave} className="w-full">
-                    Save
+                    {t("cart.save")}
                   </Button>
                 </div>
               </div>

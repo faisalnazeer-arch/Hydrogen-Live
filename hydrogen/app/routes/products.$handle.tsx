@@ -282,7 +282,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
       variables: { handle, language, country: "AE" as const },
       cache: context.storefront.CacheShort(),
     }),
-    context.adminFetch(ADMIN_TEMPLATE_SUFFIX_QUERY(handle)).catch(() => null),
+    context.adminFetch(ADMIN_TEMPLATE_SUFFIX_QUERY(handle)).catch((e: unknown) => { console.error("[products loader] admin template fetch:", e); return null; }),
   ]);
   if (!data.product) throw new Response("Not found", { status: 404 });
   // Zero-price products are internal free-gift items — redirect to home instead of 404

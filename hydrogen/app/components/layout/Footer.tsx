@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { Facebook, Instagram, Linkedin, Mail, Phone, Twitter } from "lucide-react";
 import logo from "@/assets/mls-logo.png";
+import { useLocalePath } from "@/stores/localeStore";
 import {
   Accordion,
   AccordionContent,
@@ -223,6 +224,7 @@ function TikTokIcon({ className }: { className?: string }) {
 }
 
 function LinkList({ links }: { links: FooterLink[] }) {
+  const lp = useLocalePath();
   return (
     <ul className="space-y-2.5 text-sm text-off-white/80">
       {links.map((l) => (
@@ -232,7 +234,7 @@ function LinkList({ links }: { links: FooterLink[] }) {
               {l.label}
             </a>
           ) : (
-            <Link to={l.url} className="hover:text-gold">
+            <Link to={lp(l.url)} className="hover:text-gold">
               {l.label}
             </Link>
           )}

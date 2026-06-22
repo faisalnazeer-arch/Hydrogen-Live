@@ -132,7 +132,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
       language,
       country: "AE" as const,
     },
-    cache: context.storefront.CacheLong(),
+    cache: context.storefront.CacheShort(),
   });
   if (!data.collection) throw new Response("Not found", { status: 404 });
 
@@ -182,10 +182,20 @@ function CollectionDescription({ text }: { text: string }) {
   );
 }
 
-export const meta: MetaFunction<typeof loader> = ({ data }) => {
+export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
+  const title = `${data?.collection?.title ?? "Collection"} — MLS UAE`;
+  const description = data?.collection?.description ?? "";
+  const image = (data?.collection as any)?.image?.url as string | undefined;
+  const canonical = `https://mlsuae.ae${location.pathname}`;
   return [
-    { title: `${data?.collection?.title ?? "Collection"} — MLS UAE` },
-    { name: "description", content: data?.collection?.description ?? "" },
+    { title },
+    { name: "description", content: description },
+    { property: "og:type", content: "website" },
+    { property: "og:title", content: title },
+    { property: "og:description", content: description },
+    ...(image ? [{ property: "og:image", content: image }] : []),
+    { property: "og:url", content: canonical },
+    { tagName: "link", rel: "canonical", href: canonical },
   ];
 };
 

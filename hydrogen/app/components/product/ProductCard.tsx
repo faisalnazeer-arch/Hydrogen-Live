@@ -126,7 +126,7 @@ export const ProductCard = memo(function ProductCard({ product, onQuickView, rat
         {!isAvailable && (
           <div className="absolute inset-0 flex items-end justify-start bg-black/25">
             <span className="m-2 inline-flex items-center rounded-sm bg-charcoal/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
-              Sold Out
+              {t("product.sold_out")}
             </span>
           </div>
         )}
@@ -208,6 +208,7 @@ export const ProductCard = memo(function ProductCard({ product, onQuickView, rat
 
 // ── Notify Me (card variant) ───────────────────────────────────────────────
 function NotifyMeCard({ variantId, productHandle }: { variantId: string; productHandle: string }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -231,7 +232,7 @@ function NotifyMeCard({ variantId, productHandle }: { variantId: string; product
     return (
       <div className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md bg-green-50 px-2 text-[11px] font-semibold text-green-700 sm:h-8">
         <BellRing className="h-3 w-3 shrink-0" />
-        You're on the list!
+        {t("product.notify_listed")}
       </div>
     );
   }
@@ -244,7 +245,7 @@ function NotifyMeCard({ variantId, productHandle }: { variantId: string; product
         className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-crimson/50 text-[11px] font-semibold text-crimson transition-colors hover:border-crimson hover:bg-crimson/5 sm:h-8 sm:text-xs"
       >
         <Bell className="h-3 w-3 shrink-0" />
-        Notify Me
+        {t("product.notify_submit")}
       </button>
     );
   }
@@ -274,7 +275,7 @@ function NotifyMeCard({ variantId, productHandle }: { variantId: string; product
         disabled={status === "loading"}
         className="flex h-7 w-full items-center justify-center rounded-md bg-crimson text-[11px] font-bold text-white transition-colors hover:bg-rich-red disabled:opacity-60 sm:h-8"
       >
-        {status === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Notify Me"}
+        {status === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("product.notify_submit")}
       </button>
       {status === "error" && (
         <p className="text-[10px] text-destructive">Try again</p>

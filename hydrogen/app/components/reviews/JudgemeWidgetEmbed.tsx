@@ -116,11 +116,10 @@ function initReviewSliders(root: HTMLElement) {
       (dotsEl.children[cur] as HTMLElement).classList.add('on');
     }
 
-    const timer = setInterval(() => go((cur + 1) % slides.length), 3000);
-    // clean up if card is ever removed from DOM
-    new MutationObserver((_, obs) => {
-      if (!document.contains(picsEl)) { clearInterval(timer); obs.disconnect(); }
-    }).observe(document.body, { childList: true, subtree: true });
+    const timer = setInterval(() => {
+      if (!picsEl.isConnected) { clearInterval(timer); return; }
+      go((cur + 1) % slides.length);
+    }, 3000);
   });
 }
 

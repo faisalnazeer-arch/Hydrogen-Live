@@ -274,10 +274,11 @@ function Field({ label, name, type, placeholder, required }: {
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <label htmlFor={`field-${name}`} className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label} {required && <span className="text-crimson">*</span>}
       </label>
       <input
+        id={`field-${name}`}
         name={name}
         type={type}
         required={required}

@@ -373,6 +373,11 @@ function parseCollectionSectionConfig(nodes: any[]): { heading: string; subHeadi
 export const meta: MetaFunction = () => [
   { title: "MLS UAE — Premium Meats" },
   { name: "description", content: "Premium Wagyu, Angus, lamb and more — delivered." },
+  { property: "og:type", content: "website" },
+  { property: "og:title", content: "MLS UAE — Premium Meats" },
+  { property: "og:description", content: "Premium Wagyu, Angus, lamb and more — delivered across the UAE." },
+  { property: "og:url", content: "https://mlsuae.ae/" },
+  { tagName: "link", rel: "canonical", href: "https://mlsuae.ae/" },
 ];
 
 

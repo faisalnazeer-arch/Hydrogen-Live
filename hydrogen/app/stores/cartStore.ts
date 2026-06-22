@@ -953,6 +953,9 @@ export const useCartStore = create<CartStore>()(
             totalAmount: cart?.cost?.totalAmount ?? get().totalAmount,
           });
           return { success: true };
+        } catch (e) {
+          console.error("[cart] applyGiftCard error:", e);
+          return { success: false, error: "Could not apply gift card. Please try again." };
         } finally {
           set({ isApplyingCode: false });
         }
@@ -976,6 +979,8 @@ export const useCartStore = create<CartStore>()(
             subtotalAmount: cart?.cost?.subtotalAmount ?? get().subtotalAmount,
             totalAmount: cart?.cost?.totalAmount ?? get().totalAmount,
           });
+        } catch (e) {
+          console.error("[cart] removeGiftCard error:", e);
         } finally {
           set({ isApplyingCode: false });
         }
