@@ -227,15 +227,15 @@ function TikTokIcon({ className }: { className?: string }) {
 function LinkList({ links }: { links: FooterLink[] }) {
   const lp = useLocalePath();
   return (
-    <ul className="space-y-2.5 text-sm text-off-white/80">
+    <ul className="space-y-2.5 text-sm">
       {links.map((l) => (
         <li key={l.label}>
           {l.url.startsWith("http") ? (
-            <a href={l.url} target="_blank" rel="noopener noreferrer" className="hover:text-white">
+            <a href={l.url} target="_blank" rel="noopener noreferrer" className="text-off-white/80 hover:text-white">
               {l.label}
             </a>
           ) : (
-            <Link to={lp(l.url)} className="hover:text-gold">
+            <Link to={lp(l.url)} className="text-off-white/80 hover:text-gold">
               {l.label}
             </Link>
           )}
