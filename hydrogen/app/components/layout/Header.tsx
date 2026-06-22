@@ -398,6 +398,7 @@ function MobileMenuDrawer({
 
   const locale    = useLocaleStore((s) => s.locale);
   const setLocale = useLocaleStore((s) => s.setLocale);
+  const t         = useT();
 
   const tabs             = mobileMenu;
   const isCategories     = tabs[tab1Idx]?.label?.toLowerCase() === "categories";
@@ -427,7 +428,7 @@ function MobileMenuDrawer({
       {mobileBanners.length > 0 && (
         <div className="flex shrink-0 gap-2 border-b border-border bg-background px-3 py-2.5">
           {mobileBanners.map((banner) => (
-            <Link key={banner.id} to={banner.url} onClick={onClose} prefetch="intent"
+            <Link key={banner.id} to={lp(banner.url)} onClick={onClose} prefetch="intent"
               className="relative flex-1 overflow-hidden rounded-xl">
               <img src={cdnImg(banner.imageUrl, 300)} alt={banner.altText}
                 className="h-24 w-full object-cover" loading="eager" />
@@ -755,7 +756,7 @@ function MobileMenuDrawer({
         <a href={`https://mlsuae.ae/customer_authentication/redirect?locale=${locale}&region_country=AE`}
           className="flex w-full items-center justify-center rounded-lg bg-crimson py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors hover:bg-rich-red"
           style={{ color: '#ffffff' }}
-        >Login / Sign Up</a>
+        >{t("nav.login_signup")}</a>
       </div>
     </div>
   );
