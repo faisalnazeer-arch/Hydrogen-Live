@@ -41,9 +41,10 @@ function parseBadges(nodes: RawMetaobjectNode[]): TrustBadge[] {
 
 interface TrustBadgesProps {
   badges?: RawMetaobjectNode[];
+  centered?: boolean;
 }
 
-export function TrustBadges({ badges: rawBadges = [] }: TrustBadgesProps) {
+export function TrustBadges({ badges: rawBadges = [], centered = false }: TrustBadgesProps) {
   const parsed = parseBadges(rawBadges);
   if (parsed.length === 0) return null;
 

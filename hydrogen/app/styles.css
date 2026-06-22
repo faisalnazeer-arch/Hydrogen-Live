@@ -8,6 +8,27 @@
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
+/* LP reviews infinite marquee */
+@keyframes lp-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.lp-marquee-track {
+  animation: lp-marquee 40s linear infinite;
+}
+.lp-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* Announcement bar infinite scroll */
+@keyframes announcement-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-33.333%); }
+}
+.announcement-scroll {
+  animation: announcement-scroll 25s linear infinite;
+}
+
 /* Simple site-wide link hover transition */
 a { transition: color 0.18s ease, opacity 0.18s ease; }
 

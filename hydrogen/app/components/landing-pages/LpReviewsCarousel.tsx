@@ -18,18 +18,6 @@ export function LpReviewsCarousel({ nodes }: { nodes: any[] }) {
 
   return (
     <section className="bg-[#faf8f5] py-12 overflow-hidden">
-      <style>{`
-        @keyframes lp-marquee {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-        .lp-marquee-track {
-          animation: lp-marquee 40s linear infinite;
-        }
-        .lp-marquee-track:hover {
-          animation-play-state: paused;
-        }
-      `}</style>
       <div className="container mx-auto px-4 mb-8">
         <h2 className="text-center font-display text-2xl font-extrabold text-foreground">
           What Our Customers Say
@@ -39,7 +27,7 @@ export function LpReviewsCarousel({ nodes }: { nodes: any[] }) {
         {doubled.map((r, i) => (
           <div
             key={i}
-            className="mx-2 w-72 flex-shrink-0 rounded-xl bg-white p-5 shadow-sm sm:w-80"
+            className="mx-2 w-72 flex-shrink-0 rounded-xl p-5 shadow-sm sm:w-80" style={{ backgroundColor: "#F7ECEA" }}
           >
             <div className="mb-2 flex gap-0.5">
               {Array.from({ length: 5 }).map((_, si) => (

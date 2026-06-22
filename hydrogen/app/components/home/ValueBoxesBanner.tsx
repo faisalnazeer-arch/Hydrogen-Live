@@ -25,7 +25,18 @@ const VALUE_PROPS = [
 ];
 
 export function ValueBoxesBanner({ banner }: Props) {
-  if (!banner || !banner.heading) return null;
+  if (!banner) return null;
+
+  // Image-only mode — no heading, just render the image full width
+  if (!banner.heading && banner.imageUrl) {
+    return (
+      <div className="w-full">
+        <img src={banner.imageUrl} alt={banner.imageAlt || ""} className="w-full h-auto" />
+      </div>
+    );
+  }
+
+  if (!banner.heading) return null;
 
   return (
     <section className="container mx-auto px-4 py-8 md:py-12">

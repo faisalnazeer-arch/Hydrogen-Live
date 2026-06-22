@@ -9,6 +9,7 @@ import { LpMessageBanner } from "~/components/landing-pages/LpMessageBanner";
 import { LpReviewsCarousel } from "~/components/landing-pages/LpReviewsCarousel";
 import { YoutubeReelsSection } from "~/components/landing-pages/YoutubeReelsSection";
 import { LpCertificationsSection } from "~/components/landing-pages/LpCertificationsSection";
+import { LpProductCarousel } from "~/components/landing-pages/LpProductCarousel";
 import type { ShopifyProduct } from "@/lib/shopify";
 
 // ── Product fragment ──────────────────────────────────────────────────────────
@@ -441,26 +442,32 @@ function renderLpTypes(
   const productGridRef = getFieldRef(f, "product_grid");
   if (productGridRef?.type === "lp_product_grid") {
     const pf: any[] = productGridRef.fields ?? [];
-    // Primary collection
+    // Primary collection → grid
     const collHandle = resolveCollectionHandle(pf);
-    let rawProducts: any[] = collHandle ? (productsByCollection[collHandle] ?? []) : [];
-    // Carousel collections (lp_product_carousel field — list.collection_reference)
+    const gridProducts = collHandle ? (productsByCollection[collHandle] ?? []).map(toShopifyProduct) : [];
+    // Carousel collections (lp_product_carousel — list.collection_reference) → separate carousels
     const carouselNodes: any[] = pf.find((x: any) => x.key === "lp_product_carousel")?.references?.nodes ?? [];
-    for (const cn of carouselNodes) {
-      if (cn?.handle && productsByCollection[cn.handle]) {
-        rawProducts = [...rawProducts, ...productsByCollection[cn.handle]];
-      }
-    }
-    // Deduplicate by product ID
-    const seenIds = new Set<string>();
-    const uniqueRaw = rawProducts.filter((p) => {
-      if (seenIds.has(p.id)) return false;
-      seenIds.add(p.id);
-      return true;
-    });
-    const products = uniqueRaw.map(toShopifyProduct);
+    const carousels = carouselNodes
+      .filter((cn: any) => cn?.handle)
+      .map((cn: any) => ({
+        handle: cn.handle as string,
+        title: (cn.title ?? cn.handle) as string,
+        products: (productsByCollection[cn.handle] ?? []).map(toShopifyProduct),
+      }));
     sectionMap["product_grid"] = (
-      <LpProductGridSection key={`${key}-grid`} fields={pf} products={products} />
+      <div id="products" key={`${key}-grid`}>
+        {gridProducts.length > 0 && (
+          <LpProductGridSection fields={pf} products={gridProducts} collectionHandle={collHandle} />
+        )}
+        {carousels.map((col) => (
+          <LpProductCarousel
+            key={col.handle}
+            heading={col.title}
+            collectionHandle={col.handle}
+            products={col.products}
+          />
+        ))}
+      </div>
     );
   }
 
