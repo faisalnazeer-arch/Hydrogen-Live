@@ -18,18 +18,6 @@ export function LpReviewsCarousel({ nodes }: { nodes: any[] }) {
 
   return (
     <section className="bg-[#faf8f5] py-12 overflow-hidden">
-      <style>{`
-        @keyframes lp-marquee {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-        .lp-marquee-track {
-          animation: lp-marquee 40s linear infinite;
-        }
-        .lp-marquee-track:hover {
-          animation-play-state: paused;
-        }
-      `}</style>
       <div className="container mx-auto px-4 mb-8">
         <h2 className="text-center font-display text-2xl font-extrabold text-foreground">
           What Our Customers Say

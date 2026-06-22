@@ -13,6 +13,12 @@ type Matches = [{
   id: "root";
   module: typeof import("../../root.js");
 }, {
+  id: "ar-pages-subscription";
+  module: typeof import("../pages.subscription.js");
+}] | [{
+  id: "root";
+  module: typeof import("../../root.js");
+}, {
   id: "routes/pages.subscription";
   module: typeof import("../pages.subscription.js");
 }];

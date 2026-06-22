@@ -60,6 +60,7 @@ export function Footer({ settings, menuCols }: Props) {
 
   return (
     <footer className="bg-charcoal text-charcoal-foreground">
+      <div className="border-t border-off-white/20" />
       <div className="container mx-auto px-4 py-12">
 
         {/* ── Desktop ─────────────────────────────────────────────── */}
@@ -77,7 +78,7 @@ export function Footer({ settings, menuCols }: Props) {
           <Accordion type="single" collapsible className="mt-6">
             {menuCols.map((col) => (
               <AccordionItem key={col.heading} value={col.heading} className="border-off-white/10">
-                <AccordionTrigger className="font-display text-sm font-bold uppercase tracking-wider text-gold hover:no-underline">
+                <AccordionTrigger className="font-display text-sm font-bold uppercase tracking-wider text-white hover:no-underline">
                   {col.heading}
                 </AccordionTrigger>
                 <AccordionContent>
@@ -86,7 +87,7 @@ export function Footer({ settings, menuCols }: Props) {
               </AccordionItem>
             ))}
             <AccordionItem value="contact" className="border-off-white/10">
-              <AccordionTrigger className="font-display text-sm font-bold uppercase tracking-wider text-gold hover:no-underline">
+              <AccordionTrigger className="font-display text-sm font-bold uppercase tracking-wider text-white hover:no-underline">
                 {contact.heading}
               </AccordionTrigger>
               <AccordionContent>
@@ -114,38 +115,38 @@ function BrandCol({ contact }: { contact: ContactData }) {
       <div className="mb-3">
         <img src={logo} alt="MLS UAE" className="h-14 w-auto brightness-0 invert" />
       </div>
-      <p className="text-sm font-semibold text-gold">{DEFAULTS.companyName}</p>
+      <p className="text-sm font-semibold text-white">{DEFAULTS.companyName}</p>
       {contact.brandText && (
         <p className="mt-1 text-sm text-off-white/70">{contact.brandText}</p>
       )}
       <div className="mt-4 flex flex-wrap gap-3">
         {contact.instagram && (
-          <a href={contact.instagram} aria-label="Instagram" className="text-off-white/70 hover:text-gold" target="_blank" rel="noopener noreferrer">
+          <a href={contact.instagram} aria-label="Instagram" className="text-off-white/70 hover:text-white" target="_blank" rel="noopener noreferrer">
             <Instagram className="h-5 w-5" />
           </a>
         )}
         {contact.facebook && (
-          <a href={contact.facebook} aria-label="Facebook" className="text-off-white/70 hover:text-gold" target="_blank" rel="noopener noreferrer">
+          <a href={contact.facebook} aria-label="Facebook" className="text-off-white/70 hover:text-white" target="_blank" rel="noopener noreferrer">
             <Facebook className="h-5 w-5" />
           </a>
         )}
         {contact.whatsapp && (
-          <a href={contact.whatsapp} aria-label="WhatsApp" className="text-off-white/70 hover:text-gold" target="_blank" rel="noopener noreferrer">
+          <a href={contact.whatsapp} aria-label="WhatsApp" className="text-off-white/70 hover:text-white" target="_blank" rel="noopener noreferrer">
             <WhatsAppIcon className="h-5 w-5" />
           </a>
         )}
         {contact.linkedin && (
-          <a href={contact.linkedin} aria-label="LinkedIn" className="text-off-white/70 hover:text-gold" target="_blank" rel="noopener noreferrer">
+          <a href={contact.linkedin} aria-label="LinkedIn" className="text-off-white/70 hover:text-white" target="_blank" rel="noopener noreferrer">
             <Linkedin className="h-5 w-5" />
           </a>
         )}
         {contact.twitter && (
-          <a href={contact.twitter} aria-label="Twitter / X" className="text-off-white/70 hover:text-gold" target="_blank" rel="noopener noreferrer">
+          <a href={contact.twitter} aria-label="Twitter / X" className="text-off-white/70 hover:text-white" target="_blank" rel="noopener noreferrer">
             <Twitter className="h-5 w-5" />
           </a>
         )}
         {contact.tiktok && (
-          <a href={contact.tiktok} aria-label="TikTok" className="text-off-white/70 hover:text-gold" target="_blank" rel="noopener noreferrer">
+          <a href={contact.tiktok} aria-label="TikTok" className="text-off-white/70 hover:text-white" target="_blank" rel="noopener noreferrer">
             <TikTokIcon className="h-5 w-5" />
           </a>
         )}
@@ -157,7 +158,7 @@ function BrandCol({ contact }: { contact: ContactData }) {
 function NavCol({ heading, links }: { heading: string; links: FooterLink[] }) {
   return (
     <div className="min-w-[140px] flex-1">
-      <h4 className="mb-4 font-display text-sm font-bold uppercase tracking-wider text-gold">
+      <h4 className="mb-4 font-display text-sm font-bold uppercase tracking-wider text-white">
         {heading}
       </h4>
       <LinkList links={links} />
@@ -168,7 +169,7 @@ function NavCol({ heading, links }: { heading: string; links: FooterLink[] }) {
 function ContactCol({ contact }: { contact: ContactData }) {
   return (
     <div className="min-w-[200px] flex-1">
-      <h4 className="mb-4 font-display text-sm font-bold uppercase tracking-wider text-gold">
+      <h4 className="mb-4 font-display text-sm font-bold uppercase tracking-wider text-white">
         {contact.heading}
       </h4>
       <ContactList contact={contact} />
@@ -181,10 +182,10 @@ function ContactList({ contact }: { contact: ContactData }) {
     <ul className="space-y-2.5 text-sm text-off-white/80">
       {contact.phone && (
         <li className="flex items-center gap-2">
-          <Phone className="h-4 w-4 shrink-0 text-gold" />
+          <Phone className="h-4 w-4 shrink-0 text-white" />
           <a
             href={`https://wa.me/${contact.phone.replace(/\D/g, "")}`}
-            className="hover:text-gold"
+            className="hover:text-white"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -194,8 +195,8 @@ function ContactList({ contact }: { contact: ContactData }) {
       )}
       {contact.email && (
         <li className="flex items-center gap-2">
-          <Mail className="h-4 w-4 shrink-0 text-gold" />
-          <a href={`mailto:${contact.email}`} className="hover:text-gold">
+          <Mail className="h-4 w-4 shrink-0 text-white" />
+          <a href={`mailto:${contact.email}`} className="hover:text-white">
             {contact.email}
           </a>
         </li>
@@ -226,11 +227,11 @@ function LinkList({ links }: { links: FooterLink[] }) {
       {links.map((l) => (
         <li key={l.label}>
           {l.url.startsWith("http") ? (
-            <a href={l.url} target="_blank" rel="noopener noreferrer" className="hover:text-gold">
+            <a href={l.url} target="_blank" rel="noopener noreferrer" className="hover:text-white">
               {l.label}
             </a>
           ) : (
-            <Link to={l.url} className="hover:text-gold">
+            <Link to={l.url} className="hover:text-white">
               {l.label}
             </Link>
           )}

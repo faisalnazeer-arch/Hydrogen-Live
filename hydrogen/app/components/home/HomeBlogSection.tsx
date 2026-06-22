@@ -20,16 +20,16 @@ function BlogCard({ article }: { article: BlogArticle }) {
       className="group flex w-72 shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:w-80"
     >
       {article.imageUrl ? (
-        <div className="h-44 overflow-hidden bg-muted sm:h-48">
+        <div className="aspect-[16/9] overflow-hidden bg-muted w-full">
           <img
             src={article.imageUrl}
             alt={article.imageAlt}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />
         </div>
       ) : (
-        <div className="h-44 bg-gradient-to-br from-charcoal/10 to-crimson/10 sm:h-48" />
+        <div className="aspect-[16/9] w-full bg-gradient-to-br from-charcoal/10 to-crimson/10" />
       )}
       <div className="flex flex-1 flex-col p-5">
         <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">

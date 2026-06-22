@@ -457,7 +457,7 @@ function renderLpTypes(
     sectionMap["product_grid"] = (
       <div id="products" key={`${key}-grid`}>
         {gridProducts.length > 0 && (
-          <LpProductGridSection fields={pf} products={gridProducts} />
+          <LpProductGridSection fields={pf} products={gridProducts} collectionHandle={collHandle} />
         )}
         {carousels.map((col) => (
           <LpProductCarousel

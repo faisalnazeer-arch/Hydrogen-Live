@@ -10,9 +10,11 @@ function getField(fields: any[], key: string): string | null {
 export function LpProductGridSection({
   fields,
   products,
+  collectionHandle,
 }: {
   fields: any[];
   products: ShopifyProduct[];
+  collectionHandle?: string | null;
 }) {
   if (products.length === 0) return null;
 
@@ -43,11 +45,6 @@ export function LpProductGridSection({
             {subheading && (
               <p className="mt-1 text-sm text-muted-foreground">{subheading}</p>
             )}
-            {ctaText && ctaUrl && (
-              <Link to={ctaUrl} className="mt-2 inline-block text-sm font-semibold text-crimson hover:underline">
-                {ctaText} →
-              </Link>
-            )}
           </div>
         )}
         <HScroller>
@@ -60,6 +57,19 @@ export function LpProductGridSection({
             </div>
           ))}
         </HScroller>
+        {(ctaText && ctaUrl) ? (
+          <div className="mt-6 text-center">
+            <Link to={ctaUrl} className="inline-block text-sm font-semibold text-crimson hover:underline">
+              {ctaText} →
+            </Link>
+          </div>
+        ) : collectionHandle ? (
+          <div className="mt-6 text-center">
+            <Link to={`/collections/${collectionHandle}`} className="inline-block text-sm font-semibold text-crimson hover:underline">
+              View All →
+            </Link>
+          </div>
+        ) : null}
       </div>
     </section>
   );
