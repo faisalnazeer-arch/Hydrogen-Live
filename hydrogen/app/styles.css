@@ -32,6 +32,9 @@
 /* Simple site-wide link hover transition */
 a { transition: color 0.18s ease, opacity 0.18s ease; }
 
+/* Footer nav links — explicit hover gold (CSS fallback for Tailwind inheritance issue) */
+footer .hover\:text-gold:hover { color: var(--color-gold); }
+
 
 /* Language toggle active state — driven by html[lang] set from cookie via
    inline <head> script, so it's correct before React even renders (no flash) */
