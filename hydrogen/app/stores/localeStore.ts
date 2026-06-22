@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { useRouteLoaderData } from "react-router";
 
 export type Locale = "en" | "ar";
 export type Dir = "ltr" | "rtl";
@@ -8,25 +9,52 @@ interface LocaleState {
   setLocale: (l: Locale) => void;
 }
 
-// Read the cookie synchronously at module-load time so the store starts
-// with the correct locale — avoids the post-hydration flash where the UI
-// briefly shows "EN" before the useEffect fires and corrects it to "AR".
-function readCookieLocale(): Locale {
+function readInitialLocale(): Locale {
   if (typeof document === "undefined") return "en";
   const m = document.cookie.match(/(?:^|;\s*)lang=([a-z]{2})/);
   return m?.[1] === "ar" ? "ar" : "en";
 }
 
 export const useLocaleStore = create<LocaleState>()((set) => ({
-  locale: readCookieLocale(),
+  locale: readInitialLocale(),
   setLocale: (locale) => {
     set({ locale });
     if (typeof document !== "undefined") {
       const secure = window.location.protocol === "https:" ? ";Secure" : "";
       document.cookie = `lang=${locale};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax${secure}`;
-      window.location.reload();
+
+      let target: string;
+      if (locale === "ar") {
+        target = "/ar";
+      } else {
+        const current = window.location.pathname;
+        target = current.startsWith("/ar/") ? current.slice(3) || "/" : current === "/ar" ? "/" : current;
+        target += window.location.search;
+      }
+
+      window.location.replace(target);
     }
   },
 }));
 
 export const dirFor = (l: Locale): Dir => (l === "ar" ? "rtl" : "ltr");
+
+/**
+ * Returns a path-prefixer function that prepends /ar/ when locale is Arabic.
+ * Reads locale from the root loader (SSR-safe). Falls back to Zustand store
+ * (picks up cookie on client if root data is unavailable).
+ */
+export function useLocalePath() {
+  // Root loader provides the server-detected locale — no hydration mismatch.
+  const rootData = useRouteLoaderData("root") as { locale?: Locale } | undefined;
+  // Zustand fallback — correct after client hydration reads the cookie.
+  const storeLocale = useLocaleStore((s) => s.locale);
+  const locale: Locale = rootData?.locale ?? storeLocale;
+
+  return (path: string | null | undefined): string => {
+    const p = path ?? "/";
+    if (locale !== "ar") return p;
+    if (p.startsWith("/ar")) return p;
+    return `/ar${p.startsWith("/") ? p : `/${p}`}`;
+  };
+}

@@ -5,6 +5,7 @@ import {
   type ShopifyProduct,
 } from "@/lib/shopify";
 import { useRecentlyViewed } from "@/stores/recentlyViewedStore";
+import { useLocaleStore } from "@/stores/localeStore";
 import { ProductCard } from "@/components/product/ProductCard";
 import { SectionHeader } from "./FeaturedCollections";
 
@@ -15,15 +16,19 @@ interface RecentlyViewedProps {
 export function RecentlyViewed({ excludeHandle }: RecentlyViewedProps = {}) {
   const allHandles = useRecentlyViewed((s) => s.handles);
   const handles = excludeHandle ? allHandles.filter((h) => h !== excludeHandle) : allHandles;
+  const locale = useLocaleStore((s) => s.locale);
+  const language = locale === "ar" ? "AR" : "EN";
 
   const { data } = useQuery({
-    queryKey: ["recently-viewed", handles],
+    queryKey: ["recently-viewed", handles, locale],
     queryFn: async () => {
       if (handles.length === 0) return [];
       const query = handles.map((h) => `handle:${h}`).join(" OR ");
       const res = await storefrontApiRequest<any>(PRODUCTS_QUERY, {
         first: handles.length,
         query,
+        language,
+        country: "AE",
       });
       const products: ShopifyProduct[] = (res?.data?.products?.edges ?? [])
         .filter((p: ShopifyProduct) => parseFloat(p.node.priceRange.minVariantPrice.amount) > 0);
