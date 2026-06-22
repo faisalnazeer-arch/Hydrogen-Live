@@ -817,7 +817,11 @@ export const useCartStore = create<CartStore>()(
           const data = await storefrontApiRequest<any>(CART_QUERY, { id: cartId });
           if (!data) return;
           const cart = data?.data?.cart;
-          if (!cart || cart.totalQuantity === 0) {
+          if (!cart) {
+            // Cart no longer exists on Shopify (expired / deleted) — safe to clear.
+            // NOTE: do NOT clear on totalQuantity === 0 — Shopify may report 0 due
+            // to eventual-consistency lag immediately after an add mutation, which
+            // would silently wipe the customer's cart on the next tab-focus sync.
             clearCart();
           } else {
             set({
