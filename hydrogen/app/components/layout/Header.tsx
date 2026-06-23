@@ -102,7 +102,7 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
         </Sheet>
 
         <Link
-          to={locale === "ar" ? "/ar" : "/"}
+          to="/"
           aria-label="MLS — Muscat Livestock Store"
           className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center lg:static lg:translate-x-0 lg:translate-y-0"
         >
