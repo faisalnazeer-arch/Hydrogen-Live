@@ -547,11 +547,7 @@ export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
     ...(image ? [{ property: "og:image", content: image }] : []),
     { property: "og:url", content: canonical },
     { tagName: "link", rel: "canonical", href: canonical },
-    {
-      tagName: "script",
-      type: "application/ld+json",
-      children: JSON.stringify(jsonLd),
-    },
+    { "script:ld+json": jsonLd },
   ];
 };
 

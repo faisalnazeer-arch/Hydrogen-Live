@@ -21,6 +21,7 @@ import { useCartStore, initGiftIds, warmGiftCache } from "@/stores/cartStore";
 import { formatPrice, shopifyImageUrl } from "@/lib/shopify";
 import { useT } from "@/i18n/strings";
 import { useCartDrawerConfig } from "@/lib/cartDrawerConfig";
+import type { DiscountInfo } from "@/routes/api.discounts";
 import { QuantitySelector } from "@/components/shared/QuantitySelector";
 
 function parseBold(text: string): React.ReactNode {
@@ -47,14 +48,11 @@ export function CartDrawer() {
     getCheckoutUrl,
     syncCart,
     discountCodes,
-
-    appliedGiftCards,
+    automaticDiscounts,
     subtotalAmount,
     totalAmount,
     applyDiscountCode,
     removeDiscountCode,
-    applyGiftCard,
-    removeGiftCard,
     orderNote,
     updateOrderNote,
   } = useCartStore(
@@ -62,7 +60,6 @@ export function CartDrawer() {
       items: s.items,
       isOpen: s.isOpen,
       setOpen: s.setOpen,
-
       isApplyingCode: s.isApplyingCode,
       removingLineIds: s.removingLineIds,
       updateQuantity: s.updateQuantity,
@@ -71,14 +68,11 @@ export function CartDrawer() {
       getCheckoutUrl: s.getCheckoutUrl,
       syncCart: s.syncCart,
       discountCodes: s.discountCodes,
-
-      appliedGiftCards: s.appliedGiftCards,
+      automaticDiscounts: s.automaticDiscounts,
       subtotalAmount: s.subtotalAmount,
       totalAmount: s.totalAmount,
       applyDiscountCode: s.applyDiscountCode,
       removeDiscountCode: s.removeDiscountCode,
-      applyGiftCard: s.applyGiftCard,
-      removeGiftCard: s.removeGiftCard,
       orderNote: s.orderNote,
       updateOrderNote: s.updateOrderNote,
     }))
@@ -102,21 +96,60 @@ export function CartDrawer() {
   }, [location.search]);
 
   const [activePanel, setActivePanel] = useState<Panel>("discount");
+  const [fetchedDiscountTitle, setFetchedDiscountTitle] = useState<string | null>(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [discountInput, setDiscountInput] = useState("");
   const [discountError, setDiscountError] = useState<string | null>(null);
-  const [giftCardInput, setGiftCardInput] = useState("");
-  const [giftCardError, setGiftCardError] = useState<string | null>(null);
   const [noteValue, setNoteValue] = useState(orderNote);
 
   // Defer syncCart so the drawer opens and renders immediately with cached data,
   // then silently refreshes discount codes / gift cards in the background.
   useEffect(() => {
     if (!isOpen) return;
-    const t = setTimeout(() => syncCart(), 800);
+    const t = setTimeout(() => syncCart(), 200);
     return () => clearTimeout(t);
   }, [isOpen, syncCart]);
+
+  // Admin API fallback — only fires if syncCart (which runs at +200ms) didn't already
+  // populate automaticDiscounts from cart.discountAllocations. Delayed to 800ms so the
+  // Storefront API has time to respond first; avoids a wasted server round-trip in normal cases.
+  useEffect(() => {
+    if (!isOpen || fetchedDiscountTitle) return;
+    const timer = setTimeout(() => {
+      // Re-check inside the timeout — syncCart may have populated discounts by now
+      const { automaticDiscounts: current, subtotalAmount: sub, totalAmount: tot } = useCartStore.getState();
+      if (current.length > 0) return;
+      const subAmt = sub ? parseFloat(sub.amount) : 0;
+      const totAmt = tot ? parseFloat(tot.amount) : subAmt;
+      const gap = Math.max(0, subAmt - totAmt);
+      if (gap < 0.01 || subAmt <= 0) return;
+      fetch("/api/discounts")
+        .then((r) => (r.ok ? r.json() : { discounts: [] }))
+        .then((data: { discounts: DiscountInfo[] }) => {
+          const amountMatches = (d: DiscountInfo) => {
+            if (d.type === "percentage") {
+              const expected = subAmt * d.value / 100;
+              // Use a wide range: gap can be 10%–110% of expected.
+              // A discount may only apply to some items (e.g. subscription items excluded),
+              // so the actual gap can be significantly less than the full expected amount.
+              return expected > 0 && gap >= expected * 0.1 && gap <= expected * 1.1;
+            }
+            if (d.type === "fixed") return Math.abs(d.value - gap) < 0.51;
+            return false;
+          };
+          // Prefer order-level discounts so Dcart product discounts don't shadow native order discounts
+          const match =
+            data.discounts.find((d) => d.isOrderLevel && amountMatches(d)) ??
+            data.discounts.find(amountMatches);
+          if (match) setFetchedDiscountTitle(match.title);
+        })
+        .catch(() => {});
+    }, 800);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
   useEffect(() => { setNoteValue(orderNote); }, [orderNote]);
 
   const subGiftId     = drawerConfig.freeGiftSubVariantId;
@@ -128,42 +161,50 @@ export function CartDrawer() {
     warmGiftCache(subGiftId, carcassGiftId);
   }, [subGiftId, carcassGiftId]);
 
-  const totalItems = items.reduce((n, i) => n + i.quantity, 0);
+  // localSubtotal = actual item prices × quantities — updates immediately on every qty tap.
+  // This is what's shown as "Subtotal". Compare-at (original) prices are already shown
+  // as strikethrough on each line item, so we don't repeat them in the totals section.
   const localSubtotal = items.reduce((n, i) => n + parseFloat(i.price.amount) * i.quantity, 0);
   const currency = items[0]?.price.currencyCode ?? "AED";
   const shopifyCurrency = totalAmount?.currencyCode ?? subtotalAmount?.currencyCode ?? currency;
-
-  // totalAmount = Shopify's authoritative total (updated after every mutation response).
-  const shopifyTotal = totalAmount ? parseFloat(totalAmount.amount) : localSubtotal;
   const displayCurrency = shopifyCurrency;
 
-  // compareAtSubtotal = what the cart would cost at full (compareAt / regular) prices.
-  // savings = compareAt total minus the actual subscription/discounted prices we store.
-  // Only items that have a real compareAt discount count toward the percentage,
-  // so the % reflects the subscription discount rate (e.g. 10%), not the whole cart.
-  const compareAtSubtotal = items.reduce((n, i) => {
-    const cap = i.compareAtPrice ? parseFloat(i.compareAtPrice.amount) : parseFloat(i.price.amount);
-    return n + cap * i.quantity;
-  }, 0);
-  const savings = Math.max(0, compareAtSubtotal - localSubtotal);
-  // Sum compareAt only for items that actually have a discount — keeps % accurate (e.g. 10%)
-  const discountedCompareAt = items.reduce((n, i) => {
-    if (!i.compareAtPrice || i.compareAtPrice.amount === i.price.amount) return n;
-    return n + parseFloat(i.compareAtPrice.amount) * i.quantity;
-  }, 0);
-  const savingsPct = discountedCompareAt > 0 && savings > 0
-    ? Math.round((savings / discountedCompareAt) * 100)
-    : 0;
+  // Last confirmed values from Shopify — used only to derive the discount rate,
+  // not for direct display, so stale API values don't freeze the UI during rapid taps.
+  const shopifySubtotal = subtotalAmount ? parseFloat(subtotalAmount.amount) : localSubtotal;
+  const shopifyTotal = totalAmount ? parseFloat(totalAmount.amount) : shopifySubtotal;
 
-  // When savings exist: Subtotal = full (compareAt) price, Total = what you actually pay.
-  // Math: compareAtSubtotal − savings = localSubtotal = Total ✓
-  const displaySubtotal = savings > 0 ? compareAtSubtotal : localSubtotal;
-  const displayTotal = savings > 0 ? localSubtotal : shopifyTotal;
+  // Discount rate from last Shopify response — applied to localSubtotal so gap and total
+  // update instantly with qty changes without waiting for the next API response.
+  const discountRate = shopifySubtotal > 0.01
+    ? Math.max(0, (shopifySubtotal - shopifyTotal) / shopifySubtotal)
+    : 0;
+  const discountGap = Math.max(0, localSubtotal * discountRate);
+  const optimisticTotal = Math.max(0, localSubtotal - discountGap);
+
+  const hasDiscount = discountGap > 0.01;
+  // Guard against stale automaticDiscounts lingering after discount conditions are no longer met.
+  // discountGap (derived from live Shopify mutation responses) is the authoritative source.
+  const hasNamedAutoDiscounts = hasDiscount &&
+    automaticDiscounts.length > 0 &&
+    automaticDiscounts.some((d) => parseFloat(d.discountedAmount.amount) > 0);
+  const hasInferredDiscount = !hasNamedAutoDiscounts && hasDiscount;
+
+  // Discount label — priority: actual Shopify name (from cart.discountAllocations or Admin API)
+  // > percentage inference (only for clean round %, ≤ 0.1 tolerance) > "Discount".
+  // inferredPct is the last resort: only fires when BOTH APIs returned no title.
+  const inferredPct = (() => {
+    if (!hasInferredDiscount || localSubtotal <= 0 || fetchedDiscountTitle) return null;
+    const pct = discountRate * 100;
+    const whole = Math.round(pct);
+    return whole >= 1 && whole <= 99 && Math.abs(pct - whole) < 0.1 ? whole : null;
+  })();
+  const inferredLabel = fetchedDiscountTitle ?? (inferredPct ? `${inferredPct}% OFF` : "Discount");
 
 
   const threshold = drawerConfig.freeShippingThreshold;
-  const remaining = Math.max(0, threshold - shopifyTotal);
-  const progress = Math.min(100, (shopifyTotal / threshold) * 100);
+  const remaining = Math.max(0, threshold - optimisticTotal);
+  const progress = Math.min(100, (optimisticTotal / threshold) * 100);
 
   const handleCheckout = () => {
     const url = getCheckoutUrl();
@@ -175,13 +216,6 @@ export function CartDrawer() {
     const result = await applyDiscountCode(discountInput);
     if (result.success) setDiscountInput("");
     else setDiscountError(result.error ?? "Could not apply code");
-  };
-
-  const handleApplyGiftCard = async () => {
-    setGiftCardError(null);
-    const result = await applyGiftCard(giftCardInput);
-    if (result.success) setGiftCardInput("");
-    else setGiftCardError(result.error ?? "Could not apply gift card");
   };
 
   const handleNoteSave = () => {
@@ -468,6 +502,26 @@ export function CartDrawer() {
               {/* Discount panel */}
               {activePanel === "discount" && (
                 <div className="rounded-md border border-border bg-card px-2 py-1.5">
+                  {/* Applied automatic discounts — shown immediately from persisted totals */}
+                  {hasNamedAutoDiscounts ? (
+                    <ul className="mb-1.5 space-y-1">
+                      {automaticDiscounts.map((d) => (
+                        <li key={d.title} className="flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5">
+                          <Ticket className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                          <span className="text-xs font-semibold text-emerald-700">
+                            {d.title} (−{formatPrice(discountGap, displayCurrency)})
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : hasInferredDiscount ? (
+                    <div className="mb-1.5 flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5">
+                      <Ticket className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                      <span className="text-xs font-semibold text-emerald-700">
+                        {inferredLabel} (−{formatPrice(discountGap, displayCurrency)})
+                      </span>
+                    </div>
+                  ) : null}
                   <div className="flex gap-1.5">
                     <Input
                       value={discountInput}
@@ -522,32 +576,39 @@ export function CartDrawer() {
 
               {/* Totals + checkout */}
               <div className="border-t border-border pt-1.5">
-                {/* Subtotal + savings rows — only when a discount is active */}
-                {savings > 0 && (
+                {/* Subtotal → discount deduction(s) → Total — only shown when a discount is active.
+                    Compare-at (original) prices are already visible as strikethrough on each line item. */}
+                {hasDiscount && (
                   <>
                     <div className="flex items-center justify-between text-sm text-foreground mb-0.5">
                       <span className="font-medium">{t("cart.subtotal")}</span>
-                      <span className="font-semibold">{formatPrice(displaySubtotal, displayCurrency)}</span>
+                      <span className="font-semibold">{formatPrice(localSubtotal, displayCurrency)}</span>
                     </div>
-                    <div className="flex items-center justify-between text-sm text-emerald-600 mb-0.5">
-                      <span className="font-medium flex items-center gap-1">
-                        {t("cart.you_save")}
-                        {savingsPct > 0 && (
-                          <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold leading-none">
-                            {savingsPct}%
-                          </span>
-                        )}
-                      </span>
-                      <span className="font-semibold">-{formatPrice(savings, displayCurrency)}</span>
-                    </div>
+                    {hasNamedAutoDiscounts ? automaticDiscounts.map((d) => (
+                      <div key={d.title} className="flex items-center justify-between text-sm text-emerald-600 mb-0.5">
+                        <span className="font-medium flex items-center gap-1">
+                          <Ticket className="h-3.5 w-3.5 shrink-0" />
+                          {d.title}
+                        </span>
+                        <span className="font-semibold">-{formatPrice(discountGap, displayCurrency)}</span>
+                      </div>
+                    )) : (
+                      <div className="flex items-center justify-between text-sm text-emerald-600 mb-0.5">
+                        <span className="font-medium flex items-center gap-1">
+                          <Ticket className="h-3.5 w-3.5 shrink-0" />
+                          {inferredLabel}
+                        </span>
+                        <span className="font-semibold">-{formatPrice(discountGap, displayCurrency)}</span>
+                      </div>
+                    )}
                   </>
                 )}
                 <div className="mb-1 flex items-center justify-between">
                   <span className="text-base font-bold">
-                    {savings > 0 ? t("cart.total") : t("cart.subtotal")}
+                    {hasDiscount ? t("cart.total") : t("cart.subtotal")}
                   </span>
                   <span className="font-display text-xl font-bold text-crimson">
-                    {formatPrice(displayTotal, displayCurrency)}
+                    {formatPrice(optimisticTotal, displayCurrency)}
                   </span>
                 </div>
                 <Button

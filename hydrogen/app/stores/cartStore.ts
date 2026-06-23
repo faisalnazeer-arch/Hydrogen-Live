@@ -71,21 +71,12 @@ interface CartStore {
 }
 
 const COST_FIELDS = `cost { subtotalAmount { amount currencyCode } totalAmount { amount currencyCode } }`;
-const LINES_FIELDS = `lines(first: 100) {
-  edges {
-    node {
-      id
-      merchandise { ... on ProductVariant { id } }
-      discountAllocations {
-        __typename
-        discountedAmount { amount currencyCode }
-        ... on CartAutomaticDiscountAllocation { title }
-        ... on CartCustomDiscountAllocation { title }
-      }
-    }
-  }
+const DISCOUNT_ALLOC_FRAGMENT = `{
+  __typename
+  discountedAmount { amount currencyCode }
+  ... on CartAutomaticDiscountAllocation { title }
+  ... on CartCustomDiscountAllocation { title }
 }`;
-
 // Minimal lines — only needed to resolve the new lineId after create/add
 const MINIMAL_LINES_FIELDS = `lines(first: 100) {
   edges { node { id merchandise { ... on ProductVariant { id } } } }
@@ -95,8 +86,15 @@ const CART_QUERY = `query cart($id: ID!) {
   cart(id: $id) {
     id
     note
-    totalQuantity
     discountCodes { code applicable }
+    discountAllocations ${DISCOUNT_ALLOC_FRAGMENT}
+    lines(first: 100) {
+      edges {
+        node {
+          discountAllocations ${DISCOUNT_ALLOC_FRAGMENT}
+        }
+      }
+    }
     appliedGiftCards {
       id
       lastCharacters
@@ -104,7 +102,6 @@ const CART_QUERY = `query cart($id: ID!) {
       balance { amount currencyCode }
     }
     ${COST_FIELDS}
-    ${LINES_FIELDS}
   }
 }`;
 
@@ -208,22 +205,23 @@ function formatCheckoutUrl(checkoutUrl: string): string {
   }
 }
 
-function extractAutomaticDiscounts(lines: any[]): AutomaticDiscount[] {
+// Extracts named automatic/custom discounts from the cart-level discountAllocations array.
+// This uses the cart-level field (Storefront API 2024-10+) which returns one entry per
+// discount with the actual title — unlike line-level allocations which split the amount
+// per line and may omit titles for order-level discounts.
+function extractAutomaticDiscounts(cartDiscountAllocations: any[]): AutomaticDiscount[] {
   const map = new Map<string, { amount: number; currencyCode: string }>();
-  for (const edge of lines) {
-    for (const alloc of edge.node?.discountAllocations ?? []) {
-      const isAuto =
-        alloc.__typename === "CartAutomaticDiscountAllocation" ||
-        alloc.__typename === "CartCustomDiscountAllocation" ||
-        // fallback: has title but no code (older API versions without __typename)
-        (alloc.title && !alloc.code);
-      if (!isAuto || !alloc.title) continue;
-      const prev = map.get(alloc.title) ?? { amount: 0, currencyCode: alloc.discountedAmount?.currencyCode ?? "AED" };
-      map.set(alloc.title, {
-        amount: prev.amount + parseFloat(alloc.discountedAmount?.amount ?? "0"),
-        currencyCode: prev.currencyCode,
-      });
-    }
+  for (const alloc of cartDiscountAllocations) {
+    const isNamed =
+      alloc.__typename === "CartAutomaticDiscountAllocation" ||
+      alloc.__typename === "CartCustomDiscountAllocation" ||
+      (alloc.title && !alloc.code);
+    if (!isNamed || !alloc.title) continue;
+    const prev = map.get(alloc.title) ?? { amount: 0, currencyCode: alloc.discountedAmount?.currencyCode ?? "AED" };
+    map.set(alloc.title, {
+      amount: prev.amount + parseFloat(alloc.discountedAmount?.amount ?? "0"),
+      currencyCode: prev.currencyCode,
+    });
   }
   return Array.from(map.entries()).map(([title, { amount, currencyCode }]) => ({
     title,
@@ -720,9 +718,14 @@ export const useCartStore = create<CartStore>()(
           try {
             const result = await updateShopifyCartLine(cartId, lineId, quantity);
             if (result.success) {
+              const newSub = parseFloat(result.subtotalAmount?.amount ?? "0");
+              const newTot = parseFloat(result.totalAmount?.amount ?? newSub.toString());
               set({
                 subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
                 totalAmount: result.totalAmount ?? get().totalAmount,
+                // Shopify confirmed no discount gap — clear stale automaticDiscounts immediately
+                // instead of waiting for the 2-minute syncCart cooldown
+                ...(newSub > 0 && newSub - newTot < 0.01 ? { automaticDiscounts: [] } : {}),
               });
               scheduleSyncFreeGifts(get, set);
             } else if (result.cartNotFound) {
@@ -775,9 +778,12 @@ export const useCartStore = create<CartStore>()(
               if (get().items.length === 0) {
                 clearCart();
               } else {
+                const newSub = parseFloat(result.subtotalAmount?.amount ?? "0");
+                const newTot = parseFloat(result.totalAmount?.amount ?? newSub.toString());
                 set({
                   subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
                   totalAmount: result.totalAmount ?? get().totalAmount,
+                  ...(newSub > 0 && newSub - newTot < 0.01 ? { automaticDiscounts: [] } : {}),
                 });
               }
               // Gift sync only on confirmed success — never on optimistic state
@@ -833,12 +839,22 @@ export const useCartStore = create<CartStore>()(
             // would silently wipe the customer's cart on the next tab-focus sync.
             clearCart();
           } else {
+            // Try cart-level allocations first (one entry per discount, full amount).
+            // If those return no titles (can happen with product-scoped discounts or
+            // channel permission limits), aggregate from line-level allocations instead.
+            const cartLevelAllocs: any[] = cart.discountAllocations ?? [];
+            const cartLevelDiscounts = extractAutomaticDiscounts(cartLevelAllocs);
+            const automaticDiscounts = cartLevelDiscounts.length > 0
+              ? cartLevelDiscounts
+              : extractAutomaticDiscounts(
+                  (cart.lines?.edges ?? []).flatMap((e: any) => e.node?.discountAllocations ?? [])
+                );
             set({
               discountCodes: cart.discountCodes ?? [],
               appliedGiftCards: cart.appliedGiftCards ?? [],
               subtotalAmount: cart.cost?.subtotalAmount ?? null,
               totalAmount: cart.cost?.totalAmount ?? null,
-              automaticDiscounts: extractAutomaticDiscounts(cart.lines?.edges ?? []),
+              automaticDiscounts,
               orderNote: cart.note ?? "",
             });
           }
@@ -999,7 +1015,7 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: "mls-shopify-cart",
-      version: 4,
+      version: 7,
       storage: createJSONStorage(() => localStorage),
       skipHydration: true, // Prevent auto-rehydrate during SSR — we call rehydrate() eagerly on the client below
       partialize: (s) => ({
@@ -1010,6 +1026,9 @@ export const useCartStore = create<CartStore>()(
         discountCodes: s.discountCodes,
         appliedGiftCards: s.appliedGiftCards,
         orderNote: s.orderNote,
+        subtotalAmount: s.subtotalAmount,
+        totalAmount: s.totalAmount,
+        automaticDiscounts: s.automaticDiscounts,
       }),
       migrate: (persisted: any, fromVersion: number) => {
         if (fromVersion < 2) {
@@ -1023,6 +1042,16 @@ export const useCartStore = create<CartStore>()(
         }
         if (fromVersion < 4) {
           return { ...persisted, orderNote: persisted.orderNote ?? "" };
+        }
+        if (fromVersion < 5) {
+          return { ...persisted, subtotalAmount: persisted.subtotalAmount ?? null, totalAmount: persisted.totalAmount ?? null };
+        }
+        if (fromVersion < 6) {
+          return { ...persisted, automaticDiscounts: persisted.automaticDiscounts ?? [] };
+        }
+        if (fromVersion < 7) {
+          // Clear stale automaticDiscounts that may have been set incorrectly by Admin API lookup
+          return { ...persisted, automaticDiscounts: [] };
         }
         return persisted;
       },

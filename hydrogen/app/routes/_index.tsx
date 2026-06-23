@@ -402,7 +402,7 @@ export const meta: MetaFunction = () => [
   { property: "og:description", content: "Premium Wagyu, Angus, lamb and more — delivered across the UAE." },
   { property: "og:url", content: "https://mlsuae.ae/" },
   { tagName: "link", rel: "canonical", href: "https://mlsuae.ae/" },
-  { tagName: "script", type: "application/ld+json", children: JSON.stringify(HOME_JSON_LD) },
+  { "script:ld+json": HOME_JSON_LD },
 ];
 
 
@@ -444,7 +444,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     af(Q_HERO), af(Q_BADGES), af(Q_PRICE_SEC), af(Q_PRICE_TILE), af(Q_REELS_SEC),
     af(Q_PROMO), af(Q_VALUE), af(Q_COL_CFG), af(Q_ORIGIN), af(Q_CATEGORY),
     af(Q_CUTS), af(Q_FEATURED), af(Q_COL_LIST),
-    context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" } }),
+    context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" } }).catch(() => ({ products: { edges: [] } })),
     af(Q_REEL_ITEMS), af(Q_GIFT), af(Q_SALE_SEC),
     context.storefront.query(Q_BLOG_ARTICLES).catch(() => null),
     fetchJudgemeStoreReviews(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN, 1, 9).catch(() => ({ reviews: [] as JudgemeReview[], current_page: 1, per_page: 9 })),
