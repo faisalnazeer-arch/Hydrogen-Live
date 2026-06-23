@@ -347,8 +347,8 @@ function DeliveryTab({ pageSettings }: { pageSettings: PageSettings | undefined 
   type CityBlock = { label: string; body: string };
 
   const DEFAULT_DUBAI: CityBlock[] = [
-    { label: "Delivery Time",     body: "Delivered within 2 hours between 11:00 AM and 8:30 PM daily." },
-    { label: "Last Order Time",   body: "8:30 PM is our last order cutoff, all days of the week." },
+    { label: "Delivery Time",     body: "Delivered in 1-hour slots until 8:45 PM daily." },
+    { label: "Last Order Time",   body: "8:45 PM is our last order cutoff, all days of the week." },
     { label: "Delivery Fee",      body: "No minimum order value. Standard delivery fee is AED 15." },
     { label: "Free Returns",      body: "No questions asked — return items up to 30 days from delivery, free of charge." },
     { label: "Satisfaction",      body: "WhatsApp us within 24 hours and we will fix your experience." },
@@ -1118,7 +1118,7 @@ export function ProductPageShell({
 
           {/* Trust badges */}
           <div className="grid grid-cols-3 gap-2 rounded-xl border border-border p-3 sm:gap-3 sm:p-4">
-            {[{ icon: Truck, label: "2-hour delivery" }, { icon: ShieldCheck, label: "100% Halal certified" }, { icon: RefreshCw, label: "Quality guarantee" }].map(({ icon: Icon, label }) => (
+            {[{ icon: Truck, label: "1-hour slots · until 8:45 PM" }, { icon: ShieldCheck, label: "100% Halal certified" }, { icon: RefreshCw, label: "Quality guarantee" }].map(({ icon: Icon, label }) => (
               <div key={label} className="flex flex-col items-center gap-1 text-center">
                 <Icon className="h-5 w-5 text-crimson sm:h-6 sm:w-6" />
                 <span className="text-[10px] font-medium leading-snug text-muted-foreground sm:text-xs">{label}</span>

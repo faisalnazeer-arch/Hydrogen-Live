@@ -10,7 +10,7 @@ export interface CartDrawerConfig {
 const DEFAULT_CONFIG: CartDrawerConfig = {
   freeShippingThreshold: 350,
   deliveryItems: [
-    "Delivered within **2hrs** in Dubai. For Sharjah and Ajman same day delivery for orders confirmed before **1:00 PM**",
+    "Delivered in **1-hour slots** until **8:45 PM** across Dubai. For Sharjah and Ajman same day delivery for orders confirmed before **1:00 PM**",
     "**10% off** on AED 600 purchase.",
     "🎁 **Special Offer Activated:** FREE gift of 2x Angus beef burgers and 1x AUS Grass-fed Beef Striploin on orders above **AED 40** with your first purchase!",
     "**Free Shipping** above AED 350",
