@@ -6,7 +6,6 @@ import {
   ScrollRestoration,
   useLoaderData,
   useNavigation,
-  useRouteLoaderData,
 } from "react-router";
 import type { LinksFunction, LoaderFunctionArgs, ShouldRevalidateFunctionArgs } from "react-router";
 import { useEffect } from "react";
@@ -444,11 +443,8 @@ const queryClient = new QueryClient({
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const nonce = useNonce();
-  const data = useRouteLoaderData("root") as any;
-  const locale = data?.locale ?? "en";
-  const dir = locale === "ar" ? "rtl" : "ltr";
   return (
-    <html lang={locale} dir={dir} suppressHydrationWarning>
+    <html lang="en" dir="ltr" suppressHydrationWarning>
       <head>
         {/* Critical CSS — inlined before external stylesheet so variables apply on first paint */}
         <style dangerouslySetInnerHTML={{ __html: `
