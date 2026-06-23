@@ -21,20 +21,31 @@ export const useLocaleStore = create<LocaleState>()((set) => ({
       const secure = window.location.protocol === "https:" ? ";Secure" : "";
       document.cookie = `lang=${locale};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax${secure}`;
 
+      const current = window.location.pathname;
       let target: string;
+
       if (locale === "ar") {
-        target = "/ar";
+        // Stay on the same page, just add /ar/ prefix.
+        if (current.startsWith("/ar")) {
+          target = current; // already on an /ar/* route
+        } else {
+          target = "/ar" + (current === "/" ? "" : current);
+        }
+        target += window.location.search;
       } else if (canonicalPath) {
-        // Caller supplied the canonical EN path (e.g. from product.onlineStoreUrl).
+        // Product page supplied the canonical EN handle — navigate to exact EN product URL.
         target = canonicalPath;
       } else {
-        const current = window.location.pathname;
+        // Strip /ar/ prefix to get the EN equivalent path.
         const stripped = current.startsWith("/ar/") ? current.slice(3) || "/" : current === "/ar" ? "/" : current;
         let decoded = stripped;
         try { decoded = decodeURIComponent(stripped); } catch { /* keep raw */ }
-        // If the path has non-ASCII chars (translated handle) and no canonical path was
-        // supplied, fall back to home to avoid 404.
-        target = /[^\x00-\x7F]/.test(decoded) ? "/" : stripped + window.location.search;
+        // Only fall back to home on product pages where the handle contains non-ASCII
+        // (Translate & Adapt translated slug) and no canonical path was supplied.
+        // All other pages (collections, pages, blogs, etc.) are safe to keep as-is.
+        const isProductWithTranslatedHandle =
+          /^\/(ar\/)?products\//.test(current) && /[^\x00-\x7F]/.test(decoded);
+        target = isProductWithTranslatedHandle ? "/" : stripped + window.location.search;
       }
 
       window.location.replace(target);
