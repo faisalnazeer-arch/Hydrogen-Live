@@ -13,12 +13,6 @@ type Matches = [{
   id: "root";
   module: typeof import("../../root.js");
 }, {
-  id: "ar-blogs-article";
-  module: typeof import("../blogs.$blogHandle.$articleHandle.js");
-}] | [{
-  id: "root";
-  module: typeof import("../../root.js");
-}, {
   id: "routes/blogs.$blogHandle.$articleHandle";
   module: typeof import("../blogs.$blogHandle.$articleHandle.js");
 }];

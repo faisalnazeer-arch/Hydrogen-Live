@@ -17,83 +17,6 @@ type Pages = {
   "/ar": {
     params: {};
   };
-  "/ar/collections/:handle": {
-    params: {
-      "handle": string;
-    };
-  };
-  "/ar/products/:handle": {
-    params: {
-      "handle": string;
-    };
-  };
-  "/ar/search": {
-    params: {};
-  };
-  "/ar/blogs/all": {
-    params: {};
-  };
-  "/ar/blogs/:handle": {
-    params: {
-      "handle": string;
-    };
-  };
-  "/ar/blogs/:blogHandle/:articleHandle": {
-    params: {
-      "blogHandle": string;
-      "articleHandle": string;
-    };
-  };
-  "/ar/pages/customer-reviews": {
-    params: {};
-  };
-  "/ar/pages/contact-us": {
-    params: {};
-  };
-  "/ar/pages/refund-exchange": {
-    params: {};
-  };
-  "/ar/pages/rewards": {
-    params: {};
-  };
-  "/ar/pages/mls-rewards": {
-    params: {};
-  };
-  "/ar/pages/all-blog": {
-    params: {};
-  };
-  "/ar/pages/refer-a-friend": {
-    params: {};
-  };
-  "/ar/pages/faqs": {
-    params: {};
-  };
-  "/ar/pages/mls-gourmet": {
-    params: {};
-  };
-  "/ar/pages/our-story-new": {
-    params: {};
-  };
-  "/ar/pages/mls-affiliate": {
-    params: {};
-  };
-  "/ar/pages/delivery-info": {
-    params: {};
-  };
-  "/ar/pages/subscription-policy": {
-    params: {};
-  };
-  "/ar/pages/subscriptions": {
-    params: {};
-  };
-  "/ar/pages/subscription": {
-    params: {};
-  };
-  "/ar/pages/:handle": {
-    params: {
-      "handle": string;
-    };
-  };
   "/ar/*": {
     params: {
       "*": string;
@@ -229,7 +152,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/ar" | "/ar/collections/:handle" | "/ar/products/:handle" | "/ar/search" | "/ar/blogs/all" | "/ar/blogs/:handle" | "/ar/blogs/:blogHandle/:articleHandle" | "/ar/pages/customer-reviews" | "/ar/pages/contact-us" | "/ar/pages/refund-exchange" | "/ar/pages/rewards" | "/ar/pages/mls-rewards" | "/ar/pages/all-blog" | "/ar/pages/refer-a-friend" | "/ar/pages/faqs" | "/ar/pages/mls-gourmet" | "/ar/pages/our-story-new" | "/ar/pages/mls-affiliate" | "/ar/pages/delivery-info" | "/ar/pages/subscription-policy" | "/ar/pages/subscriptions" | "/ar/pages/subscription" | "/ar/pages/:handle" | "/ar/*" | "/cart" | "/cart.js" | "/apps/loggedincustomer" | "/search" | "/collections/:handle" | "/blogs/all" | "/blogs/:handle" | "/blogs/:blogHandle/:articleHandle" | "/products/:handle" | "/api/reviews/store" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/api/globo-options/:productId" | "/api/back-in-stock" | "/pages/customer-reviews" | "/pages/contact-us" | "/pages/refund-exchange" | "/pages/rewards" | "/pages/mls-rewards" | "/pages/all-blog" | "/pages/refer-a-friend" | "/pages/faqs" | "/pages/mls-gourmet" | "/pages/our-story-new" | "/pages/mls-affiliate" | "/pages/delivery-info" | "/pages/subscription-policy" | "/pages/subscriptions" | "/pages/subscription" | "/pages/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
+    page: "/" | "/ar" | "/ar/*" | "/cart" | "/cart.js" | "/apps/loggedincustomer" | "/search" | "/collections/:handle" | "/blogs/all" | "/blogs/:handle" | "/blogs/:blogHandle/:articleHandle" | "/products/:handle" | "/api/reviews/store" | "/api/reviews/:handle" | "/api/selling-plans/:handle" | "/api/globo-options/:productId" | "/api/back-in-stock" | "/pages/customer-reviews" | "/pages/contact-us" | "/pages/refund-exchange" | "/pages/rewards" | "/pages/mls-rewards" | "/pages/all-blog" | "/pages/refer-a-friend" | "/pages/faqs" | "/pages/mls-gourmet" | "/pages/our-story-new" | "/pages/mls-affiliate" | "/pages/delivery-info" | "/pages/subscription-policy" | "/pages/subscriptions" | "/pages/subscription" | "/pages/:handle" | "/account" | "/account/authorize" | "/account/logout" | "/graphiql" | "/subrequest-profiler" | "/.well-known/appspecific/com.chrome.devtools.json";
   };
   "routes/_index.tsx": {
     id: "routes/_index";
@@ -238,160 +161,6 @@ type RouteFiles = {
   "routes/ar._index.tsx": {
     id: "ar-index";
     page: "/ar";
-  };
-  "routes/collections.$handle.tsx": {
-    id: "ar-collections-handle";
-    page: "/ar/collections/:handle";
-  } | {
-    id: "routes/collections.$handle";
-    page: "/collections/:handle";
-  };
-  "routes/products.$handle.tsx": {
-    id: "ar-products-handle";
-    page: "/ar/products/:handle";
-  } | {
-    id: "routes/products.$handle";
-    page: "/products/:handle";
-  };
-  "routes/search.tsx": {
-    id: "ar-search";
-    page: "/ar/search";
-  } | {
-    id: "search";
-    page: "/search";
-  };
-  "routes/blogs.all.tsx": {
-    id: "ar-blogs-all";
-    page: "/ar/blogs/all";
-  } | {
-    id: "routes/blogs.all";
-    page: "/blogs/all";
-  };
-  "routes/blogs.$handle.tsx": {
-    id: "ar-blogs-handle";
-    page: "/ar/blogs/:handle";
-  } | {
-    id: "routes/blogs.$handle";
-    page: "/blogs/:handle";
-  };
-  "routes/blogs.$blogHandle.$articleHandle.tsx": {
-    id: "ar-blogs-article";
-    page: "/ar/blogs/:blogHandle/:articleHandle";
-  } | {
-    id: "routes/blogs.$blogHandle.$articleHandle";
-    page: "/blogs/:blogHandle/:articleHandle";
-  };
-  "routes/pages.customer-reviews.tsx": {
-    id: "ar-pages-customer-reviews";
-    page: "/ar/pages/customer-reviews";
-  } | {
-    id: "routes/pages.customer-reviews";
-    page: "/pages/customer-reviews";
-  };
-  "routes/pages.contact.tsx": {
-    id: "ar-pages-contact";
-    page: "/ar/pages/contact-us";
-  } | {
-    id: "routes/pages.contact";
-    page: "/pages/contact-us";
-  };
-  "routes/pages.refund-exchange.tsx": {
-    id: "ar-pages-refund";
-    page: "/ar/pages/refund-exchange";
-  } | {
-    id: "routes/pages.refund-exchange";
-    page: "/pages/refund-exchange";
-  };
-  "routes/pages.rewards.tsx": {
-    id: "ar-pages-rewards";
-    page: "/ar/pages/rewards";
-  } | {
-    id: "routes/pages.rewards";
-    page: "/pages/rewards";
-  };
-  "routes/pages.mls-rewards.tsx": {
-    id: "ar-pages-mls-rewards";
-    page: "/ar/pages/mls-rewards";
-  } | {
-    id: "routes/pages.mls-rewards";
-    page: "/pages/mls-rewards";
-  };
-  "routes/pages.all-blog.tsx": {
-    id: "ar-pages-all-blog";
-    page: "/ar/pages/all-blog";
-  } | {
-    id: "routes/pages.all-blog";
-    page: "/pages/all-blog";
-  };
-  "routes/pages.refer-a-friend.tsx": {
-    id: "ar-pages-refer";
-    page: "/ar/pages/refer-a-friend";
-  } | {
-    id: "routes/pages.refer-a-friend";
-    page: "/pages/refer-a-friend";
-  };
-  "routes/pages.faqs.tsx": {
-    id: "ar-pages-faqs";
-    page: "/ar/pages/faqs";
-  } | {
-    id: "routes/pages.faqs";
-    page: "/pages/faqs";
-  };
-  "routes/pages.mls-gourmet.tsx": {
-    id: "ar-pages-gourmet";
-    page: "/ar/pages/mls-gourmet";
-  } | {
-    id: "routes/pages.mls-gourmet";
-    page: "/pages/mls-gourmet";
-  };
-  "routes/pages.our-story-new.tsx": {
-    id: "ar-pages-our-story";
-    page: "/ar/pages/our-story-new";
-  } | {
-    id: "routes/pages.our-story-new";
-    page: "/pages/our-story-new";
-  };
-  "routes/pages.mls-affiliate.tsx": {
-    id: "ar-pages-affiliate";
-    page: "/ar/pages/mls-affiliate";
-  } | {
-    id: "routes/pages.mls-affiliate";
-    page: "/pages/mls-affiliate";
-  };
-  "routes/pages.delivery-info.tsx": {
-    id: "ar-pages-delivery";
-    page: "/ar/pages/delivery-info";
-  } | {
-    id: "routes/pages.delivery-info";
-    page: "/pages/delivery-info";
-  };
-  "routes/pages.subscription-policy.tsx": {
-    id: "ar-pages-sub-policy";
-    page: "/ar/pages/subscription-policy";
-  } | {
-    id: "routes/pages.subscription-policy";
-    page: "/pages/subscription-policy";
-  };
-  "routes/pages.subscriptions.tsx": {
-    id: "ar-pages-subscriptions";
-    page: "/ar/pages/subscriptions";
-  } | {
-    id: "routes/pages.subscriptions";
-    page: "/pages/subscriptions";
-  };
-  "routes/pages.subscription.tsx": {
-    id: "ar-pages-subscription";
-    page: "/ar/pages/subscription";
-  } | {
-    id: "routes/pages.subscription";
-    page: "/pages/subscription";
-  };
-  "routes/pages.$handle.tsx": {
-    id: "ar-pages-handle";
-    page: "/ar/pages/:handle";
-  } | {
-    id: "routes/pages.$handle";
-    page: "/pages/:handle";
   };
   "routes/ar.$.tsx": {
     id: "routes/ar.$";
@@ -408,6 +177,30 @@ type RouteFiles = {
   "routes/apps.loggedincustomer.tsx": {
     id: "routes/apps.loggedincustomer";
     page: "/apps/loggedincustomer";
+  };
+  "routes/search.tsx": {
+    id: "search";
+    page: "/search";
+  };
+  "routes/collections.$handle.tsx": {
+    id: "routes/collections.$handle";
+    page: "/collections/:handle";
+  };
+  "routes/blogs.all.tsx": {
+    id: "routes/blogs.all";
+    page: "/blogs/all";
+  };
+  "routes/blogs.$handle.tsx": {
+    id: "routes/blogs.$handle";
+    page: "/blogs/:handle";
+  };
+  "routes/blogs.$blogHandle.$articleHandle.tsx": {
+    id: "routes/blogs.$blogHandle.$articleHandle";
+    page: "/blogs/:blogHandle/:articleHandle";
+  };
+  "routes/products.$handle.tsx": {
+    id: "routes/products.$handle";
+    page: "/products/:handle";
   };
   "routes/api.reviews.store.tsx": {
     id: "routes/api.reviews.store";
@@ -428,6 +221,70 @@ type RouteFiles = {
   "routes/api.back-in-stock.tsx": {
     id: "routes/api.back-in-stock";
     page: "/api/back-in-stock";
+  };
+  "routes/pages.customer-reviews.tsx": {
+    id: "routes/pages.customer-reviews";
+    page: "/pages/customer-reviews";
+  };
+  "routes/pages.contact.tsx": {
+    id: "routes/pages.contact";
+    page: "/pages/contact-us";
+  };
+  "routes/pages.refund-exchange.tsx": {
+    id: "routes/pages.refund-exchange";
+    page: "/pages/refund-exchange";
+  };
+  "routes/pages.rewards.tsx": {
+    id: "routes/pages.rewards";
+    page: "/pages/rewards";
+  };
+  "routes/pages.mls-rewards.tsx": {
+    id: "routes/pages.mls-rewards";
+    page: "/pages/mls-rewards";
+  };
+  "routes/pages.all-blog.tsx": {
+    id: "routes/pages.all-blog";
+    page: "/pages/all-blog";
+  };
+  "routes/pages.refer-a-friend.tsx": {
+    id: "routes/pages.refer-a-friend";
+    page: "/pages/refer-a-friend";
+  };
+  "routes/pages.faqs.tsx": {
+    id: "routes/pages.faqs";
+    page: "/pages/faqs";
+  };
+  "routes/pages.mls-gourmet.tsx": {
+    id: "routes/pages.mls-gourmet";
+    page: "/pages/mls-gourmet";
+  };
+  "routes/pages.our-story-new.tsx": {
+    id: "routes/pages.our-story-new";
+    page: "/pages/our-story-new";
+  };
+  "routes/pages.mls-affiliate.tsx": {
+    id: "routes/pages.mls-affiliate";
+    page: "/pages/mls-affiliate";
+  };
+  "routes/pages.delivery-info.tsx": {
+    id: "routes/pages.delivery-info";
+    page: "/pages/delivery-info";
+  };
+  "routes/pages.subscription-policy.tsx": {
+    id: "routes/pages.subscription-policy";
+    page: "/pages/subscription-policy";
+  };
+  "routes/pages.subscriptions.tsx": {
+    id: "routes/pages.subscriptions";
+    page: "/pages/subscriptions";
+  };
+  "routes/pages.subscription.tsx": {
+    id: "routes/pages.subscription";
+    page: "/pages/subscription";
+  };
+  "routes/pages.$handle.tsx": {
+    id: "routes/pages.$handle";
+    page: "/pages/:handle";
   };
   "routes/account.tsx": {
     id: "routes/account";
@@ -471,28 +328,6 @@ type RouteModules = {
   "root": typeof import("./app/root.tsx");
   "routes/_index": typeof import("./app/routes/_index.tsx");
   "ar-index": typeof import("./app/routes/ar._index.tsx");
-  "ar-collections-handle": typeof import("./app/routes/collections.$handle.tsx");
-  "ar-products-handle": typeof import("./app/routes/products.$handle.tsx");
-  "ar-search": typeof import("./app/routes/search.tsx");
-  "ar-blogs-all": typeof import("./app/routes/blogs.all.tsx");
-  "ar-blogs-handle": typeof import("./app/routes/blogs.$handle.tsx");
-  "ar-blogs-article": typeof import("./app/routes/blogs.$blogHandle.$articleHandle.tsx");
-  "ar-pages-customer-reviews": typeof import("./app/routes/pages.customer-reviews.tsx");
-  "ar-pages-contact": typeof import("./app/routes/pages.contact.tsx");
-  "ar-pages-refund": typeof import("./app/routes/pages.refund-exchange.tsx");
-  "ar-pages-rewards": typeof import("./app/routes/pages.rewards.tsx");
-  "ar-pages-mls-rewards": typeof import("./app/routes/pages.mls-rewards.tsx");
-  "ar-pages-all-blog": typeof import("./app/routes/pages.all-blog.tsx");
-  "ar-pages-refer": typeof import("./app/routes/pages.refer-a-friend.tsx");
-  "ar-pages-faqs": typeof import("./app/routes/pages.faqs.tsx");
-  "ar-pages-gourmet": typeof import("./app/routes/pages.mls-gourmet.tsx");
-  "ar-pages-our-story": typeof import("./app/routes/pages.our-story-new.tsx");
-  "ar-pages-affiliate": typeof import("./app/routes/pages.mls-affiliate.tsx");
-  "ar-pages-delivery": typeof import("./app/routes/pages.delivery-info.tsx");
-  "ar-pages-sub-policy": typeof import("./app/routes/pages.subscription-policy.tsx");
-  "ar-pages-subscriptions": typeof import("./app/routes/pages.subscriptions.tsx");
-  "ar-pages-subscription": typeof import("./app/routes/pages.subscription.tsx");
-  "ar-pages-handle": typeof import("./app/routes/pages.$handle.tsx");
   "routes/ar.$": typeof import("./app/routes/ar.$.tsx");
   "routes/cart": typeof import("./app/routes/cart.tsx");
   "routes/cart[.]js": typeof import("./app/routes/cart[.]js.tsx");
