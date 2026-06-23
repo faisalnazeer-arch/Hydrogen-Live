@@ -28,14 +28,22 @@ const PAGE_SETTINGS_QUERY = `
 `;
 
 // templateSuffix is not exposed by the Storefront API — fetch it via Admin API instead.
-// We include handle in the result so we can match the exact product even if search
-// returns multiple candidates.
-const ADMIN_TEMPLATE_SUFFIX_QUERY = (handle: string) => {
+// We also fetch mls.* metafields here because they may not have Storefront API access
+// enabled; Admin API always has full metafield access.
+const ADMIN_PRODUCT_QUERY = (handle: string) => {
   const safeHandle = handle.replace(/[^a-z0-9-]/gi, "");
   return `
   query {
     products(first: 5, query: "handle:'${safeHandle}'") {
-      edges { node { handle templateSuffix } }
+      edges {
+        node {
+          handle
+          templateSuffix
+          metafields(namespace: "custom", first: 50) {
+            edges { node { namespace key value } }
+          }
+        }
+      }
     }
   }
 `;
@@ -199,7 +207,26 @@ const PRODUCT_QUERY = `#graphql
         {namespace: "custom", key: "pairing_suggestions"}
         {namespace: "custom", key: "understanding_rubs"}
         {namespace: "custom", key: "marinade_recipe"}
-      ]) { key value }
+        {namespace: "custom", key: "mls_origin_flag_emoji"}
+        {namespace: "custom", key: "mls_origin_country"}
+        {namespace: "custom", key: "mls_feed_type"}
+        {namespace: "custom", key: "mls_halal_certified"}
+        {namespace: "custom", key: "mls_export_certified"}
+        {namespace: "custom", key: "mls_farm_story"}
+        {namespace: "custom", key: "mls_flavour"}
+        {namespace: "custom", key: "mls_flavour_score"}
+        {namespace: "custom", key: "mls_marbling"}
+        {namespace: "custom", key: "mls_marbling_score"}
+        {namespace: "custom", key: "mls_tenderness_score2"}
+        {namespace: "custom", key: "mls_doneness_tags"}
+        {namespace: "custom", key: "mls_cook_method"}
+        {namespace: "custom", key: "mls_cook_time"}
+        {namespace: "custom", key: "mls_cook_temperature"}
+        {namespace: "custom", key: "mls_cook_steps"}
+        {namespace: "custom", key: "mls_suitable_for_tags"}
+        {namespace: "custom", key: "mls_storage_tip"}
+        {namespace: "custom", key: "mls_fridge_life"}
+      ]) { key namespace value }
       collections(first: 30) { nodes { id title handle } }
     }
   }
@@ -275,14 +302,15 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
   const language = detectLanguage(request);
 
-  // Run storefront query and Admin templateSuffix lookup in parallel.
+  // Run storefront query, Admin product lookup, and icon badges in parallel.
   // templateSuffix is not exposed by the Storefront API so we must use the Admin API.
-  const [data, adminProductData] = await Promise.all([
+  const [data, adminProductData, iconBadgesRaw] = await Promise.all([
     context.storefront.query(PRODUCT_QUERY, {
       variables: { handle, language, country: "AE" as const },
       cache: context.storefront.CacheShort(),
     }),
-    context.adminFetch(ADMIN_TEMPLATE_SUFFIX_QUERY(handle)).catch((e: unknown) => { console.error("[products loader] admin template fetch:", e); return null; }),
+    context.adminFetch(ADMIN_PRODUCT_QUERY(handle)).catch((e: unknown) => { console.error("[products loader] admin product fetch:", e); return null; }),
+    context.adminFetch(`{ nodes: metaobjects(type: "icon_with_text", first: 10) { nodes { id handle fields { key value reference { ... on MediaImage { image { url altText } } } } } } }`).catch(() => null),
   ]);
   if (!data.product) throw new Response("Not found", { status: 404 });
   // Zero-price products are internal free-gift items — redirect to home instead of 404
@@ -296,10 +324,26 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     .map((c: any) => Number(c.id.split("/").pop()))
     .filter(Boolean);
 
+  // Extract admin node (exact handle match)
+  const adminNode = ((adminProductData as any)?.products?.edges ?? [])
+    .find((e: any) => e.node?.handle === handle)?.node;
+
   // templateSuffix from Admin API (exact handle match), falling back to tag-based override.
-  const adminSuffix = ((adminProductData as any)?.products?.edges ?? [])
-    .find((e: any) => e.node?.handle === handle)
-    ?.node?.templateSuffix ?? null;
+  const adminSuffix = adminNode?.templateSuffix ?? null;
+
+  // Merge custom.mls_* metafields from Admin API as a backup — in case Storefront API
+  // access isn't yet enabled for some definitions. Admin API always has full access.
+  const adminMlsMeta: Array<{ namespace: string; key: string; value: string }> =
+    (adminNode?.metafields?.edges ?? [])
+      .map((e: any) => e.node)
+      .filter((m: any) => m?.namespace === "custom" && m?.key?.startsWith("mls_") && m?.value != null);
+  if (adminMlsMeta.length > 0) {
+    const existingMlsKeys = new Set(adminMlsMeta.map((m) => `${m.namespace}.${m.key}`));
+    const existing = (data.product.metafields ?? []).filter(
+      (m: any) => m != null && !existingMlsKeys.has(`${m.namespace}.${m.key}`)
+    );
+    (data.product as any).metafields = [...existing, ...adminMlsMeta];
+  }
   const tagOverride = data.product.tags?.find((t: string) => t.toLowerCase().startsWith("template:"));
   const templateSuffix: string | null =
     (tagOverride ? tagOverride.replace(/^template:/i, "").trim() : null)
@@ -453,6 +497,8 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     data.product.descriptionHtml = sanitizeHtml(data.product.descriptionHtml);
   }
 
+  const iconBadges: any[] = (iconBadgesRaw as any)?.nodes?.nodes ?? [];
+
   return {
     product: data.product,
     templateSuffix,
@@ -462,6 +508,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     reviews: ((reviewsFetchResult as any).reviews ?? []).filter((r: any) => r.rating >= 4),
     reviewsTotalCount: (reviewsFetchResult as any).total_count ?? 0,
     rating: initialRating,
+    iconBadges,
     lazyData,
   };
 }

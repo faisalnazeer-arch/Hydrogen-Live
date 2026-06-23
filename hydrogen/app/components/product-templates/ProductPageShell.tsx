@@ -4,7 +4,7 @@ import { useT } from "@/i18n/strings";
 import {
   Minus, Plus, Truck, ShieldCheck, RefreshCw, Loader2, ChevronDown, ChevronUp,
   ChevronLeft, ChevronRight, Check, Play, MapPin, Phone, Clock, X, Store,
-  FlameKindling, Leaf, PackageOpen,
+  FlameKindling, Leaf, PackageOpen, BookOpen, Thermometer,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet";
 import { Link } from "react-router";
@@ -56,6 +56,7 @@ export interface ProductPageShellProps {
   recommendations?: ShopifyProduct[];
   pageSettings?: PageSettings;
   globoOptionSets?: GloboOptionSet[];
+  iconBadges?: any[];
 }
 
 const DESC_CLAMP_PX = 120;
@@ -243,6 +244,44 @@ function getMF(variant: any, ns: string, key: string): string | null {
   return variant?.metafields?.find((m: any) => m?.namespace === ns && m?.key === key)?.value ?? null;
 }
 
+function getProductMF(product: any, ns: string, key: string): string | null {
+  return product?.metafields?.find((m: any) => m?.namespace === ns && m?.key === key)?.value ?? null;
+}
+
+// Converts a Shopify rich_text metafield JSON string to safe HTML.
+// Falls back to plain text with <br> newlines if not JSON.
+function nodeToHtml(node: any): string {
+  if (!node) return '';
+  if (node.type === 'text') {
+    let t = (node.value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    if (node.bold)      t = `<strong>${t}</strong>`;
+    if (node.italic)    t = `<em>${t}</em>`;
+    if (node.underline) t = `<u>${t}</u>`;
+    return t;
+  }
+  const inner = (node.children ?? []).map(nodeToHtml).join('');
+  switch (node.type) {
+    case 'root':      return inner;
+    case 'paragraph': return inner ? `<p>${inner}</p>` : '';
+    case 'heading':   return `<h${node.level ?? 2}>${inner}</h${node.level ?? 2}>`;
+    case 'list':      return node.listType === 'ordered' ? `<ol>${inner}</ol>` : `<ul>${inner}</ul>`;
+    case 'list-item': return `<li>${inner}</li>`;
+    case 'link':      return `<a href="${node.url ?? '#'}" rel="noopener noreferrer">${inner}</a>`;
+    default:          return inner;
+  }
+}
+function richTextToHtml(value: string): string {
+  if (!value) return '';
+  if (!value.trim().startsWith('{')) return value.replace(/\n/g, '<br>');
+  try { return nodeToHtml(JSON.parse(value)); } catch { return value.replace(/\n/g, '<br>'); }
+}
+
+// Formats a score: whole number → "8/10", fraction stays as-is ("4/5")
+function formatScore(val: string): string {
+  const n = Number(val.trim());
+  return !isNaN(n) && Number.isInteger(n) ? `${n}/10` : val.trim();
+}
+
 function calcDv(rawValue: string | null, key: string): string | null {
   const dvFactor = FDA_DV[key];
   if (!rawValue || !dvFactor) return null;
@@ -417,29 +456,276 @@ function DeliveryTab({ pageSettings }: { pageSettings: PageSettings | undefined 
   );
 }
 
+// ── Product Details Tab — Origin, Tasting Profile, How to Cook, Suitable For, Storage ──
+type ProductDetailTabId = "origin" | "tasting" | "cooking" | "suitable" | "storage";
+
+function ProductDetailsTab({ product }: { product: any }) {
+  const t = useT();
+  // Shopify stores mls.* names as custom.mls_* identifiers.
+  // Try both short form (e.g. mls_flavour) and long form (mls_flavour_score) for resilience.
+  const mls = (key: string) => getProductMF(product, "custom", `mls_${key}`);
+  const mlsOr = (a: string, b: string) => mls(a) ?? mls(b);
+
+  // Origin & Farm Story
+  const originFlag    = mls("origin_flag_emoji");
+  const originCountry = mls("origin_country");
+  const feedType      = mls("feed_type");
+  const halal         = mls("halal_certified");
+  const exportCert    = mls("export_certified");
+  const farmStory     = mls("farm_story");
+  const hasOrigin     = !!(originFlag || originCountry || feedType || halal || exportCert || farmStory);
+
+  // Tasting Profile — identifier screenshots show mls_flavour (not mls_flavour_score)
+  // and mls_marbling may also exist without _score suffix; try both for safety.
+  const flavour    = mlsOr("flavour", "flavour_score");
+  const marbling   = mlsOr("marbling", "marbling_score");
+  const tenderness = mls("tenderness_score2");
+  const doneness   = mls("doneness_tags");
+  const hasTasting = !!(flavour || marbling || tenderness || doneness);
+
+  // How to Cook
+  const cookMethod = mls("cook_method");
+  const cookTime   = mls("cook_time");
+  const cookTemp   = mls("cook_temperature");
+  const cookSteps  = mls("cook_steps");
+  const hasCooking = !!(cookMethod || cookTime || cookTemp || cookSteps);
+
+  // Suitable For (List type — value is a JSON array)
+  const suitableTags = mls("suitable_for_tags");
+  const hasSuitable  = !!suitableTags;
+
+  // Storage & Shelf Life
+  const storageTip  = mls("storage_tip");
+  const fridgeLife  = mls("fridge_life");
+  const hasStorage  = !!(storageTip || fridgeLife);
+
+  const allTabs: Array<{ id: ProductDetailTabId; label: string; has: boolean }> = [
+    { id: "origin",   label: t("product.origin_farm_story"), has: hasOrigin },
+    { id: "tasting",  label: t("product.tasting_profile"),   has: hasTasting },
+    { id: "cooking",  label: t("product.how_to_cook"),       has: hasCooking },
+    { id: "suitable", label: t("product.suitable_for"),      has: hasSuitable },
+    { id: "storage",  label: t("product.storage"),           has: hasStorage },
+  ];
+  const availableTabs = allTabs.filter((tab) => tab.has);
+  const [active, setActive] = useState<ProductDetailTabId>(availableTabs[0]?.id ?? "origin");
+
+  if (availableTabs.length === 0) return null;
+
+  // Handles both JSON arrays (list.* metafields) and comma-separated plain text
+  const parseTags = (val: string): string[] => {
+    try {
+      const parsed = JSON.parse(val);
+      if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+    } catch { /* fall through */ }
+    return val.split(",").map((s) => s.replace(/^and\s+/i, "").trim()).filter(Boolean);
+  };
+
+  // Score to % for progress bar (assumes /10 scale)
+  const scorePercent = (val: string) => {
+    const n = parseFloat(val);
+    return isNaN(n) ? 0 : Math.min(100, Math.max(0, (n / 10) * 100));
+  };
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      {/* Sub-tab bar */}
+      {availableTabs.length > 1 && (
+        <div className="mb-4 overflow-x-auto sm:mb-5">
+          <div className="flex min-w-max gap-1 rounded-lg border border-border p-0.5 sm:p-1">
+            {availableTabs.map(({ id, label }) => (
+              <button key={id} type="button" onClick={() => setActive(id)}
+                className={`shrink-0 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-all sm:px-3 sm:py-2 ${
+                  active === id ? "bg-crimson text-crimson-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Origin & Farm Story ── */}
+      {active === "origin" && (
+        <div className="space-y-3">
+          {(originFlag || originCountry) && (
+            <div className="inline-flex items-center gap-2 rounded-full border border-crimson/20 bg-crimson/5 px-3 py-1.5">
+              {originFlag && <span className="text-xl leading-none">{originFlag}</span>}
+              {originCountry && <span className="text-sm font-semibold text-crimson">{originCountry}</span>}
+            </div>
+          )}
+          {feedType && (
+            <div>
+              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                {feedType}
+              </span>
+            </div>
+          )}
+          {(halal || exportCert) && (
+            <div className="flex flex-wrap gap-2">
+              {halal && halal !== "false" && (
+                <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                  <Check className="h-3 w-3" /> Halal Certified
+                </span>
+              )}
+              {exportCert && exportCert !== "false" && (
+                <span className="flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
+                  <Check className="h-3 w-3" /> Export Certified
+                </span>
+              )}
+            </div>
+          )}
+          {farmStory && (
+            <div
+              className="prose prose-sm max-w-none text-muted-foreground [&_p]:leading-relaxed [&_ul]:ps-4 [&_ol]:ps-4 [&_li]:mb-1"
+              dangerouslySetInnerHTML={{ __html: richTextToHtml(farmStory) }}
+            />
+          )}
+        </div>
+      )}
+
+      {/* ── Tasting Profile — progress bars matching live theme ── */}
+      {active === "tasting" && (
+        <div className="space-y-5">
+          {[
+            { label: "Flavour",    value: flavour },
+            { label: "Marbling",   value: marbling },
+            { label: "Tenderness", value: tenderness },
+          ].filter((r) => r.value).map(({ label, value }) => (
+            <div key={label}>
+              <div className="mb-1.5 flex items-baseline justify-between">
+                <span className="text-sm font-semibold text-foreground">{label}</span>
+                <span className="text-sm font-bold text-crimson">{formatScore(value!)}</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-crimson transition-[width] duration-500"
+                  style={{ width: `${scorePercent(value!)}%` }}
+                />
+              </div>
+            </div>
+          ))}
+          {doneness && (
+            <div className="pt-1">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                {t("product.rec_doneness")}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {parseTags(doneness).map((tag) => (
+                  <span key={tag} className="rounded-full border border-crimson/30 bg-crimson/5 px-3 py-1 text-xs font-semibold text-crimson">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── How to Cook — compact icon pills matching live theme ── */}
+      {active === "cooking" && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {cookMethod && (
+              <span className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground">
+                <FlameKindling className="h-3.5 w-3.5 shrink-0 text-crimson" />
+                {cookMethod}
+              </span>
+            )}
+            {cookTemp && (
+              <span className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground">
+                <Thermometer className="h-3.5 w-3.5 shrink-0 text-crimson" />
+                {cookTemp}
+              </span>
+            )}
+            {cookTime && (
+              <span className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground">
+                <Clock className="h-3.5 w-3.5 shrink-0 text-crimson" />
+                {cookTime}
+              </span>
+            )}
+          </div>
+          {cookSteps && (
+            <div className="rounded-lg border border-border/60 px-3 py-2.5 sm:px-4 sm:py-3">
+              <p className="mb-2 text-xs font-semibold text-foreground sm:text-sm">Steps</p>
+              <div
+                className="prose prose-sm max-w-none text-muted-foreground [&_ol]:ps-4 [&_ul]:ps-4 [&_li]:mb-1 [&_p]:leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: richTextToHtml(cookSteps) }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Suitable For ── */}
+      {active === "suitable" && suitableTags && (
+        <div className="flex flex-wrap gap-2">
+          {parseTags(suitableTags).map((tag) => (
+            <span key={tag}
+              className="rounded-full border border-crimson/30 bg-crimson/5 px-3 py-1.5 text-xs font-semibold text-crimson">
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* ── Storage & Shelf Life ── */}
+      {active === "storage" && (
+        <div className="space-y-3">
+          {fridgeLife && (
+            <div className="rounded-lg border border-border/60 px-3 py-2.5 sm:px-4 sm:py-3">
+              <p className="mb-0.5 text-xs font-semibold text-foreground sm:mb-1 sm:text-sm">Fridge Life</p>
+              <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">{fridgeLife}</p>
+            </div>
+          )}
+          {storageTip && (
+            <div className="rounded-lg border border-border/60 px-3 py-2.5 sm:px-4 sm:py-3">
+              <p className="mb-0.5 text-xs font-semibold text-foreground sm:mb-1 sm:text-sm">Storage Tips</p>
+              <div
+                className="prose prose-sm max-w-none text-muted-foreground [&_p]:leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: richTextToHtml(storageTip) }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── InfoTabs — shown below the product grid ────────────────────────────────
-type TabId = "nutrition" | "template" | "delivery";
+type TabId = "nutrition" | "template" | "delivery" | "productDetails";
 
 function InfoTabs({
   extraSections,
   extraSectionTitle,
   pageSettings,
   variant,
+  product,
 }: {
   extraSections: ReactNode | undefined;
   extraSectionTitle: string;
   pageSettings: PageSettings | undefined;
   variant: any;
+  product: any;
 }) {
   const t = useT();
-  const hasNutrition = !!getMF(variant, "nutrition", "total_energy") || NUTRITION_ROWS.some(r => getMF(variant, r.ns, r.key));
-  const hasTemplate  = !!extraSections;
+  const hasNutrition     = !!getMF(variant, "nutrition", "total_energy") || NUTRITION_ROWS.some(r => getMF(variant, r.ns, r.key));
+  const hasTemplate      = !!extraSections;
+  const hasProductDetails = ([
+    "mls_origin_flag_emoji", "mls_origin_country", "mls_feed_type", "mls_halal_certified",
+    "mls_export_certified", "mls_farm_story",
+    "mls_flavour", "mls_flavour_score", "mls_marbling", "mls_marbling_score",
+    "mls_tenderness_score2", "mls_doneness_tags",
+    "mls_cook_method", "mls_cook_time", "mls_cook_temperature", "mls_cook_steps",
+    "mls_suitable_for_tags", "mls_storage_tip", "mls_fridge_life",
+  ] as const).some(key => !!getProductMF(product, "custom", key));
 
-  // Tab order: Understanding Rubs → Nutrition Facts → Delivery Info
+  // Tab order: Understanding Rubs → Product Details → Nutrition Facts → Delivery Info
   const tabs: Array<{ id: TabId; label: string; Icon: any }> = [
-    hasTemplate  && { id: "template"  as TabId, label: extraSectionTitle,              Icon: FlameKindling },
-    hasNutrition && { id: "nutrition" as TabId, label: t("product.nutrition_tab"),     Icon: Leaf },
-                    { id: "delivery"  as TabId, label: t("product.delivery_info"),     Icon: PackageOpen },
+    hasTemplate       && { id: "template"       as TabId, label: extraSectionTitle,                    Icon: FlameKindling },
+    hasProductDetails && { id: "productDetails" as TabId, label: t("product.product_details"),         Icon: BookOpen },
+    hasNutrition      && { id: "nutrition"      as TabId, label: t("product.nutrition_tab"),           Icon: Leaf },
+                         { id: "delivery"       as TabId, label: t("product.delivery_info"),           Icon: PackageOpen },
   ].filter(Boolean) as Array<{ id: TabId; label: string; Icon: any }>;
 
   const [active, setActive] = useState<TabId>(tabs[0].id);
@@ -473,10 +759,10 @@ function InfoTabs({
 
         {/* Tab content */}
         <div className="py-4 sm:py-5">
-          {active === "nutrition" && <NutritionPanel variant={variant} />}
-          {active === "template" && hasTemplate && <div>{extraSections}</div>}
-
-          {active === "delivery" && <DeliveryTab pageSettings={pageSettings} />}
+          {active === "template"       && hasTemplate       && <div>{extraSections}</div>}
+          {active === "productDetails" && hasProductDetails && <ProductDetailsTab product={product} />}
+          {active === "nutrition"      && hasNutrition      && <NutritionPanel variant={variant} />}
+          {active === "delivery"                            && <DeliveryTab pageSettings={pageSettings} />}
         </div>
       </div>
     </div>
@@ -637,6 +923,7 @@ export function ProductPageShell({
   recommendations = [],
   pageSettings,
   globoOptionSets = [],
+  iconBadges = [],
 }: ProductPageShellProps) {
   const lp = useLocalePath();
   const t = useT();
@@ -1130,15 +1417,45 @@ export function ProductPageShell({
             );
           })()}
 
-          {/* Trust badges */}
-          <div className="grid grid-cols-3 gap-2 rounded-xl border border-border p-3 sm:gap-3 sm:p-4">
-            {[{ icon: Truck, labelKey: "product.trust_delivery" as const }, { icon: ShieldCheck, labelKey: "product.trust_halal" as const }, { icon: RefreshCw, labelKey: "product.trust_quality" as const }].map(({ icon: Icon, labelKey }) => (
-              <div key={labelKey} className="flex flex-col items-center gap-1 text-center">
-                <Icon className="h-5 w-5 text-crimson sm:h-6 sm:w-6" />
-                <span className="text-[10px] font-medium leading-snug text-muted-foreground sm:text-xs">{t(labelKey)}</span>
+          {/* Icon badges — driven by "icon_with_text" metaobject, falls back to hardcoded if empty */}
+          {(() => {
+            const ICON_FILTER = "invert(15%) sepia(80%) saturate(400%) hue-rotate(340deg)";
+            const FALLBACK_ICONS = [Truck, ShieldCheck, RefreshCw, Leaf];
+            const parsed = iconBadges
+              .map((node: any, i: number) => {
+                const fm = Object.fromEntries((node.fields ?? []).map((f: any) => [f.key, f]));
+                const heading = fm["heading"]?.value ?? null;
+                const iconUrl = fm["icon"]?.reference?.image?.url ?? null;
+                if (!heading) return null;
+                return { id: node.id ?? String(i), heading, iconUrl, FallbackIcon: FALLBACK_ICONS[i % FALLBACK_ICONS.length] };
+              })
+              .filter(Boolean) as Array<{ id: string; heading: string; iconUrl: string | null; FallbackIcon: any }>;
+
+            const cols = parsed.length > 0 ? parsed.length : 3;
+            const items = parsed.length > 0 ? parsed : [
+              { id: "d", heading: t("product.trust_delivery"), iconUrl: null, FallbackIcon: Truck },
+              { id: "h", heading: t("product.trust_halal"),    iconUrl: null, FallbackIcon: ShieldCheck },
+              { id: "q", heading: t("product.trust_quality"),  iconUrl: null, FallbackIcon: RefreshCw },
+            ];
+
+            return (
+              <div
+                className="gap-2 rounded-xl border border-border p-3 sm:gap-3 sm:p-4"
+                style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)` }}
+              >
+                {items.map(({ id, heading, iconUrl, FallbackIcon }) => (
+                  <div key={id} className="flex flex-col items-center gap-1 text-center">
+                    {iconUrl ? (
+                      <img src={iconUrl} alt={heading} className="h-5 w-5 object-contain sm:h-6 sm:w-6" style={{ filter: ICON_FILTER }} />
+                    ) : (
+                      <FallbackIcon className="h-5 w-5 text-crimson sm:h-6 sm:w-6" />
+                    )}
+                    <span className="text-[10px] font-medium leading-snug text-muted-foreground sm:text-xs">{heading}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
 
           {/* Description + Free Returns + Customer Support */}
           <div className="border-t border-border">
@@ -1185,6 +1502,7 @@ export function ProductPageShell({
         extraSectionTitle={extraSectionTitle}
         pageSettings={pageSettings}
         variant={variant}
+        product={product}
       />
 
       {/* ── Sticky Add to Cart bar ── */}
