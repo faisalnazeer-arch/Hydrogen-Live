@@ -6,7 +6,7 @@ export type Dir = "ltr" | "rtl";
 
 interface LocaleState {
   locale: Locale;
-  setLocale: (l: Locale) => void;
+  setLocale: (l: Locale, canonicalPath?: string) => void;
   _syncLocale: (l: Locale) => void;
 }
 
@@ -15,7 +15,7 @@ export const useLocaleStore = create<LocaleState>()((set) => ({
   // LocaleSync in root.tsx calls _syncLocale after hydration to set the real locale.
   locale: "en",
   _syncLocale: (l) => set({ locale: l }),
-  setLocale: (locale) => {
+  setLocale: (locale, canonicalPath) => {
     set({ locale });
     if (typeof document !== "undefined") {
       const secure = window.location.protocol === "https:" ? ";Secure" : "";
@@ -24,10 +24,17 @@ export const useLocaleStore = create<LocaleState>()((set) => ({
       let target: string;
       if (locale === "ar") {
         target = "/ar";
+      } else if (canonicalPath) {
+        // Caller supplied the canonical EN path (e.g. from product.onlineStoreUrl).
+        target = canonicalPath;
       } else {
         const current = window.location.pathname;
-        target = current.startsWith("/ar/") ? current.slice(3) || "/" : current === "/ar" ? "/" : current;
-        target += window.location.search;
+        const stripped = current.startsWith("/ar/") ? current.slice(3) || "/" : current === "/ar" ? "/" : current;
+        let decoded = stripped;
+        try { decoded = decodeURIComponent(stripped); } catch { /* keep raw */ }
+        // If the path has non-ASCII chars (translated handle) and no canonical path was
+        // supplied, fall back to home to avoid 404.
+        target = /[^\x00-\x7F]/.test(decoded) ? "/" : stripped + window.location.search;
       }
 
       window.location.replace(target);

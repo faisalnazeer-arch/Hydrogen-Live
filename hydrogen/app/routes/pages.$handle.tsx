@@ -243,10 +243,14 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   if (!handle) throw new Response("Missing handle", { status: 400 });
 
   const lang = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
-  const language = (lang === "ar" ? "AR" : "EN") as "AR" | "EN";
+  const path = new URL(request.url).pathname;
+  const userLanguage = (path.startsWith("/ar/") || path === "/ar" || lang === "ar" ? "AR" : "EN") as "AR" | "EN";
 
+  // Landing page section structure is always fetched in EN — metaobjects typically
+  // don't have AR translations set up in Translate & Adapt, causing @inContext(AR)
+  // to return null references (empty sections). Products/reels still use userLanguage.
   const data = await context.storefront.query(PAGE_QUERY, {
-    variables: { handle, language, country: "AE" as const },
+    variables: { handle, language: "EN" as const, country: "AE" as const },
     cache: context.storefront.CacheNone(),
   });
 
@@ -318,7 +322,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const productsByCollection: Record<string, any[]> = {};
   const tasks: Promise<unknown>[] = Array.from(collectionHandles).map(async (collHandle) => {
     const r = await context.storefront.query(COLLECTION_PRODUCTS_QUERY, {
-      variables: { handle: collHandle, language, country: "AE" as const },
+      variables: { handle: collHandle, language: userLanguage, country: "AE" as const },
       cache: context.storefront.CacheNone(),
     });
     productsByCollection[collHandle] = r.collection?.products?.nodes ?? [];
@@ -326,7 +330,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
   // Always fetch reel items — some pages use video reels
   const reelData = await context.storefront.query(REEL_ITEMS_QUERY, {
-    variables: { language, country: "AE" as const },
+    variables: { language: userLanguage, country: "AE" as const },
     cache: context.storefront.CacheNone(),
   });
   const reelItems: any[] = reelData.metaobjects?.nodes ?? [];

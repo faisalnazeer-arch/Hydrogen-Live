@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "react-router";
+import { Link, useMatches } from "react-router";
 import {
   ShoppingBag,
   User,
@@ -76,6 +76,16 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
   const drawerSide = dirFor(locale) === "rtl" ? "right" : "left";
   const closeMobile = () => setMobileNavOpen(false);
 
+  // When on a product page, pass the canonical EN handle to setLocale so switching
+  // from AR → EN navigates to the same product, not home.
+  const matches = useMatches();
+  const productRouteData = matches.find(
+    (m) => m.id === "routes/products.$handle" || m.id === "ar-products-handle"
+  )?.data as { canonicalHandle?: string } | undefined;
+  const canonicalProductPath = productRouteData?.canonicalHandle
+    ? `/products/${productRouteData.canonicalHandle}`
+    : undefined;
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
       {/* Top bar */}
@@ -124,7 +134,7 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
             <Globe className="ms-1 h-3.5 w-3.5 text-muted-foreground" aria-hidden />
             <button
               type="button"
-              onClick={() => setLocale("en")}
+              onClick={() => setLocale("en", canonicalProductPath)}
               data-locale="en"
               className="locale-btn rounded-full px-2 py-0.5 transition-colors hover:text-crimson"
             >
@@ -399,6 +409,13 @@ function MobileMenuDrawer({
   const locale    = useLocaleStore((s) => s.locale);
   const setLocale = useLocaleStore((s) => s.setLocale);
   const t         = useT();
+  const mobileMatches = useMatches();
+  const mobileProductData = mobileMatches.find(
+    (m) => m.id === "routes/products.$handle" || m.id === "ar-products-handle"
+  )?.data as { canonicalHandle?: string } | undefined;
+  const canonicalProductPath = mobileProductData?.canonicalHandle
+    ? `/products/${mobileProductData.canonicalHandle}`
+    : undefined;
 
   const tabs             = mobileMenu;
   const isCategories     = tabs[tab1Idx]?.label?.toLowerCase() === "categories";
@@ -738,7 +755,7 @@ function MobileMenuDrawer({
           <Globe className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
           <button
             type="button"
-            onClick={() => setLocale("en")}
+            onClick={() => setLocale("en", canonicalProductPath)}
             data-locale="en"
             className={`locale-btn rounded-full px-3 py-1 text-[12px] font-semibold uppercase tracking-wider transition-colors ${locale === "en" ? "bg-crimson text-white" : "text-foreground hover:text-crimson"}`}
           >EN</button>

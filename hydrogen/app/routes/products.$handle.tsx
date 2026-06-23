@@ -30,24 +30,19 @@ const PAGE_SETTINGS_QUERY = `
 // templateSuffix is not exposed by the Storefront API — fetch it via Admin API instead.
 // We also fetch mls.* metafields here because they may not have Storefront API access
 // enabled; Admin API always has full metafield access.
-const ADMIN_PRODUCT_QUERY = (handle: string) => {
-  const safeHandle = handle.replace(/[^a-z0-9-]/gi, "");
-  return `
+// Queried by product GID (from Storefront product.id) so it works for any handle language.
+// Admin API always returns the original English handle regardless of Translate & Adapt.
+const ADMIN_PRODUCT_BY_GID_QUERY = (gid: string) => `
   query {
-    products(first: 5, query: "handle:'${safeHandle}'") {
-      edges {
-        node {
-          handle
-          templateSuffix
-          metafields(namespace: "custom", first: 50) {
-            edges { node { namespace key value } }
-          }
-        }
+    product(id: "${gid}") {
+      handle
+      templateSuffix
+      metafields(namespace: "custom", first: 50) {
+        edges { node { namespace key value } }
       }
     }
   }
 `;
-};
 
 // One metaobject per template suffix (type: "product_template_settings").
 // Each instance must have a "template_suffix" field to identify which template it configures.
@@ -302,14 +297,13 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
   const language = detectLanguage(request);
 
-  // Run storefront query, Admin product lookup, and icon badges in parallel.
-  // templateSuffix is not exposed by the Storefront API so we must use the Admin API.
-  const [data, adminProductData, iconBadgesRaw] = await Promise.all([
+  // Phase 1 — Storefront product + icon badges in parallel.
+  // Admin query runs in Phase 2 (needs product GID from Storefront response).
+  const [data, iconBadgesRaw] = await Promise.all([
     context.storefront.query(PRODUCT_QUERY, {
       variables: { handle, language, country: "AE" as const },
       cache: context.storefront.CacheShort(),
     }),
-    context.adminFetch(ADMIN_PRODUCT_QUERY(handle)).catch((e: unknown) => { console.error("[products loader] admin product fetch:", e); return null; }),
     context.adminFetch(`{ nodes: metaobjects(type: "icon_with_text", first: 10) { nodes { id handle fields { key value reference { ... on MediaImage { image { url altText } } } } } } }`).catch(() => null),
   ]);
   if (!data.product) throw new Response("Not found", { status: 404 });
@@ -323,32 +317,6 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const collectionIds: number[] = (data.product.collections?.nodes ?? [])
     .map((c: any) => Number(c.id.split("/").pop()))
     .filter(Boolean);
-
-  // Extract admin node (exact handle match)
-  const adminNode = ((adminProductData as any)?.products?.edges ?? [])
-    .find((e: any) => e.node?.handle === handle)?.node;
-
-  // templateSuffix from Admin API (exact handle match), falling back to tag-based override.
-  const adminSuffix = adminNode?.templateSuffix ?? null;
-
-  // Merge custom.mls_* metafields from Admin API as a backup — in case Storefront API
-  // access isn't yet enabled for some definitions. Admin API always has full access.
-  const adminMlsMeta: Array<{ namespace: string; key: string; value: string }> =
-    (adminNode?.metafields?.edges ?? [])
-      .map((e: any) => e.node)
-      .filter((m: any) => m?.namespace === "custom" && m?.key?.startsWith("mls_") && m?.value != null);
-  if (adminMlsMeta.length > 0) {
-    const existingMlsKeys = new Set(adminMlsMeta.map((m) => `${m.namespace}.${m.key}`));
-    const existing = (data.product.metafields ?? []).filter(
-      (m: any) => m != null && !existingMlsKeys.has(`${m.namespace}.${m.key}`)
-    );
-    (data.product as any).metafields = [...existing, ...adminMlsMeta];
-  }
-  const tagOverride = data.product.tags?.find((t: string) => t.toLowerCase().startsWith("template:"));
-  const templateSuffix: string | null =
-    (tagOverride ? tagOverride.replace(/^template:/i, "").trim() : null)
-    ?? adminSuffix
-    ?? null;
 
   // Strategy 1: scrape Globo config from Shopify theme HTML (proven approach).
   // Strategy 2: try the Globo app-proxy JSON endpoint as fallback.
@@ -409,13 +377,13 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     }
   }
 
-  // ── Reviews — awaited in the critical path (fast ~200ms, must not be deferred) ──────────
-  // Reviews fetched in the critical path with a 2.5s budget.
-  // If Judge.me is slow (cold TCP ~4s) the timeout fires → empty reviews returned →
-  // the client-side fallback in JudgemeReviews fetches them after hydration (~500ms warm).
+  // ── Phase 2 — Admin (by GID) + Reviews in parallel ──────────────────────────────────────
+  // Admin API queried by GID so it works for any handle language (EN or translated).
+  // Admin always returns the original English canonical handle — used for language switching.
   const emptyReviews = { reviews: [] as any[], total_count: 0, current_page: 1, per_page: 10 };
   const emptyRating  = { average: 0, count: 0, histogram: [0, 0, 0, 0, 0] as [number,number,number,number,number] };
-  const [reviewsFetchResult, ratingFetchResult] = await Promise.all([
+  const [adminProductData, reviewsFetchResult, ratingFetchResult] = await Promise.all([
+    context.adminFetch(ADMIN_PRODUCT_BY_GID_QUERY(data.product.id)).catch((e: unknown) => { console.error("[products loader] admin product fetch:", e); return null; }),
     Promise.race([
       fetchJudgemeReviews(handle, shopDomain, judgemeToken, 1, 10, externalId).catch(() => emptyReviews),
       new Promise<typeof emptyReviews>((r) => setTimeout(() => r(emptyReviews), 2500)),
@@ -427,6 +395,27 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   ]);
   const reviewsSummary = buildRatingSummary(reviewsFetchResult as any);
   const initialRating = (ratingFetchResult as any).average > 0 ? ratingFetchResult : reviewsSummary;
+
+  // Admin node is available now — extract canonical handle and templateSuffix.
+  const adminNode = (adminProductData as any)?.product ?? null;
+  const adminSuffix = adminNode?.templateSuffix ?? null;
+
+  const adminMlsMeta: Array<{ namespace: string; key: string; value: string }> =
+    (adminNode?.metafields?.edges ?? [])
+      .map((e: any) => e.node)
+      .filter((m: any) => m?.namespace === "custom" && m?.key?.startsWith("mls_") && m?.value != null);
+  if (adminMlsMeta.length > 0) {
+    const existingMlsKeys = new Set(adminMlsMeta.map((m) => `${m.namespace}.${m.key}`));
+    const existing = (data.product.metafields ?? []).filter(
+      (m: any) => m != null && !existingMlsKeys.has(`${m.namespace}.${m.key}`)
+    );
+    (data.product as any).metafields = [...existing, ...adminMlsMeta];
+  }
+  const tagOverride = data.product.tags?.find((t: string) => t.toLowerCase().startsWith("template:"));
+  const templateSuffix: string | null =
+    (tagOverride ? tagOverride.replace(/^template:/i, "").trim() : null)
+    ?? adminSuffix
+    ?? null;
 
   // ── Slow data — deferred, streams in after initial render ────────────────────────────────
   const lazyData = Promise.race([
@@ -499,8 +488,13 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
   const iconBadges: any[] = (iconBadgesRaw as any)?.nodes?.nodes ?? [];
 
+  // Admin API always returns the original English handle regardless of Translate & Adapt.
+  // Used by the locale switcher to navigate to the EN product URL without 404.
+  const canonicalHandle: string = adminNode?.handle ?? handle;
+
   return {
     product: data.product,
+    canonicalHandle,
     templateSuffix,
     sellingPlanGroupsRaw: data.product.sellingPlanGroups?.nodes ?? [],
     discountMap,
