@@ -382,15 +382,42 @@ export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFuncti
 export async function loader({ context, request }: LoaderFunctionArgs) {
   const language = detectLanguage(request);
   try {
-    const [data, adminData] = await Promise.all([
+    const isAr = language === "AR";
+    const [dataEn, dataAr, adminData] = await Promise.all([
+      // EN fetch — always used for URLs so handles stay English
       context.storefront.query(LAYOUT_QUERY, {
-        // Always fetch nav in EN so menu URLs stay as English handles — Arabic
-        // locale is cookie-based, not URL-based, so handles must remain English.
         variables: { language: "EN" as const, country: "AE" as const },
         cache: context.storefront.CacheShort(),
       }),
+      // AR fetch — only needed for labels when locale is Arabic
+      isAr ? context.storefront.query(LAYOUT_QUERY, {
+        variables: { language: "AR" as const, country: "AE" as const },
+        cache: context.storefront.CacheShort(),
+      }) : Promise.resolve(null),
       context.adminFetch(ADMIN_FOOTER_QUERY),
     ]);
+    // Use EN data for URLs (English handles), AR data for titles when Arabic
+    const data = dataEn;
+    if (isAr && dataAr) {
+      // Patch titles from AR onto EN menu items (EN URLs stay intact)
+      function patchTitles(enItems: any[] = [], arItems: any[] = []): any[] {
+        return enItems.map((item, i) => ({
+          ...item,
+          title: arItems[i]?.title ?? item.title,
+          items: patchTitles(item.items ?? [], arItems[i]?.items ?? []),
+        }));
+      }
+      if (data?.mainMenu?.items && dataAr.mainMenu?.items)
+        data.mainMenu.items = patchTitles(data.mainMenu.items, dataAr.mainMenu.items);
+      if (data?.secondaryMenu?.items && dataAr.secondaryMenu?.items)
+        data.secondaryMenu.items = patchTitles(data.secondaryMenu.items, dataAr.secondaryMenu.items);
+      if (data?.mobileCategoriesMenu?.items && dataAr.mobileCategoriesMenu?.items)
+        data.mobileCategoriesMenu.items = patchTitles(data.mobileCategoriesMenu.items, dataAr.mobileCategoriesMenu.items);
+      if (data?.footerShop?.items && dataAr.footerShop?.items)
+        data.footerShop.items = patchTitles(data.footerShop.items, dataAr.footerShop.items);
+      if (data?.footerHelp?.items && dataAr.footerHelp?.items)
+        data.footerHelp.items = patchTitles(data.footerHelp.items, dataAr.footerHelp.items);
+    }
     const mainMenu               = parseShopifyMenu(data?.mainMenu,              "main");
     const secondaryMenu          = parseShopifyMenu(data?.secondaryMenu,         "secondary");
     const mobileCategoriesMenu   = parseShopifyMenu(data?.mobileCategoriesMenu,  "mobile-cat");
