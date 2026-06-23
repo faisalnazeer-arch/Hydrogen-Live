@@ -384,7 +384,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   try {
     const [data, adminData] = await Promise.all([
       context.storefront.query(LAYOUT_QUERY, {
-        variables: { language, country: "AE" as const },
+        // Always fetch nav in EN so menu URLs stay as English handles — Arabic
+        // locale is cookie-based, not URL-based, so handles must remain English.
+        variables: { language: "EN" as const, country: "AE" as const },
         cache: context.storefront.CacheShort(),
       }),
       context.adminFetch(ADMIN_FOOTER_QUERY),
