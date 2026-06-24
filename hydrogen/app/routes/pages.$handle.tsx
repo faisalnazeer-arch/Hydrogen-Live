@@ -260,15 +260,25 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   let sectionsMeta = metafields.find((m: any) => m?.key === "sections");
   let lpPageNodes: any[] = sectionsMeta?.references?.nodes ?? [];
 
-  // Fall back to EN if the language-context query returned no sections
+  // Fall back to EN ONLY for landing pages whose sections aren't set up in AR.
+  // Important: prose pages (no sections) are often reached via their translated Arabic
+  // handle (e.g. /ar/pages/سياسة-الخصوصية). Re-querying that Arabic handle in EN context
+  // returns null, so we must only adopt the EN result when it actually yields sections —
+  // otherwise we'd blank a perfectly good AR prose page.
   if (lpPageNodes.length === 0 && userLanguage !== "EN") {
-    data = await context.storefront.query(PAGE_QUERY, {
+    const enData = await context.storefront.query(PAGE_QUERY, {
       variables: { handle, language: "EN" as const, country: "AE" as const },
       cache: context.storefront.CacheNone(),
     });
-    metafields = (data.page?.metafields ?? []).filter(Boolean);
-    sectionsMeta = metafields.find((m: any) => m?.key === "sections");
-    lpPageNodes = sectionsMeta?.references?.nodes ?? [];
+    const enMetafields = (enData.page?.metafields ?? []).filter(Boolean);
+    const enSections = enMetafields.find((m: any) => m?.key === "sections");
+    const enNodes = enSections?.references?.nodes ?? [];
+    if (enNodes.length > 0) {
+      data = enData;
+      metafields = enMetafields;
+      sectionsMeta = enSections;
+      lpPageNodes = enNodes;
+    }
   }
 
   // Regular prose page

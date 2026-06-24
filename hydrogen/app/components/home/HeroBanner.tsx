@@ -99,8 +99,9 @@ export function HeroBanner({ slides: rawSlides = [] }: HeroBannerProps) {
   }, [isSingle]);
 
   return (
-    <section className="relative bg-charcoal">
-      {/* overflow-hidden on the immediate wrapper ensures translateX clips correctly */}
+    // dir="ltr" overrides the page-level dir="rtl" so the flex carousel always
+    // stacks left-to-right and translateX(-N%) clips correctly.
+    <section className="relative bg-charcoal" dir="ltr">
       <div className="overflow-hidden">
         <div
           className="flex"

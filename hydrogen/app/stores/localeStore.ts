@@ -10,6 +10,29 @@ interface LocaleState {
   _syncLocale: (l: Locale) => void;
 }
 
+// Arabic page handle → English handle.
+// In AR, Shopify serves translated page handles (e.g. /ar/pages/سياسة-الخصوصية), but those
+// handles don't resolve in EN context, so a naïve /ar strip 404s. This maps each translated
+// handle back to its English handle so switching to EN lands on the same page.
+// Keep in sync with the AR page routes in app/routes.ts.
+const AR_TO_EN_PAGE_HANDLE: Record<string, string> = {
+  "تقييمات-العملاء": "customer-reviews",
+  "اتصل-بنا-1": "contact-us",
+  "استرداد-الأموال-أو-التبديل": "refund-exchange",
+  "مكافأت": "rewards",
+  "مكافآت-mls": "mls-rewards",
+  "أح-ل-صديق-ا": "refer-a-friend",
+  "أسئلة-وأجوبة": "faqs",
+  "إم-إل-إس-جورميه": "mls-gourmet",
+  "قصتنا-جديدة": "our-story-new",
+  "شريك-mls": "mls-affiliate",
+  "معلومات-التوصيل": "delivery-info",
+  "سياسة-الاشتراك": "subscription-policy",
+  "الاشتراكات": "subscriptions",
+  "اشتراك": "subscription",
+  "سياسة-الخصوصية": "privacy-policy",
+};
+
 export const useLocaleStore = create<LocaleState>()((set) => ({
   // Always initialize to "en" so server and client match on first render.
   // LocaleSync in root.tsx calls _syncLocale after hydration to set the real locale.
@@ -40,12 +63,28 @@ export const useLocaleStore = create<LocaleState>()((set) => ({
         const stripped = current.startsWith("/ar/") ? current.slice(3) || "/" : current === "/ar" ? "/" : current;
         let decoded = stripped;
         try { decoded = decodeURIComponent(stripped); } catch { /* keep raw */ }
-        // Only fall back to home on product pages where the handle contains non-ASCII
-        // (Translate & Adapt translated slug) and no canonical path was supplied.
-        // All other pages (collections, pages, blogs, etc.) are safe to keep as-is.
-        const isProductWithTranslatedHandle =
-          /^\/(ar\/)?products\//.test(current) && /[^\x00-\x7F]/.test(decoded);
-        target = isProductWithTranslatedHandle ? "/" : stripped + window.location.search;
+
+        const pageMatch = decoded.match(/^\/pages\/([^/?#]+)/);
+        if (pageMatch) {
+          // Pages carry translated (Arabic) handles in AR that don't resolve in EN.
+          const arHandle = pageMatch[1];
+          const enHandle = AR_TO_EN_PAGE_HANDLE[arHandle];
+          if (enHandle) {
+            target = `/pages/${enHandle}${window.location.search}`;
+          } else if (/[^\x00-\x7F]/.test(arHandle)) {
+            // Unknown translated handle — fall back home rather than 404.
+            target = "/";
+          } else {
+            target = stripped + window.location.search;
+          }
+        } else {
+          // Only fall back to home on product pages where the handle contains non-ASCII
+          // (Translate & Adapt translated slug) and no canonical path was supplied.
+          // All other pages (collections, blogs, etc.) are safe to keep as-is.
+          const isProductWithTranslatedHandle =
+            /^\/(ar\/)?products\//.test(current) && /[^\x00-\x7F]/.test(decoded);
+          target = isProductWithTranslatedHandle ? "/" : stripped + window.location.search;
+        }
       }
 
       window.location.replace(target);

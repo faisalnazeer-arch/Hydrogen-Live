@@ -485,6 +485,38 @@ function pickReels(edges: any[]): ReelProduct[] {
   return reels;
 }
 
+// Arabic hero image overrides.
+// The hero_banner metaobjects have no native Shopify (Translate & Adapt) translation
+// for their image fields, and T LAB-style translation apps inject into the Online Store
+// theme — they never reach this headless storefront. Until a native `ar` translation is
+// registered, map a slide's metaobject id to the Arabic banner image it should use in AR.
+const AR_HERO_IMAGE_OVERRIDES: Record<
+  string,
+  { desktop?: ShopifyImageRef; mobile?: ShopifyImageRef }
+> = {
+  // Slide 2 — Brazilian grass-fed beef. Arabic banners uploaded to Files.
+  "gid://shopify/Metaobject/268880183612": {
+    desktop: { url: "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/Web-ARAB-banner.jpg?v=1782037488", altText: null, width: 1920, height: 550 },
+    mobile:  { url: "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/Mobile-ARAB-Banner.jpg?v=1782037458", altText: null, width: 450, height: 650 },
+  },
+};
+
+interface ShopifyImageRef { url: string; altText: string | null; width?: number; height?: number }
+
+// Swap a hero node's image references for their Arabic equivalents (AR locale only).
+function applyArHeroImages(node: any): any {
+  const ov = AR_HERO_IMAGE_OVERRIDES[node.id];
+  if (!ov) return node;
+  return {
+    ...node,
+    fields: (node.fields ?? []).map((f: any) => {
+      if (f.key === "desktop_image" && ov.desktop) return { ...f, reference: { image: ov.desktop } };
+      if (f.key === "mobile_image"  && ov.mobile)  return { ...f, reference: { image: ov.mobile } };
+      return f;
+    }),
+  };
+}
+
 export async function loader({ context, request }: LoaderFunctionArgs) {
   const af = (q: string) => context.adminFetch(q).then((d: any) => d?.nodes ?? {});
   const language = detectLanguage(request);
@@ -653,8 +685,14 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const reviewTotalCount: number = (reviewsData as any)?.total_count ?? 0;
   const reviewAverage: number = (shopStats as any)?.average ?? 0;
 
+  // Hero slides. In Arabic, swap in per-slide Arabic banner images where we have them
+  // (see AR_HERO_IMAGE_OVERRIDES); slides without an override keep their English image.
+  const allHeroNodes: any[] = data?.heroBanners?.nodes ?? [];
+  const heroSlides =
+    language === "AR" ? allHeroNodes.map(applyArHeroImages) : allHeroNodes;
+
   return {
-    heroSlides: data?.heroBanners?.nodes ?? [],
+    heroSlides,
     trustBadges: data?.trustBadges?.nodes ?? [],
     featuredSection,
     collectionCards,
