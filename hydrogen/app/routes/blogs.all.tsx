@@ -81,7 +81,7 @@ function ArticleCard({ article }: { article: any }) {
             alt={article.image.altText ?? article.title}
             width={article.image.width}
             height={article.image.height}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
           />
         </div>
       ) : (

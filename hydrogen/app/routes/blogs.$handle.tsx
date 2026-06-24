@@ -76,7 +76,7 @@ export default function BlogPage() {
                     <img
                       src={article.image.url}
                       alt={article.image.altText ?? article.title}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
                     <div className="h-full w-full bg-gradient-to-br from-crimson/10 to-crimson/5 flex items-center justify-center">
