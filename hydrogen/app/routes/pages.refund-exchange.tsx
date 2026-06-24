@@ -1,37 +1,45 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
 import { Mail, MessageCircle, RefreshCw, BadgeCheck, Quote } from "lucide-react";
+import { detectLanguage } from "../lib/locale";
 
 export const meta: MetaFunction = () => [
   { title: "Refund & Exchange Policy — MLS UAE" },
   { name: "description", content: "Learn about MLS UAE's 100% money back guarantee, refund and exchange policy." },
 ];
 
-const REFUND_QUERY = `{
-  nodes: metaobjects(type: "mls_refund_page", first: 1) {
-    nodes {
-      fields {
-        key
-        value
-        reference {
-          ... on MediaImage { image { url altText } }
-        }
-        references(first: 10) {
-          nodes {
-            ... on Metaobject {
-              id
-              fields { key value }
+const REFUND_QUERY = `
+  query RefundPage($language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
+    metaobjects(type: "mls_refund_page", first: 1) {
+      nodes {
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage { image { url altText } }
+          }
+          references(first: 10) {
+            nodes {
+              ... on Metaobject {
+                id
+                fields { key value }
+              }
             }
           }
         }
       }
     }
   }
-}`;
+` as const;
 
-export async function loader({ context }: LoaderFunctionArgs) {
-  const data = await context.adminFetch(REFUND_QUERY);
-  const node = data?.nodes?.nodes?.[0];
+export async function loader({ context, request }: LoaderFunctionArgs) {
+  const language = detectLanguage(request);
+  const data = await context.storefront.query(REFUND_QUERY, {
+    variables: { language, country: "AE" as const },
+    cache: context.storefront.CacheNone(),
+  });
+  const node = data?.metaobjects?.nodes?.[0];
   const f = Object.fromEntries((node?.fields ?? []).map((x: any) => [x.key, x]));
 
   const policyCards = (f.policy_cards?.references?.nodes ?? []).map((n: any) => {

@@ -1,15 +1,17 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
 import { FaqAccordion, parseFaqItems } from "@/components/ui/FaqAccordion";
+import { detectLanguage } from "../lib/locale";
 
 export const meta: MetaFunction = () => [
   { title: "FAQs — MLS UAE" },
   { name: "description", content: "Find answers to the most common questions about MLS UAE — delivery, halal certification, custom cuts, and more." },
 ];
 
-const FAQ_QUERY = `
-  {
-    nodes: metaobjects(type: "mls_faq_page", first: 1) {
+const FAQ_QUERY = `#graphql
+  query FaqPage($language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
+    metaobjects(type: "mls_faq_page", first: 1) {
       nodes {
         fields {
           key
@@ -17,7 +19,7 @@ const FAQ_QUERY = `
           reference {
             ... on MediaImage { image { url altText } }
           }
-          references(first: 20) {
+          references(first: 50) {
             nodes {
               ... on Metaobject {
                 id
@@ -29,11 +31,15 @@ const FAQ_QUERY = `
       }
     }
   }
-`;
+` as const;
 
-export async function loader({ context }: LoaderFunctionArgs) {
-  const data = await context.adminFetch(FAQ_QUERY);
-  const node = data?.nodes?.nodes?.[0];
+export async function loader({ context, request }: LoaderFunctionArgs) {
+  const language = detectLanguage(request);
+  const data = await context.storefront.query(FAQ_QUERY, {
+    variables: { language, country: "AE" as const },
+    cache: context.storefront.CacheNone(),
+  });
+  const node = data?.metaobjects?.nodes?.[0];
   const f = Object.fromEntries(
     (node?.fields ?? []).map((x: any) => [x.key, x])
   );

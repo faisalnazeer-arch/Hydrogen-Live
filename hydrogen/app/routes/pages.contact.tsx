@@ -2,6 +2,7 @@ import type { MetaFunction, ActionFunctionArgs, LoaderFunctionArgs } from "@shop
 import { Form, useActionData, useNavigation, useLoaderData } from "react-router";
 import { SHOPIFY_STORE_PERMANENT_DOMAIN } from "~/lib/shopify";
 import { MapPin, Phone, Mail, Clock, MessageCircle, CheckCircle2, ArrowRight, Send } from "lucide-react";
+import { detectLanguage } from "../lib/locale";
 
 export const meta: MetaFunction = () => [
   { title: "Contact Us — MLS UAE" },
@@ -9,7 +10,8 @@ export const meta: MetaFunction = () => [
 ];
 
 const CONTACT_QUERY = `
-  query {
+  query ContactPage($language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
     metaobject(handle: { type: "mls_contact_page", handle: "contact-page" }) {
       fields {
         key
@@ -24,8 +26,12 @@ const CONTACT_QUERY = `
   }
 ` as const;
 
-export async function loader({ context }: LoaderFunctionArgs) {
-  const data = await context.adminFetch(CONTACT_QUERY);
+export async function loader({ context, request }: LoaderFunctionArgs) {
+  const language = detectLanguage(request);
+  const data = await context.storefront.query(CONTACT_QUERY, {
+    variables: { language, country: "AE" as const },
+    cache: context.storefront.CacheNone(),
+  });
   const fields = Object.fromEntries(
     (data?.metaobject?.fields ?? []).map((f: any) => [f.key, f])
   );

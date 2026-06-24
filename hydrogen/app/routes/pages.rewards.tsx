@@ -3,6 +3,7 @@ import { useLoaderData } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { ShoppingBag, Star, Tag, ArrowRight, Gift, Zap, Shield, Clock } from "lucide-react";
+import { detectLanguage } from "../lib/locale";
 
 export const meta: MetaFunction = () => [
   { title: "MLS Rewards — Unlock Savings & Rewards" },
@@ -11,16 +12,19 @@ export const meta: MetaFunction = () => [
 
 const YOTPO_GUID = "3zSKLTmmtHC3S0CGw89ppA";
 
-const REWARDS_QUERY = `{
-  nodes: metaobjects(type: "mls_rewards_page", first: 1) {
-    nodes {
-      fields {
-        key value
-        reference { ... on MediaImage { image { url altText } } }
+const REWARDS_QUERY = `
+  query RewardsPage($language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
+    metaobjects(type: "mls_rewards_page", first: 1) {
+      nodes {
+        fields {
+          key value
+          reference { ... on MediaImage { image { url altText } } }
+        }
       }
     }
   }
-}`;
+` as const;
 
 const DEFAULTS = {
   heroImage:    null as string | null,
@@ -28,10 +32,14 @@ const DEFAULTS = {
   heroSubtitle: "We value you and this program is built to save you money and upgrade your meat shopping experience.",
 };
 
-export async function loader({ context }: LoaderFunctionArgs) {
+export async function loader({ context, request }: LoaderFunctionArgs) {
   try {
-    const data = await context.adminFetch(REWARDS_QUERY);
-    const node = data?.nodes?.nodes?.[0];
+    const language = detectLanguage(request);
+    const data = await context.storefront.query(REWARDS_QUERY, {
+      variables: { language, country: "AE" as const },
+      cache: context.storefront.CacheNone(),
+    });
+    const node = data?.metaobjects?.nodes?.[0];
     if (!node) return DEFAULTS;
     const f = Object.fromEntries((node.fields as any[]).map((x: any) => [x.key, x]));
     return {

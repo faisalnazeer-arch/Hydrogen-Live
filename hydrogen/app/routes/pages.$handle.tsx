@@ -246,26 +246,36 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const path = new URL(request.url).pathname;
   const userLanguage = (path.startsWith("/ar/") || path === "/ar" || lang === "ar" ? "AR" : "EN") as "AR" | "EN";
 
-  // Landing page section structure is always fetched in EN — metaobjects typically
-  // don't have AR translations set up in Translate & Adapt, causing @inContext(AR)
-  // to return null references (empty sections). Products/reels still use userLanguage.
-  const data = await context.storefront.query(PAGE_QUERY, {
-    variables: { handle, language: "EN" as const, country: "AE" as const },
+  // Fetch page in the user's language so Translate & Adapt translations are served.
+  // If the AR query returns no section references (type not yet set up for AR in T&A),
+  // fall back to EN so the page at least renders.
+  let data = await context.storefront.query(PAGE_QUERY, {
+    variables: { handle, language: userLanguage, country: "AE" as const },
     cache: context.storefront.CacheNone(),
   });
 
   if (!data.page) throw new Response("Page not found", { status: 404 });
 
-  const metafields = (data.page.metafields ?? []).filter(Boolean);
-  const sectionsMeta = metafields.find((m: any) => m?.key === "sections");
-  // Top-level references: either lp_page wrappers or direct lp_types nodes
-  const lpPageNodes: any[] = sectionsMeta?.references?.nodes ?? [];
+  let metafields = (data.page.metafields ?? []).filter(Boolean);
+  let sectionsMeta = metafields.find((m: any) => m?.key === "sections");
+  let lpPageNodes: any[] = sectionsMeta?.references?.nodes ?? [];
+
+  // Fall back to EN if the language-context query returned no sections
+  if (lpPageNodes.length === 0 && userLanguage !== "EN") {
+    data = await context.storefront.query(PAGE_QUERY, {
+      variables: { handle, language: "EN" as const, country: "AE" as const },
+      cache: context.storefront.CacheNone(),
+    });
+    metafields = (data.page?.metafields ?? []).filter(Boolean);
+    sectionsMeta = metafields.find((m: any) => m?.key === "sections");
+    lpPageNodes = sectionsMeta?.references?.nodes ?? [];
+  }
 
   // Regular prose page
   if (lpPageNodes.length === 0) {
     return {
       isLandingPage: false as const,
-      page: { title: data.page.title, body: data.page.body, seo: data.page.seo },
+      page: { title: data.page?.title ?? "", body: data.page?.body ?? "", seo: data.page?.seo ?? null },
       lpPageNodes: [],
       productsByCollection: {},
       reelItems: [],
@@ -365,10 +375,16 @@ function renderLpTypes(
 ): React.ReactNode[] {
   const f: any[] = lpTypes.fields ?? [];
 
+  const DEFAULT_SECTION_ORDER = ["slide", "slider", "message_banner", "icon", "certifications", "value_banner", "reviews", "reels_yt", "reel_section", "product_grid", "sub_banner"];
+  const KNOWN_KEYS = new Set(DEFAULT_SECTION_ORDER);
   const orderField = f.find((x: any) => x.key === "order")?.value ?? "";
-  const orderedKeys: string[] = orderField
-    ? orderField.split(",").map((s: string) => s.trim()).filter(Boolean)
-    : ["slide", "slider", "message_banner", "icon", "certifications", "value_banner", "reviews", "reels_yt", "reel_section", "product_grid", "sub_banner"];
+  const orderedKeys: string[] = (() => {
+    if (!orderField) return DEFAULT_SECTION_ORDER;
+    // Split on both English comma and Arabic comma (T Lab may translate this field)
+    const parsed = orderField.split(/[,،]/).map((s: string) => s.trim()).filter(Boolean);
+    // If none match known keys the field was translated — fall back to default
+    return parsed.some((k) => KNOWN_KEYS.has(k)) ? parsed : DEFAULT_SECTION_ORDER;
+  })();
 
   const sectionMap: Record<string, React.ReactNode | null> = {};
 

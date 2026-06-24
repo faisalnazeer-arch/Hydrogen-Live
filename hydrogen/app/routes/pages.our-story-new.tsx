@@ -3,6 +3,7 @@ import { useLoaderData } from "react-router";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "react-router";
 import { ArrowRight, ShieldCheck, Award, Heart } from "lucide-react";
+import { detectLanguage } from "../lib/locale";
 
 function clean(s: string): string {
   return (s ?? "")
@@ -17,19 +18,22 @@ export const meta: MetaFunction = () => [
   { name: "description", content: "45 years of butchery excellence. From Oman to the UAE." },
 ];
 
-const PAGE_QUERY = `{
-  page: metaobjects(type: "mls_our_story_page", first: 1) {
-    nodes {
-      fields {
-        key value
-        reference { ... on MediaImage { image { url altText width height } } }
-        references(first: 20) {
-          nodes {
-            ... on Metaobject {
-              id
-              fields {
-                key value
-                reference { ... on MediaImage { image { url altText width height } } }
+const PAGE_QUERY = `
+  query OurStoryPage($language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
+    metaobjects(type: "mls_our_story_page", first: 1) {
+      nodes {
+        fields {
+          key value
+          reference { ... on MediaImage { image { url altText width height } } }
+          references(first: 20) {
+            nodes {
+              ... on Metaobject {
+                id
+                fields {
+                  key value
+                  reference { ... on MediaImage { image { url altText width height } } }
+                }
               }
             }
           }
@@ -37,7 +41,7 @@ const PAGE_QUERY = `{
       }
     }
   }
-}`;
+` as const;
 
 function toEmbed(url: string): string {
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
@@ -45,9 +49,13 @@ function toEmbed(url: string): string {
   return url;
 }
 
-export async function loader({ context }: LoaderFunctionArgs) {
-  const data = await context.adminFetch(PAGE_QUERY);
-  const node = data?.page?.nodes?.[0];
+export async function loader({ context, request }: LoaderFunctionArgs) {
+  const language = detectLanguage(request);
+  const data = await context.storefront.query(PAGE_QUERY, {
+    variables: { language, country: "AE" as const },
+    cache: context.storefront.CacheNone(),
+  });
+  const node = data?.metaobjects?.nodes?.[0];
   const f = Object.fromEntries((node?.fields ?? []).map((x: any) => [x.key, x]));
 
   const slides = (f.slides?.references?.nodes ?? []).map((n: any) => {

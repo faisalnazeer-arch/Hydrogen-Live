@@ -2,56 +2,60 @@ import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData, Link } from "react-router";
 import { Star, ChevronDown, ArrowRight, Settings, CheckCircle2, ChevronLeft, ChevronRight, ShieldCheck, MessageCircle } from "lucide-react";
 import { useState } from "react";
+import { detectLanguage } from "../lib/locale";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => [
   { title: `${data?.page?.heroTitle ?? "Subscriptions"} — MLS UAE` },
   { name: "description", content: data?.page?.heroSubtitle ?? "Subscribe & Save up to 15% on every MLS order." },
 ];
 
-// ─── Admin query ──────────────────────────────────────────────────────────────
+// ─── Storefront query ─────────────────────────────────────────────────────────
 
-const PAGE_QUERY = `{
-  page: metaobjects(type: "mls_subscription_page", first: 1) {
-    nodes {
-      fields {
-        key value
-        references(first: 20) {
-          nodes {
-            ... on Metaobject {
-              id
-              fields { key value }
+const PAGE_QUERY = `
+  query SubscriptionsPage($language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
+    page: metaobjects(type: "mls_subscription_page", first: 1) {
+      nodes {
+        fields {
+          key value
+          references(first: 20) {
+            nodes {
+              ... on Metaobject {
+                id
+                fields { key value }
+              }
+            }
+          }
+        }
+      }
+    }
+    policy: metaobjects(type: "mls_subscription_policy", first: 1) {
+      nodes {
+        fields {
+          key value
+          reference { ... on MediaImage { image { url altText } } }
+          references(first: 20) {
+            nodes {
+              ... on Metaobject {
+                id
+                fields { key value }
+              }
             }
           }
         }
       }
     }
   }
-  policy: metaobjects(type: "mls_subscription_policy", first: 1) {
-    nodes {
-      fields {
-        key value
-        reference { ... on MediaImage { image { url altText } } }
-        references(first: 20) {
-          nodes {
-            ... on Metaobject {
-              id
-              fields { key value }
-            }
-          }
-        }
-      }
-    }
-  }
-}`;
+` as const;
 
 // ─── Loader ───────────────────────────────────────────────────────────────────
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
-  const lang = request.headers.get("Cookie")?.match(/(?:^|;\s*)lang=([a-z]{2})/)?.[1];
-  const language = (lang === "ar" ? "AR" : "EN") as "AR" | "EN";
-  void language;
-
-  const adminData = await context.adminFetch(PAGE_QUERY);
+  const language = detectLanguage(request);
+  const adminData = await context.storefront.query(PAGE_QUERY, {
+    variables: { language, country: "AE" as const },
+    cache: context.storefront.CacheNone(),
+  });
 
   // ── Subscription page ──
   const node = adminData?.page?.nodes?.[0];
