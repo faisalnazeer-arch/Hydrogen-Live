@@ -315,6 +315,9 @@ export interface MobileMenuItem {
 
 export interface MobileMenuTab {
   label: string;
+  // Language-stable English label, populated in AR so tab identity (e.g. "Categories")
+  // can be detected without depending on the translated `label`.
+  enLabel?: string;
   items: MobileMenuItem[];
 }
 
@@ -376,6 +379,25 @@ function parseNavItemImages(nodes: any[]): Record<string, string> {
   return map;
 }
 
+// English-context helper: nav menus and nav-image metaobjects are translated
+// independently, so their Arabic strings don't match for the label-based image lookup.
+// Menu item IDs are stable across languages, so in AR we fetch the English labels +
+// images here and resolve each top-level entry's image by ID. EN-only need, see loader.
+const NAV_EN_HELPER_QUERY = `#graphql
+  query NavEnHelper($language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
+    mobileCategoriesMenu: menu(handle: "mls-mobile-categories") {
+      items { id title }
+    }
+    mobileMenu: menu(handle: "mls-mobile-menu") {
+      items { id title items { id title } }
+    }
+    navItemImages: metaobjects(type: "mls_nav_item_image", first: 50) {
+      nodes { fields { key value reference { ... on MediaImage { image { url altText } } } } }
+    }
+  }
+` as const;
+
 // Skip re-fetching root layout data on every client navigation.
 // Menus, footer, and announcement bar rarely change — initial data is reused for the session.
 export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFunctionArgs) {
@@ -418,6 +440,39 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const navItemImages = parseNavItemImages(data?.navItemImages?.nodes ?? []);
     const mobileBanners = parseMobileBanners(data?.mobileBanners?.nodes ?? []);
     const mobileMenu = parseMobileMenu(data?.mobileMenu);
+
+    // In Arabic, nav-image labels and menu titles are translated independently and don't
+    // match, so the label-based image lookup fails. Resolve top-level entry images by the
+    // language-stable menu item ID via the English labels instead. Non-fatal.
+    if (language === "AR") {
+      try {
+        const en = await context.storefront.query(NAV_EN_HELPER_QUERY, {
+          variables: { language: "EN" as const, country: "AE" as const },
+          cache: context.storefront.CacheShort(),
+        });
+        const idToEnLabel: Record<string, string> = {};
+        for (const it of (en as any)?.mobileCategoriesMenu?.items ?? []) idToEnLabel[it.id] = it.title;
+        for (const tab of (en as any)?.mobileMenu?.items ?? [])
+          for (const it of tab.items ?? []) idToEnLabel[it.id] = it.title;
+        // Tag each tab with its English label (same menu, same order across languages)
+        // so the UI can identify the Categories tab regardless of translation.
+        const enTabs: any[] = (en as any)?.mobileMenu?.items ?? [];
+        mobileMenu.forEach((tab, i) => { tab.enLabel = enTabs[i]?.title; });
+        const enNavImages = parseNavItemImages((en as any)?.navItemImages?.nodes ?? []);
+        const imgFor = (id: string): string | null => enNavImages[idToEnLabel[id]] ?? null;
+        for (const entry of mobileCategoriesMenu) {
+          const img = imgFor(entry.id);
+          if (img) entry.imageUrl = img;
+        }
+        for (const tab of mobileMenu)
+          for (const item of tab.items) {
+            const img = imgFor(item.id);
+            if (img) item.imageUrl = img;
+          }
+      } catch (e) {
+        console.error("[root loader] AR nav image resolve failed", e);
+      }
+    }
 
     const faviconUrl = footerSettings?.faviconUrl ?? null;
     return { mainMenu, secondaryMenu, mobileMenu, mobileCategoriesMenu, footerSettings, footerMenuCols, announcementMessages, cartDrawerConfig, navItemImages, mobileBanners, faviconUrl, locale: (language === "AR" ? "ar" : "en") as "ar" | "en" };

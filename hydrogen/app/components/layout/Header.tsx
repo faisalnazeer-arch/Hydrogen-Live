@@ -418,7 +418,9 @@ function MobileMenuDrawer({
     : undefined;
 
   const tabs             = mobileMenu;
-  const isCategories     = tabs[tab1Idx]?.label?.toLowerCase() === "categories";
+  // Use the language-stable English label (set in AR) so the Categories tab is detected
+  // even when its visible label is translated (e.g. "الفئات").
+  const isCategories     = (tabs[tab1Idx]?.enLabel ?? tabs[tab1Idx]?.label ?? "").toLowerCase() === "categories";
   const mobileCatEntries = mobileCategoriesMenu.length > 0 ? mobileCategoriesMenu : mainMenu;
 
   const handleTab1      = (i: number)   => { setTab1Idx(i); setOpenEntries(new Set()); setOpenCols(new Set()); setOpenItems(new Set()); };
