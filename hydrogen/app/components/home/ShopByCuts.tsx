@@ -11,7 +11,7 @@ export function ShopByCuts({ section }: Props) {
   if (!section || section.items.length === 0) return null;
 
   return (
-    <section className="py-6 md:py-8">
+    <section className="py-8 md:py-12">
       <div className="container mx-auto px-4">
 
         <div className="mb-4 text-center md:mb-5">

@@ -2,31 +2,35 @@ import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
 import { useState } from "react";
 import { Clock, Truck, MapPin, CheckCircle2, Package, RefreshCw } from "lucide-react";
+import { detectLanguage } from "../lib/locale";
 
 export const meta: MetaFunction = () => [
   { title: "Delivery Info — MLS UAE" },
   { name: "description", content: "Same-day delivery across Dubai, Abu Dhabi, Sharjah and Ajman. 1-hour slot delivery until 8:45 PM in Dubai." },
 ];
 
-// ─── Admin metaobject query ───────────────────────────────────────────────────
+// ─── Storefront metaobject query ──────────────────────────────────────────────
 
-const ADMIN_QUERY = `{
-  delivery: metaobjects(type: "mls_delivery_page", first: 1) {
-    nodes {
-      fields {
-        key value
-        references(first: 20) {
-          nodes {
-            ... on Metaobject {
-              id
-              fields { key value }
+const ADMIN_QUERY = `
+  query DeliveryPage($language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
+    metaobjects(type: "mls_delivery_page", first: 1) {
+      nodes {
+        fields {
+          key value
+          references(first: 20) {
+            nodes {
+              ... on Metaobject {
+                id
+                fields { key value }
+              }
             }
           }
         }
       }
     }
   }
-}`;
+` as const;
 
 // ─── Fallback data (used when metaobjects are not yet created) ────────────────
 
@@ -94,10 +98,14 @@ const FALLBACK_RETURNS = [
 
 // ─── Loader ───────────────────────────────────────────────────────────────────
 
-export async function loader({ context }: LoaderFunctionArgs) {
-  const adminData = await context.adminFetch(ADMIN_QUERY);
+export async function loader({ context, request }: LoaderFunctionArgs) {
+  const language = detectLanguage(request);
+  const adminData = await context.storefront.query(ADMIN_QUERY, {
+    variables: { language, country: "AE" as const },
+    cache: context.storefront.CacheNone(),
+  });
 
-  const node = adminData?.delivery?.nodes?.[0];
+  const node = adminData?.metaobjects?.nodes?.[0];
   const f = Object.fromEntries((node?.fields ?? []).map((x: any) => [x.key, x]));
   const refs = (key: string) => f[key]?.references?.nodes ?? [];
 

@@ -1,6 +1,8 @@
 import type { MetaFunction, ActionFunctionArgs, LoaderFunctionArgs } from "@shopify/remix-oxygen";
 import { Form, useActionData, useNavigation, useLoaderData } from "react-router";
+import { SHOPIFY_STORE_PERMANENT_DOMAIN } from "~/lib/shopify";
 import { MapPin, Phone, Mail, Clock, MessageCircle, CheckCircle2, ArrowRight, Send } from "lucide-react";
+import { detectLanguage } from "../lib/locale";
 
 export const meta: MetaFunction = () => [
   { title: "Contact Us — MLS UAE" },
@@ -8,7 +10,8 @@ export const meta: MetaFunction = () => [
 ];
 
 const CONTACT_QUERY = `
-  query {
+  query ContactPage($language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
     metaobject(handle: { type: "mls_contact_page", handle: "contact-page" }) {
       fields {
         key
@@ -23,8 +26,12 @@ const CONTACT_QUERY = `
   }
 ` as const;
 
-export async function loader({ context }: LoaderFunctionArgs) {
-  const data = await context.adminFetch(CONTACT_QUERY);
+export async function loader({ context, request }: LoaderFunctionArgs) {
+  const language = detectLanguage(request);
+  const data = await context.storefront.query(CONTACT_QUERY, {
+    variables: { language, country: "AE" as const },
+    cache: context.storefront.CacheNone(),
+  });
   const fields = Object.fromEntries(
     (data?.metaobject?.fields ?? []).map((f: any) => [f.key, f])
   );
@@ -47,12 +54,78 @@ export async function action({ request }: ActionFunctionArgs) {
   const form = await request.formData();
   const name    = String(form.get("name")    ?? "").trim();
   const email   = String(form.get("email")   ?? "").trim();
+  const phone   = String(form.get("phone")   ?? "").trim();
   const message = String(form.get("message") ?? "").trim();
-  void form.get("phone");
 
   if (!name || !email || !message) return { ok: false, error: "Please fill in all required fields." };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: "Please enter a valid email address." };
-  return { ok: true };
+
+  try {
+    const baseUrl = `https://${SHOPIFY_STORE_PERMANENT_DOMAIN}`;
+
+    // Step 1 — GET the contact page to obtain session cookies + CSRF token.
+    const getRes = await fetch(`${baseUrl}/contact`, {
+      headers: {
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "User-Agent": "Mozilla/5.0 (compatible; MLSContactForm/1.0)",
+      },
+    });
+    const html = await getRes.text();
+
+    // Extract CSRF token — handle any attribute order and single/double quotes.
+    const inputTag = html.match(/<input[^>]+?name=["']authenticity_token["'][^>]*?>/i)?.[0] ?? "";
+    const csrfToken = inputTag.match(/value=["']([^"']+)["']/i)?.[1] ?? "";
+
+    // Extract cookies — strip attributes (Path, HttpOnly, Secure, SameSite) so
+    // we forward only the name=value pairs that the browser would send back.
+    let cookiePairs: string[] = [];
+    if (typeof (getRes.headers as any).getSetCookie === "function") {
+      // Standard API available in newer runtimes (Cloudflare Workers, Node 20+)
+      cookiePairs = ((getRes.headers as any).getSetCookie() as string[])
+        .map((c: string) => c.split(";")[0].trim());
+    } else {
+      cookiePairs = (getRes.headers.get("set-cookie") ?? "")
+        .split(/,(?=\s*[a-zA-Z0-9_\-%]+=)/)
+        .map((c: string) => c.split(";")[0].trim())
+        .filter(Boolean);
+    }
+    const cookieHeader = cookiePairs.join("; ");
+
+    // Step 2 — POST with CSRF token and session cookies.
+    const body = new URLSearchParams({
+      form_type: "contact",
+      utf8: "✓",
+      ...(csrfToken ? { authenticity_token: csrfToken } : {}),
+      "contact[name]": name,
+      "contact[email]": email,
+      "contact[phone]": phone,
+      "contact[body]": message,
+    });
+
+    const postRes = await fetch(`${baseUrl}/contact`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "Mozilla/5.0 (compatible; MLSContactForm/1.0)",
+        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+      },
+      body: body.toString(),
+      redirect: "manual",
+    });
+
+    const location = postRes.headers.get("location") ?? "";
+    // Shopify redirects to ?customer_posted=true on success (status 302).
+    // Accept any non-server-error as success.
+    if (postRes.status < 500 && (postRes.status < 400 || location.includes("customer_posted"))) {
+      return { ok: true };
+    }
+
+    console.warn("[contact] POST failed — status:", postRes.status, "location:", location, "csrfLen:", csrfToken.length);
+    return { ok: false, error: "Could not send your message. Please contact us directly via WhatsApp or email." };
+  } catch (err) {
+    console.error("[contact] fetch error:", err);
+    return { ok: false, error: "Could not send your message. Please contact us directly via WhatsApp or email." };
+  }
 }
 
 export default function ContactPage() {
@@ -207,10 +280,11 @@ function Field({ label, name, type, placeholder, required }: {
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <label htmlFor={`field-${name}`} className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label} {required && <span className="text-crimson">*</span>}
       </label>
       <input
+        id={`field-${name}`}
         name={name}
         type={type}
         required={required}

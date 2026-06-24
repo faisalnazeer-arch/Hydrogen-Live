@@ -3,7 +3,6 @@ import { useLoaderData } from "react-router";
 import { ShieldCheck, PenLine, User } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { StarRating } from "~/components/reviews/StarRating";
-
 export const meta: MetaFunction = () => [
   { title: "Customer Reviews — MLS UAE" },
   { name: "description", content: "Read genuine customer reviews for MLS UAE. Over 7000 verified buyers share their experience." },

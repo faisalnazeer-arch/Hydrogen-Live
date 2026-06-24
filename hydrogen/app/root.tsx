@@ -6,6 +6,9 @@ import {
   ScrollRestoration,
   useLoaderData,
   useNavigation,
+  useRouteError,
+  useRouteLoaderData,
+  isRouteErrorResponse,
 } from "react-router";
 import type { LinksFunction, LoaderFunctionArgs, ShouldRevalidateFunctionArgs } from "react-router";
 import { useEffect } from "react";
@@ -66,6 +69,7 @@ export interface FooterLink {
 }
 
 export interface FooterSettings {
+  companyName: string;
   brandText: string;
   instagramUrl: string;
   facebookUrl: string;
@@ -252,8 +256,9 @@ function parseFooterSettings(nodes: any[]): FooterSettings | null {
   if (!node) return null;
   const f = Object.fromEntries(node.fields.map((x: any) => [x.key, x]));
   return {
-    brandText:      f.brand_text?.value      ?? "",
-    instagramUrl:   f.instagram_url?.value   ?? "",
+    companyName:    f.company_name?.value     ?? "",
+    brandText:      f.brand_text?.value       ?? "",
+    instagramUrl:   f.instagram_url?.value    ?? "",
     facebookUrl:    f.facebook_url?.value    ?? "",
     twitterUrl:     f.twitter_url?.value     ?? "",
     tiktokUrl:      f.tiktok_url?.value      ?? "",
@@ -445,7 +450,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
     const faviconUrl = footerSettings?.faviconUrl ?? null;
     return { mainMenu, secondaryMenu, mobileMenu, mobileCategoriesMenu, footerSettings, footerMenuCols, announcementMessages, cartDrawerConfig, navItemImages, mobileBanners, faviconUrl, locale: (language === "AR" ? "ar" : "en") as "ar" | "en" };
-  } catch {
+  } catch (e) {
+    console.error("[root loader]", e);
     return {
       mainMenu: [] as NavEntry[],
       secondaryMenu: [] as NavEntry[],
@@ -472,8 +478,11 @@ const queryClient = new QueryClient({
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const nonce = useNonce();
+  const loaderData = useRouteLoaderData<typeof loader>("root");
+  const locale = loaderData?.locale ?? "en";
+  const dir = locale === "ar" ? "rtl" : "ltr";
   return (
-    <html lang="en" dir="ltr" suppressHydrationWarning>
+    <html lang={locale} dir={dir} suppressHydrationWarning>
       <head>
         {/* Critical CSS — inlined before external stylesheet so variables apply on first paint */}
         <style dangerouslySetInnerHTML={{ __html: `
@@ -499,8 +508,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
         {/* Google Tag Manager */}
         <script dangerouslySetInnerHTML={{ __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-K59CLCPC');` }} />
+        {/* Klaviyo — proxy stub so klaviyo.push() is safe before SDK loads */}
+        <script dangerouslySetInnerHTML={{ __html: `!function(){if(!window.klaviyo){window._klOnsite=window._klOnsite||[];try{window.klaviyo=new Proxy({},{get:function(n,i){return"push"===i?function(){var n;(n=window._klOnsite).push.apply(n,arguments)}:function(){for(var n=arguments.length,o=new Array(n),w=0;w<n;w++)o[w]=arguments[w];var t="function"==typeof o[o.length-1]?o.pop():void 0,e=new Promise((function(n){window._klOnsite.push([i].concat(o,[function(i){t&&t(i),n(i)}]))}));return e}}})}catch(n){window.klaviyo=window.klaviyo||[],window.klaviyo.push=function(){var n;(n=window._klOnsite).push.apply(n,arguments)}}}}();` }} />
         {/* Klaviyo Onsite JS — handles forms, page tracking, identify */}
         <script async src="https://static.klaviyo.com/onsite/js/klaviyo.js?company_id=RibCBS" />
+        {/* Microsoft Clarity — session recording & heatmaps */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","o54b753gku");` }} />
+        {/* PushOwl + Brevo — web push notifications */}
+        {/* Shim window.Shopify so PushOwl can identify the store in headless mode */}
+        <script dangerouslySetInnerHTML={{ __html: `window.Shopify=window.Shopify||{};window.Shopify.shop=window.Shopify.shop||'mls-uae.myshopify.com';` }} />
+        <script async src="https://cdn.shopify.com/extensions/00bb358e-e093-46ce-a5ef-3b66f0295001/pushowl-brevo-email-push-sms-82/assets/pushowl-shopify.js" />
       </head>
       <body>
         {/* Google Tag Manager (noscript) */}
@@ -551,9 +568,11 @@ function RichpanelWidget() {
 
 function PageLoader() {
   const navigation = useNavigation();
-  const { faviconUrl } = useLoaderData<typeof loader>();
+  const { faviconUrl, locale } = useLoaderData<typeof loader>();
   const loading = navigation.state !== "idle";
   const iconSrc = faviconUrl || DEFAULT_FAVICON;
+  const isAr = locale === "ar";
+
   return (
     <>
       <style>{`
@@ -590,36 +609,55 @@ function PageLoader() {
       >
         {/* Logo */}
         <div style={{ animation: "_mls-logo 0.4s ease-out 0s both", marginBottom: 28 }}>
-          <img src={iconSrc} alt="" style={{ height: 52, width: "auto", objectFit: "contain" }} />
+          <img src={iconSrc} alt="" style={{ height: 80, width: "auto", objectFit: "contain" }} />
         </div>
 
-        {/* M → L → S sequential drop-bounce */}
-        <div style={{ display: "flex", alignItems: "baseline", gap: 2, lineHeight: 1 }}>
-          {(["M", "L", "S"] as const).map((letter, i) => (
-            <span
-              key={letter}
-              style={{
-                display: "block",
-                fontSize: 88,
-                fontWeight: 900,
-                letterSpacing: "-0.05em",
-                color: "oklch(0.18 0.005 240)",
-                fontFamily: "var(--font-display, 'Georgia', serif)",
-                animation: `_mls-drop 0.48s cubic-bezier(0.22,1,0.36,1) ${0.12 + i * 0.28}s both`,
+        {isAr ? (
+          /* Arabic: مسقط → للمواشي sequential drop-bounce */
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0, lineHeight: 1.15, direction: "rtl" }}>
+            {(["مسقط", "للمواشي"] as const).map((word, i) => (
+              <span
+                key={word}
+                style={{
+                  display: "block",
+                  fontSize: i === 0 ? 72 : 52,
+                  fontWeight: 900,
+                  color: "oklch(0.18 0.005 240)",
+                  fontFamily: "var(--font-display, 'Georgia', serif)",
+                  animation: `_mls-drop 0.48s cubic-bezier(0.22,1,0.36,1) ${0.12 + i * 0.28}s both`,
+                }}
+              >{word}</span>
+            ))}
+          </div>
+        ) : (
+          /* English: M → L → S sequential drop-bounce */
+          <div style={{ display: "flex", alignItems: "baseline", gap: 2, lineHeight: 1 }}>
+            {(["M", "L", "S"] as const).map((letter, i) => (
+              <span
+                key={letter}
+                style={{
+                  display: "block",
+                  fontSize: 88,
+                  fontWeight: 900,
+                  letterSpacing: "-0.05em",
+                  color: "oklch(0.18 0.005 240)",
+                  fontFamily: "var(--font-display, 'Georgia', serif)",
+                  animation: `_mls-drop 0.48s cubic-bezier(0.22,1,0.36,1) ${0.12 + i * 0.28}s both`,
               }}
             >{letter}</span>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
-        {/* Crimson line sweeps left → right after S lands */}
+        {/* Crimson line sweeps after last item lands */}
         <div style={{
           height: 3,
-          width: 110,
+          width: isAr ? 168 : 110,
           background: "oklch(0.36 0.18 27)",
           borderRadius: 9999,
           transformOrigin: "left center",
           marginTop: 8,
-          animation: "_mls-bar 0.35s ease-out 1.0s both",
+          animation: `_mls-bar 0.35s ease-out ${isAr ? "0.84s" : "1.0s"} both`,
         }} />
 
         {/* Tagline */}
@@ -627,11 +665,12 @@ function PageLoader() {
           marginTop: 12,
           fontSize: 9,
           fontWeight: 800,
-          letterSpacing: "0.32em",
+          letterSpacing: isAr ? "0.08em" : "0.32em",
           color: "oklch(0.18 0.005 240 / 0.35)",
-          textTransform: "uppercase",
-          animation: "_mls-tag 0.35s ease-out 1.2s both",
-        }}>Premium Quality Meats</p>
+          textTransform: isAr ? "none" : "uppercase",
+          direction: isAr ? "rtl" : "ltr",
+          animation: `_mls-tag 0.35s ease-out ${isAr ? "1.04s" : "1.2s"} both`,
+        }}>{isAr ? "جودة لحوم فاخرة" : "Premium Quality Meats"}</p>
 
         {/* Staggered crimson dots */}
         <div style={{ display: "flex", gap: 7, marginTop: 40 }}>
@@ -651,18 +690,59 @@ function PageLoader() {
 }
 
 function LocaleSync() {
-  const locale = useLocaleStore((s) => s.locale);
+  const { locale } = useLoaderData<typeof loader>();
+  const syncLocale = useLocaleStore((s) => s._syncLocale);
 
-  // Keep html[lang] and html[dir] in sync whenever locale changes.
-  // The inline <script> in <head> handles the initial paint; this effect
-  // covers runtime switches without a full reload edge case.
+  // After hydration: sync the Zustand locale store from the server-detected
+  // locale (from root loader) so all components using useLocaleStore stay
+  // consistent without causing a server/client hydration mismatch.
   useEffect(() => {
+    syncLocale(locale);
     const html = document.documentElement;
     html.lang = locale;
     html.dir = dirFor(locale);
-  }, [locale]);
+  }, [locale, syncLocale]);
 
   return null;
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const is404 = isRouteErrorResponse(error) && error.status === 404;
+  const is500 = isRouteErrorResponse(error) && error.status >= 500;
+
+  return (
+    <html lang="en" dir="ltr">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>{is404 ? "Page Not Found — MLS UAE" : "Something went wrong — MLS UAE"}</title>
+        <link rel="stylesheet" href={styles} />
+        <Links />
+        {/* Restore lang/dir from cookie so Arabic users see RTL even on error pages */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var m=document.cookie.match(/(?:^|;\\s*)lang=([a-z]{2})/);if(m&&m[1]==='ar'){document.documentElement.lang='ar';document.documentElement.dir='rtl';}}catch(e){}})();` }} />
+      </head>
+      <body style={{ margin: 0, background: "#FAF9F6", fontFamily: "Helvetica Neue, Helvetica, Arial, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <div style={{ textAlign: "center", padding: "2rem", maxWidth: 480 }}>
+          <p style={{ fontSize: 72, margin: "0 0 8px", fontWeight: 900, color: "#8B0000" }}>
+            {is404 ? "404" : is500 ? "500" : "!"}
+          </p>
+          <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 12px", color: "#1A1A1A" }}>
+            {is404 ? "Page not found" : "Something went wrong"}
+          </h1>
+          <p style={{ fontSize: 14, color: "#6b7280", margin: "0 0 28px", lineHeight: 1.6 }}>
+            {is404
+              ? "The page you're looking for doesn't exist or has been moved."
+              : "We hit an unexpected error. Our team has been notified."}
+          </p>
+          <a href="/" style={{ display: "inline-block", background: "#8B0000", color: "#fff", borderRadius: 8, padding: "12px 28px", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>
+            Back to Home
+          </a>
+        </div>
+        <Scripts />
+      </body>
+    </html>
+  );
 }
 
 export default function App() {

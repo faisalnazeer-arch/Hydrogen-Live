@@ -15,3 +15,6 @@ customer-accountapi.generated.d.ts
 debug_*.js
 setup_*.mjs
 update_*.mjs
+
+# Auto-generated React Router types
+.react-router/

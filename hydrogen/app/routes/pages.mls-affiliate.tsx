@@ -2,30 +2,34 @@ import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
 import { useCallback } from "react";
 import { FaqAccordion } from "@/components/ui/FaqAccordion";
+import { detectLanguage } from "../lib/locale";
 
 export const meta: MetaFunction = () => [
   { title: "MLS Affiliate Program — Make Money with MLS" },
   { name: "description", content: "Join the MLS Partner Program. Earn 10% commission on every sale you refer." },
 ];
 
-const PAGE_QUERY = `{
-  page: metaobjects(type: "mls_affiliate_page", first: 1) {
-    nodes {
-      fields {
-        key
-        value
-        reference {
-          ... on MediaImage { image { url altText } }
-        }
-        references(first: 20) {
-          nodes {
-            ... on Metaobject {
-              id
-              fields {
-                key
-                value
-                reference {
-                  ... on MediaImage { image { url altText } }
+const PAGE_QUERY = `
+  query AffiliatePage($language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
+    metaobjects(type: "mls_affiliate_page", first: 1) {
+      nodes {
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage { image { url altText } }
+          }
+          references(first: 20) {
+            nodes {
+              ... on Metaobject {
+                id
+                fields {
+                  key
+                  value
+                  reference {
+                    ... on MediaImage { image { url altText } }
+                  }
                 }
               }
             }
@@ -34,11 +38,15 @@ const PAGE_QUERY = `{
       }
     }
   }
-}`;
+` as const;
 
-export async function loader({ context }: LoaderFunctionArgs) {
-  const data = await context.adminFetch(PAGE_QUERY);
-  const node = data?.page?.nodes?.[0];
+export async function loader({ context, request }: LoaderFunctionArgs) {
+  const language = detectLanguage(request);
+  const data = await context.storefront.query(PAGE_QUERY, {
+    variables: { language, country: "AE" as const },
+    cache: context.storefront.CacheNone(),
+  });
+  const node = data?.metaobjects?.nodes?.[0];
   const f = Object.fromEntries((node?.fields ?? []).map((x: any) => [x.key, x]));
 
   const features = (f.features?.references?.nodes ?? []).map((n: any) => {

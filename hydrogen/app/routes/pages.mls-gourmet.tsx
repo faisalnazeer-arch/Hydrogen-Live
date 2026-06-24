@@ -3,24 +3,28 @@ import { useLoaderData } from "react-router";
 import { MapPin, Clock, ExternalLink, Phone } from "lucide-react";
 import { useState } from "react";
 import { FaqAccordion, parseFaqItems } from "@/components/ui/FaqAccordion";
+import { detectLanguage } from "../lib/locale";
 
 export const meta: MetaFunction = () => [
   { title: "MLS Gourmet Butcher Shops — MLS UAE" },
   { name: "description", content: "Visit our premium MLS Gourmet Butcher Shops across Dubai and Abu Dhabi." },
 ];
 
-const GOURMET_QUERY = `{
-  page: metaobjects(type: "mls_gourmet_page", first: 1) {
-    nodes {
-      fields {
-        key value
-        references(first: 20) {
-          nodes {
-            ... on Metaobject {
-              id
-              fields {
-                key value
-                reference { ... on MediaImage { image { url altText } } }
+const GOURMET_QUERY = `
+  query GourmetPage($language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
+    metaobjects(type: "mls_gourmet_page", first: 1) {
+      nodes {
+        fields {
+          key value
+          references(first: 20) {
+            nodes {
+              ... on Metaobject {
+                id
+                fields {
+                  key value
+                  reference { ... on MediaImage { image { url altText } } }
+                }
               }
             }
           }
@@ -28,11 +32,15 @@ const GOURMET_QUERY = `{
       }
     }
   }
-}`;
+` as const;
 
-export async function loader({ context }: LoaderFunctionArgs) {
-  const data = await context.adminFetch(GOURMET_QUERY);
-  const node = data?.page?.nodes?.[0];
+export async function loader({ context, request }: LoaderFunctionArgs) {
+  const language = detectLanguage(request);
+  const data = await context.storefront.query(GOURMET_QUERY, {
+    variables: { language, country: "AE" as const },
+    cache: context.storefront.CacheNone(),
+  });
+  const node = data?.metaobjects?.nodes?.[0];
   const f = Object.fromEntries((node?.fields ?? []).map((x: any) => [x.key, x]));
 
   const stores = (f.store_locations?.references?.nodes ?? []).map((n: any) => {

@@ -71,21 +71,12 @@ interface CartStore {
 }
 
 const COST_FIELDS = `cost { subtotalAmount { amount currencyCode } totalAmount { amount currencyCode } }`;
-const LINES_FIELDS = `lines(first: 100) {
-  edges {
-    node {
-      id
-      merchandise { ... on ProductVariant { id } }
-      discountAllocations {
-        __typename
-        discountedAmount { amount currencyCode }
-        ... on CartAutomaticDiscountAllocation { title }
-        ... on CartCustomDiscountAllocation { title }
-      }
-    }
-  }
+const DISCOUNT_ALLOC_FRAGMENT = `{
+  __typename
+  discountedAmount { amount currencyCode }
+  ... on CartAutomaticDiscountAllocation { title }
+  ... on CartCustomDiscountAllocation { title }
 }`;
-
 // Minimal lines — only needed to resolve the new lineId after create/add
 const MINIMAL_LINES_FIELDS = `lines(first: 100) {
   edges { node { id merchandise { ... on ProductVariant { id } } } }
@@ -95,8 +86,15 @@ const CART_QUERY = `query cart($id: ID!) {
   cart(id: $id) {
     id
     note
-    totalQuantity
     discountCodes { code applicable }
+    discountAllocations ${DISCOUNT_ALLOC_FRAGMENT}
+    lines(first: 100) {
+      edges {
+        node {
+          discountAllocations ${DISCOUNT_ALLOC_FRAGMENT}
+        }
+      }
+    }
     appliedGiftCards {
       id
       lastCharacters
@@ -104,7 +102,6 @@ const CART_QUERY = `query cart($id: ID!) {
       balance { amount currencyCode }
     }
     ${COST_FIELDS}
-    ${LINES_FIELDS}
   }
 }`;
 
@@ -208,22 +205,23 @@ function formatCheckoutUrl(checkoutUrl: string): string {
   }
 }
 
-function extractAutomaticDiscounts(lines: any[]): AutomaticDiscount[] {
+// Extracts named automatic/custom discounts from the cart-level discountAllocations array.
+// This uses the cart-level field (Storefront API 2024-10+) which returns one entry per
+// discount with the actual title — unlike line-level allocations which split the amount
+// per line and may omit titles for order-level discounts.
+function extractAutomaticDiscounts(cartDiscountAllocations: any[]): AutomaticDiscount[] {
   const map = new Map<string, { amount: number; currencyCode: string }>();
-  for (const edge of lines) {
-    for (const alloc of edge.node?.discountAllocations ?? []) {
-      const isAuto =
-        alloc.__typename === "CartAutomaticDiscountAllocation" ||
-        alloc.__typename === "CartCustomDiscountAllocation" ||
-        // fallback: has title but no code (older API versions without __typename)
-        (alloc.title && !alloc.code);
-      if (!isAuto || !alloc.title) continue;
-      const prev = map.get(alloc.title) ?? { amount: 0, currencyCode: alloc.discountedAmount?.currencyCode ?? "AED" };
-      map.set(alloc.title, {
-        amount: prev.amount + parseFloat(alloc.discountedAmount?.amount ?? "0"),
-        currencyCode: prev.currencyCode,
-      });
-    }
+  for (const alloc of cartDiscountAllocations) {
+    const isNamed =
+      alloc.__typename === "CartAutomaticDiscountAllocation" ||
+      alloc.__typename === "CartCustomDiscountAllocation" ||
+      (alloc.title && !alloc.code);
+    if (!isNamed || !alloc.title) continue;
+    const prev = map.get(alloc.title) ?? { amount: 0, currencyCode: alloc.discountedAmount?.currencyCode ?? "AED" };
+    map.set(alloc.title, {
+      amount: prev.amount + parseFloat(alloc.discountedAmount?.amount ?? "0"),
+      currencyCode: prev.currencyCode,
+    });
   }
   return Array.from(map.entries()).map(([title, { amount, currencyCode }]) => ({
     title,
@@ -301,7 +299,7 @@ async function createShopifyCart(item: CartItem) {
   }
   return {
     cartId: cart.id as string,
-    checkoutUrl: cart.checkoutUrl ? formatCheckoutUrl(cart.checkoutUrl) : `https://mls-uae.myshopify.com/cart`,
+    checkoutUrl: cart.checkoutUrl ? formatCheckoutUrl(cart.checkoutUrl) : null,
     lineId,
     subtotalAmount: cart.cost?.subtotalAmount ?? null,
     totalAmount: cart.cost?.totalAmount ?? null,
@@ -459,6 +457,7 @@ function makeGiftItem(variantId: string): CartItem {
 }
 
 let _giftSyncing = false;
+let _isCreatingCart = false;
 // Debounce handle so rapid actions only trigger one gift sync pass
 let _giftSyncTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -469,7 +468,7 @@ function scheduleSyncFreeGifts(
   if (_giftSyncTimer) clearTimeout(_giftSyncTimer);
   _giftSyncTimer = setTimeout(() => {
     _giftSyncTimer = null;
-    void syncFreeGifts(get, set);
+    enqueueCartMutation(() => syncFreeGifts(get, set));
   }, 150);
 }
 
@@ -590,31 +589,38 @@ export const useCartStore = create<CartStore>()(
 
         try {
           if (!cartId) {
-            // Open drawer immediately — don't make the user wait for cart creation
-            set({
-              items: [{ ...item, lineId: null, isPending: true }, ...get().items],
-              isOpen: true,
-            });
-            const result = await createShopifyCart({ ...item, lineId: null });
-            if (result) {
+            // Guard: prevent two simultaneous createShopifyCart calls (rapid double-tap)
+            if (_isCreatingCart) return;
+            _isCreatingCart = true;
+            try {
+              // Open drawer immediately — don't make the user wait for cart creation
               set({
-                cartId: result.cartId,
-                checkoutUrl: result.checkoutUrl,
-                subtotalAmount: result.subtotalAmount,
-                totalAmount: result.totalAmount,
-                addItemError: null,
-                items: get().items.map((i) =>
-                  i.variantId === item.variantId && i.isPending
-                    ? { ...i, lineId: result.lineId, isPending: false }
-                    : i
-                ),
+                items: [{ ...item, lineId: null, isPending: true }, ...get().items],
+                isOpen: true,
               });
-              toast.success("Added to cart", { description: item.product.node.title });
-            } else {
-              const remaining = get().items.filter((i) => !(i.variantId === item.variantId && i.isPending));
-              const errorMsg = _lastAddError ?? "Could not add to cart. Please try again.";
-              console.warn("[cart] Cart creation failed for variant", item.variantId, "—", errorMsg);
-              set({ items: remaining, isOpen: false, addItemError: errorMsg });
+              const result = await createShopifyCart({ ...item, lineId: null });
+              if (result) {
+                set({
+                  cartId: result.cartId,
+                  checkoutUrl: result.checkoutUrl,
+                  subtotalAmount: result.subtotalAmount,
+                  totalAmount: result.totalAmount,
+                  addItemError: null,
+                  items: get().items.map((i) =>
+                    i.variantId === item.variantId && i.isPending
+                      ? { ...i, lineId: result.lineId, isPending: false }
+                      : i
+                  ),
+                });
+                toast.success("Added to cart", { description: item.product.node.title });
+              } else {
+                const remaining = get().items.filter((i) => !(i.variantId === item.variantId && i.isPending));
+                const errorMsg = _lastAddError ?? "Could not add to cart. Please try again.";
+                console.warn("[cart] Cart creation failed for variant", item.variantId, "—", errorMsg);
+                set({ items: remaining, isOpen: false, addItemError: errorMsg });
+              }
+            } finally {
+              _isCreatingCart = false;
             }
           } else if (existing) {
             const newQty = existing.quantity + item.quantity;
@@ -685,7 +691,8 @@ export const useCartStore = create<CartStore>()(
         } catch (err) {
           console.warn("[cart] addItem threw:", err);
           const remaining = get().items.filter((i) => !i.isPending);
-          set({ items: remaining, isOpen: remaining.length > 0 });
+          set({ items: remaining, isOpen: remaining.length > 0, addItemError: "Could not add to cart. Please try again." });
+          toast.error("Could not add to cart", { description: "Please check your connection and try again." });
         } finally {
           scheduleSyncFreeGifts(get, set);
         }
@@ -711,9 +718,14 @@ export const useCartStore = create<CartStore>()(
           try {
             const result = await updateShopifyCartLine(cartId, lineId, quantity);
             if (result.success) {
+              const newSub = parseFloat(result.subtotalAmount?.amount ?? "0");
+              const newTot = parseFloat(result.totalAmount?.amount ?? newSub.toString());
               set({
                 subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
                 totalAmount: result.totalAmount ?? get().totalAmount,
+                // Shopify confirmed no discount gap — clear stale automaticDiscounts immediately
+                // instead of waiting for the 2-minute syncCart cooldown
+                ...(newSub > 0 && newSub - newTot < 0.01 ? { automaticDiscounts: [] } : {}),
               });
               scheduleSyncFreeGifts(get, set);
             } else if (result.cartNotFound) {
@@ -766,9 +778,12 @@ export const useCartStore = create<CartStore>()(
               if (get().items.length === 0) {
                 clearCart();
               } else {
+                const newSub = parseFloat(result.subtotalAmount?.amount ?? "0");
+                const newTot = parseFloat(result.totalAmount?.amount ?? newSub.toString());
                 set({
                   subtotalAmount: result.subtotalAmount ?? get().subtotalAmount,
                   totalAmount: result.totalAmount ?? get().totalAmount,
+                  ...(newSub > 0 && newSub - newTot < 0.01 ? { automaticDiscounts: [] } : {}),
                 });
               }
               // Gift sync only on confirmed success — never on optimistic state
@@ -817,15 +832,29 @@ export const useCartStore = create<CartStore>()(
           const data = await storefrontApiRequest<any>(CART_QUERY, { id: cartId });
           if (!data) return;
           const cart = data?.data?.cart;
-          if (!cart || cart.totalQuantity === 0) {
+          if (!cart) {
+            // Cart no longer exists on Shopify (expired / deleted) — safe to clear.
+            // NOTE: do NOT clear on totalQuantity === 0 — Shopify may report 0 due
+            // to eventual-consistency lag immediately after an add mutation, which
+            // would silently wipe the customer's cart on the next tab-focus sync.
             clearCart();
           } else {
+            // Try cart-level allocations first (one entry per discount, full amount).
+            // If those return no titles (can happen with product-scoped discounts or
+            // channel permission limits), aggregate from line-level allocations instead.
+            const cartLevelAllocs: any[] = cart.discountAllocations ?? [];
+            const cartLevelDiscounts = extractAutomaticDiscounts(cartLevelAllocs);
+            const automaticDiscounts = cartLevelDiscounts.length > 0
+              ? cartLevelDiscounts
+              : extractAutomaticDiscounts(
+                  (cart.lines?.edges ?? []).flatMap((e: any) => e.node?.discountAllocations ?? [])
+                );
             set({
               discountCodes: cart.discountCodes ?? [],
               appliedGiftCards: cart.appliedGiftCards ?? [],
               subtotalAmount: cart.cost?.subtotalAmount ?? null,
               totalAmount: cart.cost?.totalAmount ?? null,
-              automaticDiscounts: extractAutomaticDiscounts(cart.lines?.edges ?? []),
+              automaticDiscounts,
               orderNote: cart.note ?? "",
             });
           }
@@ -902,10 +931,12 @@ export const useCartStore = create<CartStore>()(
           });
           const cart = data?.data?.cartDiscountCodesUpdate?.cart;
           set({
-            discountCodes: cart?.discountCodes ?? [],
+            discountCodes: cart?.discountCodes ?? discountCodes,
             subtotalAmount: cart?.cost?.subtotalAmount ?? get().subtotalAmount,
             totalAmount: cart?.cost?.totalAmount ?? get().totalAmount,
           });
+        } catch {
+          toast.error("Could not remove discount code", { description: "Please try again." });
         } finally {
           set({ isApplyingCode: false });
         }
@@ -938,6 +969,9 @@ export const useCartStore = create<CartStore>()(
             totalAmount: cart?.cost?.totalAmount ?? get().totalAmount,
           });
           return { success: true };
+        } catch (e) {
+          console.error("[cart] applyGiftCard error:", e);
+          return { success: false, error: "Could not apply gift card. Please try again." };
         } finally {
           set({ isApplyingCode: false });
         }
@@ -961,6 +995,8 @@ export const useCartStore = create<CartStore>()(
             subtotalAmount: cart?.cost?.subtotalAmount ?? get().subtotalAmount,
             totalAmount: cart?.cost?.totalAmount ?? get().totalAmount,
           });
+        } catch (e) {
+          console.error("[cart] removeGiftCard error:", e);
         } finally {
           set({ isApplyingCode: false });
         }
@@ -979,7 +1015,7 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: "mls-shopify-cart",
-      version: 4,
+      version: 7,
       storage: createJSONStorage(() => localStorage),
       skipHydration: true, // Prevent auto-rehydrate during SSR — we call rehydrate() eagerly on the client below
       partialize: (s) => ({
@@ -990,6 +1026,9 @@ export const useCartStore = create<CartStore>()(
         discountCodes: s.discountCodes,
         appliedGiftCards: s.appliedGiftCards,
         orderNote: s.orderNote,
+        subtotalAmount: s.subtotalAmount,
+        totalAmount: s.totalAmount,
+        automaticDiscounts: s.automaticDiscounts,
       }),
       migrate: (persisted: any, fromVersion: number) => {
         if (fromVersion < 2) {
@@ -1003,6 +1042,16 @@ export const useCartStore = create<CartStore>()(
         }
         if (fromVersion < 4) {
           return { ...persisted, orderNote: persisted.orderNote ?? "" };
+        }
+        if (fromVersion < 5) {
+          return { ...persisted, subtotalAmount: persisted.subtotalAmount ?? null, totalAmount: persisted.totalAmount ?? null };
+        }
+        if (fromVersion < 6) {
+          return { ...persisted, automaticDiscounts: persisted.automaticDiscounts ?? [] };
+        }
+        if (fromVersion < 7) {
+          // Clear stale automaticDiscounts that may have been set incorrectly by Admin API lookup
+          return { ...persisted, automaticDiscounts: [] };
         }
         return persisted;
       },

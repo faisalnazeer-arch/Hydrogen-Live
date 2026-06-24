@@ -55,6 +55,8 @@ export const ProductCard = memo(function ProductCard({ product, onQuickView, rat
     variants.length > 1 ||
     node.options.some((o) => o.values.length > 1 && o.values[0] !== "Default Title");
 
+  const isFrozen = node.tags?.some((t) => t.toLowerCase() === "frozen") ?? false;
+
   const metaRating = parseRatingMetafields(node.metafields);
   const avgRating = (ratingOverride?.average ?? 0) > 0 ? ratingOverride!.average : metaRating.average;
   const reviewCount = (ratingOverride?.count ?? 0) > 0 ? ratingOverride!.count : metaRating.count;
@@ -80,6 +82,7 @@ export const ProductCard = memo(function ProductCard({ product, onQuickView, rat
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
+      suppressHydrationWarning
       className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card transition-shadow hover:shadow-[var(--shadow-card)]"
     >
       {/* ── Image ── */}
@@ -105,13 +108,18 @@ export const ProductCard = memo(function ProductCard({ product, onQuickView, rat
           />
         )}
 
-        {/* Top-left: savings badge */}
-        {maxSavings > 0.01 && (
-          <div className="absolute left-2 top-2">
-            <span className="inline-flex items-center gap-1 rounded-sm bg-crimson px-2 py-0.5 text-[10px] font-bold text-white">
-              <Tag className="h-2.5 w-2.5" />
-              Up to {currency} {maxSavings.toFixed(2)} off
-            </span>
+        {/* Top-left: savings + frozen badges */}
+        {(maxSavings > 0.01 || isFrozen) && (
+          <div className="absolute left-2 top-2 flex flex-col gap-1">
+            {maxSavings > 0.01 && (
+              <span className="inline-flex items-center gap-1 rounded-sm bg-crimson px-2 py-0.5 text-[10px] font-bold text-white">
+                <Tag className="h-2.5 w-2.5" />
+                Up to {currency} {maxSavings.toFixed(2)} off
+              </span>
+            )}
+            {isFrozen && (
+              <span className="inline-flex rounded-sm bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">Frozen</span>
+            )}
           </div>
         )}
 
@@ -119,7 +127,7 @@ export const ProductCard = memo(function ProductCard({ product, onQuickView, rat
         {!isAvailable && (
           <div className="absolute inset-0 flex items-end justify-start bg-black/25">
             <span className="m-2 inline-flex items-center rounded-sm bg-charcoal/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
-              Sold Out
+              {t("product.sold_out")}
             </span>
           </div>
         )}
@@ -201,6 +209,7 @@ export const ProductCard = memo(function ProductCard({ product, onQuickView, rat
 
 // ── Notify Me (card variant) ───────────────────────────────────────────────
 function NotifyMeCard({ variantId, productHandle }: { variantId: string; productHandle: string }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -224,7 +233,7 @@ function NotifyMeCard({ variantId, productHandle }: { variantId: string; product
     return (
       <div className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md bg-green-50 px-2 text-[11px] font-semibold text-green-700 sm:h-8">
         <BellRing className="h-3 w-3 shrink-0" />
-        You're on the list!
+        {t("product.notify_listed")}
       </div>
     );
   }
@@ -237,7 +246,7 @@ function NotifyMeCard({ variantId, productHandle }: { variantId: string; product
         className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-crimson/50 text-[11px] font-semibold text-crimson transition-colors hover:border-crimson hover:bg-crimson/5 sm:h-8 sm:text-xs"
       >
         <Bell className="h-3 w-3 shrink-0" />
-        Notify Me
+        {t("product.notify_submit")}
       </button>
     );
   }
@@ -267,7 +276,7 @@ function NotifyMeCard({ variantId, productHandle }: { variantId: string; product
         disabled={status === "loading"}
         className="flex h-7 w-full items-center justify-center rounded-md bg-crimson text-[11px] font-bold text-white transition-colors hover:bg-rich-red disabled:opacity-60 sm:h-8"
       >
-        {status === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Notify Me"}
+        {status === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("product.notify_submit")}
       </button>
       {status === "error" && (
         <p className="text-[10px] text-destructive">Try again</p>

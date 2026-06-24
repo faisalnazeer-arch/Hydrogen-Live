@@ -116,11 +116,10 @@ function initReviewSliders(root: HTMLElement) {
       (dotsEl.children[cur] as HTMLElement).classList.add('on');
     }
 
-    const timer = setInterval(() => go((cur + 1) % slides.length), 3000);
-    // clean up if card is ever removed from DOM
-    new MutationObserver((_, obs) => {
-      if (!document.contains(picsEl)) { clearInterval(timer); obs.disconnect(); }
-    }).observe(document.body, { childList: true, subtree: true });
+    const timer = setInterval(() => {
+      if (!picsEl.isConnected) { clearInterval(timer); return; }
+      go((cur + 1) % slides.length);
+    }, 3000);
   });
 }
 
@@ -128,6 +127,7 @@ export function JudgemeWidgetEmbed({ externalId, shopDomain }: Props) {
   const [loaded, setLoaded] = useState(false);
   const widgetRef = useRef<HTMLDivElement>(null);
   const scriptsInjected = useRef(false);
+  const deepObserverRef = useRef<MutationObserver | null>(null);
 
   // Dep array [externalId, shopDomain] — NOT empty — because ProductPageShell
   // has a scroll-linked IntersectionObserver that re-renders the parent on every
@@ -197,6 +197,7 @@ export function JudgemeWidgetEmbed({ externalId, shopDomain }: Props) {
           initReviewSliders(el);
         });
         deepObserver.observe(el, { childList: true, subtree: true });
+        deepObserverRef.current = deepObserver;
       }
     });
     observer.observe(el, { childList: true });
@@ -209,6 +210,8 @@ export function JudgemeWidgetEmbed({ externalId, shopDomain }: Props) {
 
     return () => {
       observer.disconnect();
+      deepObserverRef.current?.disconnect();
+      deepObserverRef.current = null;
       clearTimeout(fallback);
     };
   }, [externalId]);

@@ -2,11 +2,12 @@ import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { detectLanguage } from "~/lib/locale";
 import { redirect } from "@shopify/remix-oxygen";
 import type { ShouldRevalidateFunctionArgs } from "react-router";
-import { useLoaderData, Await } from "react-router";
+import { useLoaderData, Await, useRouteError, isRouteErrorResponse } from "react-router";
 import { Suspense } from "react";
 import { type ShopifyProduct } from "~/lib/shopify";
 import { fetchJudgemeReviews, fetchJudgemeRating, buildRatingSummary } from "~/lib/judgeme";
 import { extractGloboOptionsFromHtml, type GloboOptionSet } from "~/lib/globo";
+import { sanitizeHtml } from "~/lib/sanitize";
 import { DefaultTemplate } from "~/components/product-templates/DefaultTemplate";
 import { BeefRubsTemplate } from "~/components/product-templates/BeefRubsTemplate";
 import { ChickenRubsTemplate } from "~/components/product-templates/ChickenRubsTemplate";
@@ -27,12 +28,18 @@ const PAGE_SETTINGS_QUERY = `
 `;
 
 // templateSuffix is not exposed by the Storefront API — fetch it via Admin API instead.
-// We include handle in the result so we can match the exact product even if search
-// returns multiple candidates.
-const ADMIN_TEMPLATE_SUFFIX_QUERY = (handle: string) => `
+// We also fetch mls.* metafields here because they may not have Storefront API access
+// enabled; Admin API always has full metafield access.
+// Queried by product GID (from Storefront product.id) so it works for any handle language.
+// Admin API always returns the original English handle regardless of Translate & Adapt.
+const ADMIN_PRODUCT_BY_GID_QUERY = (gid: string) => `
   query {
-    products(first: 5, query: "handle:'${handle}'") {
-      edges { node { handle templateSuffix } }
+    product(id: "${gid}") {
+      handle
+      templateSuffix
+      metafields(namespace: "custom", first: 50) {
+        edges { node { namespace key value } }
+      }
     }
   }
 `;
@@ -195,7 +202,26 @@ const PRODUCT_QUERY = `#graphql
         {namespace: "custom", key: "pairing_suggestions"}
         {namespace: "custom", key: "understanding_rubs"}
         {namespace: "custom", key: "marinade_recipe"}
-      ]) { key value }
+        {namespace: "custom", key: "mls_origin_flag_emoji"}
+        {namespace: "custom", key: "mls_origin_country"}
+        {namespace: "custom", key: "mls_feed_type"}
+        {namespace: "custom", key: "mls_halal_certified"}
+        {namespace: "custom", key: "mls_export_certified"}
+        {namespace: "custom", key: "mls_farm_story"}
+        {namespace: "custom", key: "mls_flavour"}
+        {namespace: "custom", key: "mls_flavour_score"}
+        {namespace: "custom", key: "mls_marbling"}
+        {namespace: "custom", key: "mls_marbling_score"}
+        {namespace: "custom", key: "mls_tenderness_score2"}
+        {namespace: "custom", key: "mls_doneness_tags"}
+        {namespace: "custom", key: "mls_cook_method"}
+        {namespace: "custom", key: "mls_cook_time"}
+        {namespace: "custom", key: "mls_cook_temperature"}
+        {namespace: "custom", key: "mls_cook_steps"}
+        {namespace: "custom", key: "mls_suitable_for_tags"}
+        {namespace: "custom", key: "mls_storage_tip"}
+        {namespace: "custom", key: "mls_fridge_life"}
+      ]) { key namespace value }
       collections(first: 30) { nodes { id title handle } }
     }
   }
@@ -271,14 +297,14 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
   const language = detectLanguage(request);
 
-  // Run storefront query and Admin templateSuffix lookup in parallel.
-  // templateSuffix is not exposed by the Storefront API so we must use the Admin API.
-  const [data, adminProductData] = await Promise.all([
+  // Phase 1 — Storefront product + icon badges in parallel.
+  // Admin query runs in Phase 2 (needs product GID from Storefront response).
+  const [data, iconBadgesRaw] = await Promise.all([
     context.storefront.query(PRODUCT_QUERY, {
       variables: { handle, language, country: "AE" as const },
       cache: context.storefront.CacheShort(),
     }),
-    context.adminFetch(ADMIN_TEMPLATE_SUFFIX_QUERY(handle)).catch(() => null),
+    context.adminFetch(`{ nodes: metaobjects(type: "icon_with_text", first: 10) { nodes { id handle fields { key value reference { ... on MediaImage { image { url altText } } } } } } }`).catch(() => null),
   ]);
   if (!data.product) throw new Response("Not found", { status: 404 });
   // Zero-price products are internal free-gift items — redirect to home instead of 404
@@ -291,16 +317,6 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const collectionIds: number[] = (data.product.collections?.nodes ?? [])
     .map((c: any) => Number(c.id.split("/").pop()))
     .filter(Boolean);
-
-  // templateSuffix from Admin API (exact handle match), falling back to tag-based override.
-  const adminSuffix = ((adminProductData as any)?.products?.edges ?? [])
-    .find((e: any) => e.node?.handle === handle)
-    ?.node?.templateSuffix ?? null;
-  const tagOverride = data.product.tags?.find((t: string) => t.toLowerCase().startsWith("template:"));
-  const templateSuffix: string | null =
-    (tagOverride ? tagOverride.replace(/^template:/i, "").trim() : null)
-    ?? adminSuffix
-    ?? null;
 
   // Strategy 1: scrape Globo config from Shopify theme HTML (proven approach).
   // Strategy 2: try the Globo app-proxy JSON endpoint as fallback.
@@ -361,13 +377,13 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     }
   }
 
-  // ── Reviews — awaited in the critical path (fast ~200ms, must not be deferred) ──────────
-  // Reviews fetched in the critical path with a 2.5s budget.
-  // If Judge.me is slow (cold TCP ~4s) the timeout fires → empty reviews returned →
-  // the client-side fallback in JudgemeReviews fetches them after hydration (~500ms warm).
+  // ── Phase 2 — Admin (by GID) + Reviews in parallel ──────────────────────────────────────
+  // Admin API queried by GID so it works for any handle language (EN or translated).
+  // Admin always returns the original English canonical handle — used for language switching.
   const emptyReviews = { reviews: [] as any[], total_count: 0, current_page: 1, per_page: 10 };
   const emptyRating  = { average: 0, count: 0, histogram: [0, 0, 0, 0, 0] as [number,number,number,number,number] };
-  const [reviewsFetchResult, ratingFetchResult] = await Promise.all([
+  const [adminProductData, reviewsFetchResult, ratingFetchResult] = await Promise.all([
+    context.adminFetch(ADMIN_PRODUCT_BY_GID_QUERY(data.product.id)).catch((e: unknown) => { console.error("[products loader] admin product fetch:", e); return null; }),
     Promise.race([
       fetchJudgemeReviews(handle, shopDomain, judgemeToken, 1, 10, externalId).catch(() => emptyReviews),
       new Promise<typeof emptyReviews>((r) => setTimeout(() => r(emptyReviews), 2500)),
@@ -379,6 +395,27 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   ]);
   const reviewsSummary = buildRatingSummary(reviewsFetchResult as any);
   const initialRating = (ratingFetchResult as any).average > 0 ? ratingFetchResult : reviewsSummary;
+
+  // Admin node is available now — extract canonical handle and templateSuffix.
+  const adminNode = (adminProductData as any)?.product ?? null;
+  const adminSuffix = adminNode?.templateSuffix ?? null;
+
+  const adminMlsMeta: Array<{ namespace: string; key: string; value: string }> =
+    (adminNode?.metafields?.edges ?? [])
+      .map((e: any) => e.node)
+      .filter((m: any) => m?.namespace === "custom" && m?.key?.startsWith("mls_") && m?.value != null);
+  if (adminMlsMeta.length > 0) {
+    const existingMlsKeys = new Set(adminMlsMeta.map((m) => `${m.namespace}.${m.key}`));
+    const existing = (data.product.metafields ?? []).filter(
+      (m: any) => m != null && !existingMlsKeys.has(`${m.namespace}.${m.key}`)
+    );
+    (data.product as any).metafields = [...existing, ...adminMlsMeta];
+  }
+  const tagOverride = data.product.tags?.find((t: string) => t.toLowerCase().startsWith("template:"));
+  const templateSuffix: string | null =
+    (tagOverride ? tagOverride.replace(/^template:/i, "").trim() : null)
+    ?? adminSuffix
+    ?? null;
 
   // ── Slow data — deferred, streams in after initial render ────────────────────────────────
   const lazyData = Promise.race([
@@ -444,15 +481,28 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     ),
   ]);
 
+  // Sanitize server-side so the client never receives dangerous HTML payloads
+  if (data.product?.descriptionHtml) {
+    data.product.descriptionHtml = sanitizeHtml(data.product.descriptionHtml);
+  }
+
+  const iconBadges: any[] = (iconBadgesRaw as any)?.nodes?.nodes ?? [];
+
+  // Admin API always returns the original English handle regardless of Translate & Adapt.
+  // Used by the locale switcher to navigate to the EN product URL without 404.
+  const canonicalHandle: string = adminNode?.handle ?? handle;
+
   return {
     product: data.product,
+    canonicalHandle,
     templateSuffix,
     sellingPlanGroupsRaw: data.product.sellingPlanGroups?.nodes ?? [],
     discountMap,
     externalId: externalId ?? null,
-    reviews: (reviewsFetchResult as any).reviews ?? [],
+    reviews: ((reviewsFetchResult as any).reviews ?? []).filter((r: any) => r.rating >= 4),
     reviewsTotalCount: (reviewsFetchResult as any).total_count ?? 0,
     rating: initialRating,
+    iconBadges,
     lazyData,
   };
 }
@@ -485,9 +535,79 @@ function renderTemplate(suffix: string | null | undefined, props: any) {
   }
 }
 
-export const meta: MetaFunction<typeof loader> = ({ data }) => {
-  return [{ title: `${data?.product?.title ?? "Product"} — MLS UAE` }];
+export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
+  const product = data?.product;
+  const title = `${product?.title ?? "Product"} — MLS UAE`;
+  const description = (product?.description ?? "Premium halal meat delivered across UAE.").slice(0, 160);
+  const image = product?.images?.edges?.[0]?.node?.url ?? product?.images?.nodes?.[0]?.url;
+  const canonical = `https://mlsuae.ae${location.pathname}`;
+
+  const variants = product?.variants?.nodes ?? product?.variants?.edges?.map((e: any) => e.node) ?? [];
+  const firstVariant = variants[0];
+  const price = firstVariant?.price?.amount ?? product?.priceRange?.minVariantPrice?.amount ?? "0";
+  const currency = firstVariant?.price?.currencyCode ?? product?.priceRange?.minVariantPrice?.currencyCode ?? "AED";
+  const inStock = product?.availableForSale !== false;
+
+  const jsonLd = {
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    name: product?.title ?? "",
+    description,
+    url: canonical,
+    ...(image ? { image: [image] } : {}),
+    brand: { "@type": "Brand", name: "MLS UAE" },
+    offers: variants.length
+      ? variants.map((v: any) => ({
+          "@type": "Offer",
+          priceCurrency: v.price?.currencyCode ?? currency,
+          price: v.price?.amount ?? price,
+          availability: v.availableForSale
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+          url: canonical,
+          itemCondition: "https://schema.org/NewCondition",
+        }))
+      : {
+          "@type": "Offer",
+          priceCurrency: currency,
+          price,
+          availability: inStock
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+          url: canonical,
+          itemCondition: "https://schema.org/NewCondition",
+        },
+  };
+
+  return [
+    { title },
+    { name: "description", content: description },
+    { property: "og:type", content: "product" },
+    { property: "og:title", content: title },
+    { property: "og:description", content: description },
+    ...(image ? [{ property: "og:image", content: image }] : []),
+    { property: "og:url", content: canonical },
+    { tagName: "link", rel: "canonical", href: canonical },
+    { "script:ld+json": jsonLd },
+  ];
 };
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const is404 = isRouteErrorResponse(error) && error.status === 404;
+  return (
+    <div className="container mx-auto px-4 py-20 text-center">
+      <p className="text-5xl font-black text-crimson">{is404 ? "404" : "!"}</p>
+      <h1 className="mt-3 text-xl font-bold">{is404 ? "Product not found" : "Something went wrong"}</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {is404 ? "This product doesn't exist or has been removed." : "We hit an unexpected error. Please try again."}
+      </p>
+      <a href="/" className="mt-6 inline-block rounded-lg bg-crimson px-6 py-3 text-sm font-bold text-white hover:bg-rich-red">
+        Back to Home
+      </a>
+    </div>
+  );
+}
 
 export default function Product() {
   const { templateSuffix, lazyData, reviews, reviewsTotalCount, rating, ...criticalProps } = useLoaderData<typeof loader>();

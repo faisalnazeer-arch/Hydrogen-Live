@@ -1,37 +1,43 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { detectLanguage } from "~/lib/locale";
+import { useT, type TKey } from "~/i18n/strings";
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import type { ShouldRevalidateFunctionArgs } from "react-router";
-import { useLoaderData, useNavigate, useNavigation, useFetcher } from "react-router";
+import { useLoaderData, useNavigate, useNavigation, useFetcher, useRouteError, isRouteErrorResponse } from "react-router";
 import { SlidersHorizontal, X, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { getOriginFromProduct, ORIGIN_LABELS, type ShopifyProduct } from "~/lib/shopify";
 import { ProductCard } from "~/components/product/ProductCard";
 
 // ── Cut keywords — checked against product title + tags ───────────────────────
-const CUT_KEYWORDS: Array<{ key: string; label: string }> = [
-  { key: "mince",      label: "Mince"        },
-  { key: "mishkak",   label: "Mishkak"      },
-  { key: "cubes",     label: "Cubes"        },
-  { key: "chops",     label: "Chops"        },
-  { key: "steak",     label: "Steak"        },
-  { key: "ribs",      label: "Ribs"         },
-  { key: "shank",     label: "Shanks"       },
-  { key: "rack",      label: "Rack"         },
-  { key: "burger",    label: "Burgers"      },
-  { key: "leg",       label: "Leg"          },
-  { key: "shoulder",  label: "Shoulder"     },
-  { key: "fillet",    label: "Fillet"       },
-  { key: "biryani",   label: "Biryani Cut"  },
-  { key: "curry cut", label: "Curry Cut"    },
-  { key: "bone-in",   label: "Bone-in"      },
-  { key: "boneless",  label: "Boneless"     },
-  { key: "whole",     label: "Whole"        },
-  { key: "tenderloin",label: "Tenderloin"   },
-  { key: "slice",     label: "Sliced"       },
-  { key: "neck",      label: "Neck"         },
-  { key: "breast",    label: "Breast"       },
-  { key: "loin",      label: "Loin"         },
+const CUT_KEYWORDS: Array<{ key: string; label: string; labelKey: string }> = [
+  { key: "mince",      label: "Mince",        labelKey: "cut.mince"      },
+  { key: "mishkak",    label: "Mishkak",      labelKey: "cut.mishkak"    },
+  { key: "cubes",      label: "Cubes",        labelKey: "cut.cubes"      },
+  { key: "chops",      label: "Chops",        labelKey: "cut.chops"      },
+  { key: "steak",      label: "Steak",        labelKey: "cut.steak"      },
+  { key: "ribs",       label: "Ribs",         labelKey: "cut.ribs"       },
+  { key: "shank",      label: "Shanks",       labelKey: "cut.shank"      },
+  { key: "rack",       label: "Rack",         labelKey: "cut.rack"       },
+  { key: "burger",     label: "Burgers",      labelKey: "cut.burger"     },
+  { key: "leg",        label: "Leg",          labelKey: "cut.leg"        },
+  { key: "shoulder",   label: "Shoulder",     labelKey: "cut.shoulder"   },
+  { key: "fillet",     label: "Fillet",       labelKey: "cut.fillet"     },
+  { key: "biryani",    label: "Biryani Cut",  labelKey: "cut.biryani"    },
+  { key: "curry cut",  label: "Curry Cut",    labelKey: "cut.curry_cut"  },
+  { key: "bone-in",    label: "Bone-in",      labelKey: "cut.bone_in"    },
+  { key: "boneless",   label: "Boneless",     labelKey: "cut.boneless"   },
+  { key: "whole",      label: "Whole",        labelKey: "cut.whole"      },
+  { key: "tenderloin", label: "Tenderloin",   labelKey: "cut.tenderloin" },
+  { key: "slice",      label: "Sliced",       labelKey: "cut.slice"      },
+  { key: "neck",       label: "Neck",         labelKey: "cut.neck"       },
+  { key: "breast",     label: "Breast",       labelKey: "cut.breast"     },
+  { key: "loin",       label: "Loin",         labelKey: "cut.loin"       },
 ];
+
+// Map English label → translation key for use in FilterPanel display
+const CUT_LABEL_KEY: Record<string, string> = Object.fromEntries(
+  CUT_KEYWORDS.map(({ label, labelKey }) => [label, labelKey])
+);
 
 function getProductCuts(tags: string[], title: string): string[] {
   const search = `${title} ${tags.join(" ")}`.toLowerCase();
@@ -126,7 +132,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
       language,
       country: "AE" as const,
     },
-    cache: context.storefront.CacheLong(),
+    cache: context.storefront.CacheShort(),
   });
   if (!data.collection) throw new Response("Not found", { status: 404 });
 
@@ -139,6 +145,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 
 /* ─── Description ─────────────────────────────────────────────────────────── */
 function CollectionDescription({ text }: { text: string }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const [isMultiLine, setIsMultiLine] = useState(false);
   const ref = useRef<HTMLParagraphElement>(null);
@@ -168,23 +175,46 @@ function CollectionDescription({ text }: { text: string }) {
           onClick={() => setExpanded((e) => !e)}
           className="mt-1 text-xs font-semibold text-crimson hover:underline"
         >
-          {expanded ? "Read Less ↑" : "Read More ↓"}
+          {expanded ? t("collection.read_less") : t("collection.read_more")}
         </button>
       )}
     </div>
   );
 }
 
-export const meta: MetaFunction<typeof loader> = ({ data }) => {
+export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
+  const title = `${data?.collection?.title ?? "Collection"} — MLS UAE`;
+  const description = data?.collection?.description ?? "";
+  const image = (data?.collection as any)?.image?.url as string | undefined;
+  const canonical = `https://mlsuae.ae${location.pathname}`;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://mlsuae.ae/" },
+      { "@type": "ListItem", position: 2, name: "Collections", item: "https://mlsuae.ae/collections" },
+      { "@type": "ListItem", position: 3, name: data?.collection?.title ?? "Collection", item: canonical },
+    ],
+  };
+
   return [
-    { title: `${data?.collection?.title ?? "Collection"} — MLS UAE` },
-    { name: "description", content: data?.collection?.description ?? "" },
+    { title },
+    { name: "description", content: description },
+    { property: "og:type", content: "website" },
+    { property: "og:title", content: title },
+    { property: "og:description", content: description },
+    ...(image ? [{ property: "og:image", content: image }] : []),
+    { property: "og:url", content: canonical },
+    { tagName: "link", rel: "canonical", href: canonical },
+    { "script:ld+json": jsonLd },
   ];
 };
 
 /* ─── Main route component ────────────────────────────────────────────────── */
 export default function Collection() {
   const { collection, sortIdx, pageInfo } = useLoaderData<typeof loader>();
+  const t = useT();
 
   const navigate    = useNavigate();
   const navigation  = useNavigation();
@@ -304,7 +334,7 @@ export default function Collection() {
                 onClick={() => setFiltersOpen(true)}
                 className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium lg:hidden"
               >
-                <SlidersHorizontal className="h-4 w-4" /> Filters
+                <SlidersHorizontal className="h-4 w-4" /> {t("collection.filters")}
                 {(selectedOrigins.length + selectedCuts.length) > 0 && (
                   <span className="grid h-5 w-5 place-items-center rounded-full bg-crimson text-[10px] font-bold text-white">
                     {selectedOrigins.length + selectedCuts.length}
@@ -313,7 +343,7 @@ export default function Collection() {
               </button>
               {/* Count — desktop only inline */}
               <span className="hidden text-sm text-muted-foreground lg:block">
-                {filtered.length} of {allProducts.length} products{hasMore ? "+" : ""}
+                {filtered.length} {t("collection.products_of")} {allProducts.length} {t("collection.products_label")}{hasMore ? "+" : ""}
               </span>
               {/* Right: Sort */}
               <div className="relative ml-auto">
@@ -327,8 +357,14 @@ export default function Collection() {
                   }}
                   className="appearance-none rounded-lg border border-border bg-card py-2 pl-3 pr-8 text-sm font-medium"
                 >
-                  {SORT_OPTIONS.map((o, i) => (
-                    <option key={i} value={i}>{o.label}</option>
+                  {[
+                    t("collection.sort_featured"),
+                    t("collection.sort_price_low"),
+                    t("collection.sort_price_high"),
+                    t("collection.sort_newest"),
+                    t("collection.sort_best_selling"),
+                  ].map((label, i) => (
+                    <option key={i} value={i}>{label}</option>
                   ))}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -336,7 +372,7 @@ export default function Collection() {
             </div>
             {/* Count — mobile only, below the row */}
             <p className="mt-1.5 text-xs text-muted-foreground lg:hidden">
-              {filtered.length} of {allProducts.length} products{hasMore ? "+" : ""}
+              {filtered.length} {t("collection.products_of")} {allProducts.length} {t("collection.products_label")}{hasMore ? "+" : ""}
             </p>
           </div>
 
@@ -346,7 +382,7 @@ export default function Collection() {
               <div className="absolute inset-0 bg-black/40" onClick={() => setFiltersOpen(false)} />
               <div className="relative ml-auto h-full w-72 overflow-y-auto bg-card p-5 shadow-xl">
                 <div className="mb-4 flex items-center justify-between">
-                  <span className="font-semibold">Filters</span>
+                  <span className="font-semibold">{t("collection.filters")}</span>
                   <button type="button" onClick={() => setFiltersOpen(false)}><X className="h-5 w-5" /></button>
                 </div>
                 <FilterPanel
@@ -366,9 +402,9 @@ export default function Collection() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-              <p className="text-lg font-medium">No products match your filters</p>
+              <p className="text-lg font-medium">{t("collection.no_products")}</p>
               <button type="button" onClick={clearAll} className="mt-3 text-sm text-crimson underline">
-                Clear filters
+                {t("collection.clear_filters")}
               </button>
             </div>
           ) : (
@@ -394,7 +430,7 @@ export default function Collection() {
                     onClick={handleLoadMore}
                     className="inline-flex items-center gap-2 rounded-lg border border-crimson px-8 py-3 text-sm font-semibold text-crimson transition-colors hover:bg-crimson hover:text-white"
                   >
-                    Load More Products
+                    {t("collection.load_more")}
                   </button>
                 </div>
               )}
@@ -409,7 +445,7 @@ export default function Collection() {
               {/* End of results */}
               {!hasMore && allProducts.length > PAGE_SIZE && (
                 <p className="mt-10 text-center text-sm text-muted-foreground">
-                  All {allProducts.length} products loaded
+                  {allProducts.length} {t("collection.all_loaded")}
                 </p>
               )}
             </>
@@ -452,6 +488,7 @@ function FilterSection({ title, children, defaultOpen = true }: { title: string;
 }
 
 function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedOrigins, toggleOrigin, cutCounts, selectedCuts, toggleCut, onClearAll }: FilterPanelProps) {
+  const t = useT();
   const activeCount = selectedOrigins.length + selectedCuts.length + (priceMax < globalMax ? 1 : 0);
   const sortedOrigins = Object.keys(originCounts).sort((a, b) =>
     (ORIGIN_LABELS[a]?.label ?? a).localeCompare(ORIGIN_LABELS[b]?.label ?? b)
@@ -462,7 +499,7 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
     <div className="flex flex-col gap-0">
       <div className="mb-4 flex items-center justify-between">
         <p className="font-bold">
-          Filters{" "}
+          {t("collection.filters")}{" "}
           {activeCount > 0 && (
             <span className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-crimson text-[10px] text-white">
               {activeCount}
@@ -471,12 +508,12 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
         </p>
         {activeCount > 0 && (
           <button type="button" onClick={onClearAll} className="text-xs text-crimson hover:underline">
-            Clear all
+            {t("collection.clear_all")}
           </button>
         )}
       </div>
 
-      <FilterSection title="Price (AED)">
+      <FilterSection title={t("collection.price_range")}>
         <input
           type="range" min={0} max={globalMax} value={priceMax}
           onChange={(e) => setMaxPrice(parseInt(e.target.value) === globalMax ? null : parseInt(e.target.value))}
@@ -489,7 +526,7 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
       </FilterSection>
 
       {sortedOrigins.length > 0 && (
-        <FilterSection title="Shop by Origin">
+        <FilterSection title={t("collection.shop_origin")}>
           <div className="flex flex-col gap-1">
             {sortedOrigins.map((code) => {
               const info  = ORIGIN_LABELS[code];
@@ -509,15 +546,17 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
       )}
 
       {sortedCuts.length > 0 && (
-        <FilterSection title="Shop by Cuts">
+        <FilterSection title={t("collection.shop_cuts")}>
           <div className="flex flex-col gap-1">
             {sortedCuts.map((cut) => {
               const count   = cutCounts[cut];
               const checked = selectedCuts.includes(cut);
+              const lk = CUT_LABEL_KEY[cut];
+              const displayLabel = lk ? t(lk as TKey) : cut;
               return (
                 <label key={cut} className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted ${checked ? "bg-crimson/5 font-medium text-crimson" : ""}`}>
                   <input type="checkbox" checked={checked} onChange={() => toggleCut(cut)} className="h-4 w-4 accent-crimson flex-shrink-0" />
-                  <span className="flex-1">{cut}</span>
+                  <span className="flex-1">{displayLabel}</span>
                   <span className="text-xs text-muted-foreground">({count})</span>
                 </label>
               );
@@ -530,6 +569,23 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
 }
 
 /* ─── Skeleton Card ────────────────────────────────────────────────────────── */
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const is404 = isRouteErrorResponse(error) && error.status === 404;
+  return (
+    <div className="container mx-auto px-4 py-20 text-center">
+      <p className="text-5xl font-black text-crimson">{is404 ? "404" : "!"}</p>
+      <h1 className="mt-3 text-xl font-bold">{is404 ? "Collection not found" : "Something went wrong"}</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {is404 ? "This collection doesn't exist or has been removed." : "We hit an unexpected error. Please try again."}
+      </p>
+      <a href="/" className="mt-6 inline-block rounded-lg bg-crimson px-6 py-3 text-sm font-bold text-white hover:bg-rich-red">
+        Back to Home
+      </a>
+    </div>
+  );
+}
+
 function SkeletonCard() {
   return (
     <div className="flex flex-col overflow-hidden rounded-md border border-border bg-card shadow-sm">

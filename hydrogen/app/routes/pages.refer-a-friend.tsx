@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import { User, Users, Mail, Gift, Trophy, ShoppingCart, Tag, Smile } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FaqAccordion } from "@/components/ui/FaqAccordion";
+import { detectLanguage } from "../lib/locale";
 
 export const meta: MetaFunction = () => [
   { title: "Refer a Friend — MLS UAE" },
@@ -18,24 +19,27 @@ const ICON_MAP: Record<string, LucideIcon> = {
   User, Users, Mail, Gift, Trophy, ShoppingCart, Tag, Smile,
 };
 
-const PAGE_QUERY = `{
-  page: metaobjects(type: "mls_refer_page", first: 1) {
-    nodes {
-      fields {
-        key
-        value
-        references(first: 10) {
-          nodes {
-            ... on Metaobject {
-              id
-              fields { key value }
+const PAGE_QUERY = `
+  query ReferAFriendPage($language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
+    metaobjects(type: "mls_refer_page", first: 1) {
+      nodes {
+        fields {
+          key
+          value
+          references(first: 10) {
+            nodes {
+              ... on Metaobject {
+                id
+                fields { key value }
+              }
             }
           }
         }
       }
     }
   }
-}`;
+` as const;
 
 function parseVideo(url: string): { type: "mp4" | "youtube"; url: string; thumbnail: string } {
   if (!url) return { type: "youtube", url: "", thumbnail: "" };
@@ -66,9 +70,13 @@ function parseFaqs(nodes: any[]) {
   });
 }
 
-export async function loader({ context }: LoaderFunctionArgs) {
-  const data = await context.adminFetch(PAGE_QUERY);
-  const node = data?.page?.nodes?.[0];
+export async function loader({ context, request }: LoaderFunctionArgs) {
+  const language = detectLanguage(request);
+  const data = await context.storefront.query(PAGE_QUERY, {
+    variables: { language, country: "AE" as const },
+    cache: context.storefront.CacheNone(),
+  });
+  const node = data?.metaobjects?.nodes?.[0];
   const f = Object.fromEntries((node?.fields ?? []).map((x: any) => [x.key, x]));
 
   return {

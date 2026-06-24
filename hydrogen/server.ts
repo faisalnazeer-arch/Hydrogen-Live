@@ -79,6 +79,8 @@ export default {
 
       const adminFetch = async (query: string, variables: Record<string, any> = {}): Promise<any> => {
         if (!env.SHOPIFY_ADMIN_API_TOKEN) return {};
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 5000);
         try {
           const res = await fetch(
             `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2025-07/graphql.json`,
@@ -89,6 +91,7 @@ export default {
                 "X-Shopify-Access-Token": env.SHOPIFY_ADMIN_API_TOKEN,
               },
               body: JSON.stringify({ query, variables }),
+              signal: controller.signal,
             }
           );
           const json = await res.json() as any;
@@ -98,6 +101,8 @@ export default {
           return json.data ?? {};
         } catch {
           return {};
+        } finally {
+          clearTimeout(timer);
         }
       };
 

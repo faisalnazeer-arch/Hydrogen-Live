@@ -79,7 +79,7 @@ export function ShopByOrigin({ section }: Props) {
       : section.items;
 
   return (
-    <section className="bg-bone py-6 md:py-8">
+    <section className="bg-bone py-8 md:py-12">
       <div className="container mx-auto px-4">
 
         {/* Header */}
@@ -128,7 +128,7 @@ export function ShopByOrigin({ section }: Props) {
             <Link
               key={item.id}
               to={lp(item.link)}
-              className="group flex min-w-[140px] shrink-0 snap-start flex-col items-center gap-3 rounded-2xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-1 hover:border-crimson hover:shadow-[var(--shadow-card)]"
+              className="group flex w-[148px] shrink-0 snap-start flex-col items-center gap-3 rounded-2xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-1 hover:border-crimson hover:shadow-[var(--shadow-card)]"
             >
               <OriginFlag
                 imageUrl={item.imageUrl}

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "react-router";
+import { Link, useMatches } from "react-router";
 import {
   ShoppingBag,
   User,
@@ -76,6 +76,16 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
   const drawerSide = dirFor(locale) === "rtl" ? "right" : "left";
   const closeMobile = () => setMobileNavOpen(false);
 
+  // When on a product page, pass the canonical EN handle to setLocale so switching
+  // from AR → EN navigates to the same product, not home.
+  const matches = useMatches();
+  const productRouteData = matches.find(
+    (m) => m.id === "routes/products.$handle" || m.id === "ar-products-handle"
+  )?.data as { canonicalHandle?: string } | undefined;
+  const canonicalProductPath = productRouteData?.canonicalHandle
+    ? `/products/${productRouteData.canonicalHandle}`
+    : undefined;
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
       {/* Top bar */}
@@ -124,7 +134,7 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
             <Globe className="ms-1 h-3.5 w-3.5 text-muted-foreground" aria-hidden />
             <button
               type="button"
-              onClick={() => setLocale("en")}
+              onClick={() => setLocale("en", canonicalProductPath)}
               data-locale="en"
               className="locale-btn rounded-full px-2 py-0.5 transition-colors hover:text-crimson"
             >
@@ -141,7 +151,7 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
             </button>
           </div>
           <a
-            href="https://mlsuae.ae/customer_authentication/redirect?locale=en&region_country=AE"
+            href={`https://mlsuae.ae/customer_authentication/redirect?locale=${locale}&region_country=AE`}
             aria-label={t("nav.account")}
           >
             <Button variant="ghost" size="icon">
@@ -398,6 +408,14 @@ function MobileMenuDrawer({
 
   const locale    = useLocaleStore((s) => s.locale);
   const setLocale = useLocaleStore((s) => s.setLocale);
+  const t         = useT();
+  const mobileMatches = useMatches();
+  const mobileProductData = mobileMatches.find(
+    (m) => m.id === "routes/products.$handle" || m.id === "ar-products-handle"
+  )?.data as { canonicalHandle?: string } | undefined;
+  const canonicalProductPath = mobileProductData?.canonicalHandle
+    ? `/products/${mobileProductData.canonicalHandle}`
+    : undefined;
 
   const tabs             = mobileMenu;
   const isCategories     = tabs[tab1Idx]?.label?.toLowerCase() === "categories";
@@ -426,11 +444,11 @@ function MobileMenuDrawer({
       {/* ── Promo banners ── */}
       {mobileBanners.length > 0 && (
         <div className="flex shrink-0 gap-2 border-b border-border bg-background px-3 py-2.5">
-          {mobileBanners.map((banner) => (
-            <Link key={banner.id} to={banner.url} onClick={onClose} prefetch="intent"
+          {mobileBanners.map((banner, idx) => (
+            <Link key={banner.id} to={lp(banner.url)} onClick={onClose} prefetch="intent"
               className="relative flex-1 overflow-hidden rounded-xl">
               <img src={cdnImg(banner.imageUrl, 300)} alt={banner.altText}
-                className="h-24 w-full object-cover" loading="eager" />
+                className="h-24 w-full object-cover" loading={idx === 0 ? "eager" : "lazy"} />
               {(banner.heading || banner.highlight) && (
                 <div className="absolute inset-0 flex flex-col justify-center bg-gradient-to-r from-black/50 to-transparent pl-3 pr-1">
                   {banner.heading   && <span className="text-[11px] font-black leading-tight text-white drop-shadow">{banner.heading}</span>}
@@ -510,7 +528,7 @@ function MobileMenuDrawer({
                               return (
                                 <div key={colKey}>
                                   {hasLinks && col.links.map((link) => (
-                                    <Link key={link.url + link.label} to={link.url} onClick={onClose} prefetch="intent"
+                                    <Link key={link.url + link.label} to={lp(link.url)} onClick={onClose} prefetch="intent"
                                       className="block border-b border-border/25 py-2.5 pl-4 pr-3 text-[12px] font-medium text-foreground/70 last:border-0 transition-colors hover:text-crimson"
                                     >{link.label}</Link>
                                   ))}
@@ -555,7 +573,7 @@ function MobileMenuDrawer({
                                 <AccordionBody isOpen={colOpen}>
                                   <div className="ml-3 border-l border-crimson/15">
                                     {col.links.map((link) => (
-                                      <Link key={link.url + link.label} to={link.url} onClick={onClose} prefetch="intent"
+                                      <Link key={link.url + link.label} to={lp(link.url)} onClick={onClose} prefetch="intent"
                                         className="block border-b border-border/25 py-2 pl-4 pr-3 text-[12px] text-foreground/60 last:border-0 transition-colors hover:text-crimson"
                                       >{link.label}</Link>
                                     ))}
@@ -737,7 +755,7 @@ function MobileMenuDrawer({
           <Globe className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
           <button
             type="button"
-            onClick={() => setLocale("en")}
+            onClick={() => setLocale("en", canonicalProductPath)}
             data-locale="en"
             className={`locale-btn rounded-full px-3 py-1 text-[12px] font-semibold uppercase tracking-wider transition-colors ${locale === "en" ? "bg-crimson text-white" : "text-foreground hover:text-crimson"}`}
           >EN</button>
@@ -752,10 +770,10 @@ function MobileMenuDrawer({
         </div>
       </div>
       <div className="shrink-0 px-3 pb-3">
-        <a href="https://mlsuae.ae/customer_authentication/redirect?locale=en&region_country=AE"
-          className="flex w-full items-center justify-center rounded-lg bg-crimson py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors hover:bg-crimson/90"
+        <a href={`https://mlsuae.ae/customer_authentication/redirect?locale=${locale}&region_country=AE`}
+          className="flex w-full items-center justify-center rounded-lg bg-crimson py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors hover:bg-rich-red"
           style={{ color: '#ffffff' }}
-        >Login / Sign Up</a>
+        >{t("nav.login_signup")}</a>
       </div>
     </div>
   );

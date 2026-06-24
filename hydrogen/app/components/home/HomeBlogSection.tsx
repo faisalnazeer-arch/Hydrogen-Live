@@ -1,6 +1,8 @@
 import { Link } from "react-router";
 import { Calendar, ArrowRight } from "lucide-react";
 import { HScroller } from "./HScroller";
+import { useT } from "@/i18n/strings";
+import { useLocalePath } from "@/stores/localeStore";
 
 export interface BlogArticle {
   id: string;
@@ -14,9 +16,11 @@ export interface BlogArticle {
 }
 
 function BlogCard({ article }: { article: BlogArticle }) {
+  const t = useT();
+  const lp = useLocalePath();
   return (
     <Link
-      to={`/blogs/${article.blogHandle}/${article.handle}`}
+      to={lp(`/blogs/${article.blogHandle}/${article.handle}`)}
       className="group flex w-72 shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:w-80"
     >
       {article.imageUrl ? (
@@ -45,7 +49,7 @@ function BlogCard({ article }: { article: BlogArticle }) {
           <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">{article.excerpt}</p>
         )}
         <div className="mt-auto flex items-center gap-1 pt-4 text-sm font-semibold text-crimson">
-          Read more <ArrowRight className="h-3.5 w-3.5" />
+          {t("blog.read_more")} <ArrowRight className="h-3.5 w-3.5" />
         </div>
       </div>
     </Link>
@@ -53,6 +57,8 @@ function BlogCard({ article }: { article: BlogArticle }) {
 }
 
 export function HomeBlogSection({ articles }: { articles: BlogArticle[] }) {
+  const t = useT();
+  const lp = useLocalePath();
   if (!articles.length) return null;
   return (
     <section className="py-10 md:py-14">
@@ -60,10 +66,10 @@ export function HomeBlogSection({ articles }: { articles: BlogArticle[] }) {
         <div className="mb-4 text-center md:mb-5">
           <div className="mb-1.5 flex items-center justify-center gap-3">
             <span className="h-px w-6 rounded-full bg-crimson" />
-            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">From Our Kitchen</span>
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">{t("blog.from_kitchen")}</span>
             <span className="h-px w-6 rounded-full bg-crimson" />
           </div>
-          <h2 className="font-display text-2xl font-bold leading-snug tracking-tight md:text-3xl">Tips, Recipes & News</h2>
+          <h2 className="font-display text-2xl font-bold leading-snug tracking-tight md:text-3xl">{t("blog.tips")}</h2>
         </div>
 
         <HScroller>
@@ -74,10 +80,10 @@ export function HomeBlogSection({ articles }: { articles: BlogArticle[] }) {
 
         <div className="mt-5 flex justify-center">
           <Link
-            to="/blogs/all"
+            to={lp("/blogs/all")}
             className="flex items-center gap-1.5 text-sm font-semibold text-crimson transition-colors hover:text-rich-red"
           >
-            View all articles <ArrowRight className="h-4 w-4" />
+            {t("blog.view_all")} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </div>

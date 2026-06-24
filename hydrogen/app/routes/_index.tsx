@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
-import { useLoaderData } from "react-router";
+import { useLoaderData, useRouteError, isRouteErrorResponse } from "react-router";
 import { detectLanguage } from "../lib/locale";
 import { useT } from "../i18n/strings";
 import { HeroBanner } from "../components/home/HeroBanner";
@@ -21,17 +21,82 @@ import { HomeReviews } from "../components/home/HomeReviews";
 import { fetchJudgemeStoreReviews, fetchJudgemeShopStats } from "~/lib/judgeme";
 import type { JudgemeReview } from "~/lib/judgeme";
 
-const imgFields = `key value reference { ... on MediaImage { image { url altText } } }`;
+// Single Storefront API query for all home page metaobjects.
+// Uses @inContext so Translate & Adapt translations are served for Arabic.
+const HOME_METAOBJECTS_QUERY = `#graphql
+  query HomeMetaobjects($language: LanguageCode, $country: CountryCode)
+  @inContext(language: $language, country: $country) {
+    hero: metaobjects(type: "hero_banner", first: 10) {
+      nodes { id fields { key value reference { ... on MediaImage { image { url altText width height } } } } }
+    }
+    badges: metaobjects(type: "icon_with_text", first: 10) {
+      nodes { id handle fields { key value reference { ... on MediaImage { image { url altText } } } } }
+    }
+    priceRangeSection: metaobjects(type: "price_range_section", first: 1) {
+      nodes { id fields { key value } }
+    }
+    priceTiles: metaobjects(type: "price_range_tile", first: 20) {
+      nodes { id fields { key value reference { ... on MediaImage { image { url altText } } ... on Collection { id handle title } } } }
+    }
+    reelsSection: metaobjects(type: "reels_section", first: 1) {
+      nodes { id fields { key value } }
+    }
+    reelItems: metaobjects(type: "reel_item", first: 20) {
+      nodes { id fields { key value reference { ... on Product { id handle title featuredImage { url } } ... on Video { sources { url mimeType } previewImage { url } } } } }
+    }
+    promo: metaobjects(type: "promo_side_by_side", first: 1) {
+      nodes { id fields { key value reference { ... on MediaImage { image { url altText } } } } }
+    }
+    valueBanner: metaobjects(type: "mls_value_banner", first: 1) {
+      nodes { id fields { key value reference { ... on MediaImage { image { url altText } } } } }
+    }
+    collectionSection: metaobjects(type: "mls_collection_section", first: 1) {
+      nodes { id fields { key value } }
+    }
+    origin: metaobjects(type: "mls_origin_section", first: 1) {
+      nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id handle fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } }
+    }
+    category: metaobjects(type: "mls_category_section", first: 1) {
+      nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } }
+    }
+    cuts: metaobjects(type: "mls_cuts_section", first: 1) {
+      nodes { id fields { key value references(first: 12) { nodes { ... on Metaobject { id fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } }
+    }
+    featuredCollections: metaobjects(type: "featured_collection", first: 10) {
+      nodes { id fields { key value reference { ... on Collection { handle title } } references(first: 10) { nodes { ... on Metaobject { id fields { key value reference { ... on Collection { handle title } } } } } } } }
+    }
+    featuredCollectionList: metaobjects(type: "featured_collection_list", first: 20) {
+      nodes { id fields { key value reference { ... on MediaImage { image { url altText } } } } }
+    }
+    gift: metaobjects(type: "mls_first_order_gift", first: 1) {
+      nodes { id fields { key value } }
+    }
+    saleSection: metaobjects(type: "mls_sale_section", first: 1) {
+      nodes { id fields { key value reference { ... on Collection { handle title } } } }
+    }
+  }
+` as const;
 
+// Admin API queries — fallback for metaobject types that don't yet have Storefront API access.
+// When a type has Storefront API access enabled, the HOME_METAOBJECTS_QUERY above takes over
+// and serves translated content. Otherwise these ensure the sections always render.
+const _imgF = `key value reference { ... on MediaImage { image { url altText } } }`;
 const Q_HERO       = `{ nodes: metaobjects(type: "hero_banner", first: 10) { nodes { id fields { key value reference { ... on MediaImage { image { url altText width height } } } } } } }`;
-const Q_BADGES     = `{ nodes: metaobjects(type: "icon_with_text", first: 10) { nodes { id handle fields { ${imgFields} } } } }`;
+const Q_BADGES     = `{ nodes: metaobjects(type: "icon_with_text", first: 10) { nodes { id handle fields { ${_imgF} } } } }`;
 const Q_PRICE_SEC  = `{ nodes: metaobjects(type: "price_range_section", first: 1) { nodes { id fields { key value } } } }`;
 const Q_PRICE_TILE = `{ nodes: metaobjects(type: "price_range_tile", first: 20) { nodes { id fields { key value reference { ... on MediaImage { image { url altText } } ... on Collection { id handle title } } } } } }`;
 const Q_REELS_SEC  = `{ nodes: metaobjects(type: "reels_section", first: 1) { nodes { id fields { key value } } } }`;
-
-// Admin API query for reel items — gets ALL entries (including unpublished ones).
-// Does NOT include price (Admin API prices are in a different unit than Storefront).
 const Q_REEL_ITEMS = `{ nodes: metaobjects(type: "reel_item", first: 20) { nodes { id fields { key value reference { ... on Product { id handle title featuredImage { url } } ... on Video { sources { url mimeType } preview { image { url } } } } } } } }`;
+const Q_PROMO      = `{ nodes: metaobjects(type: "promo_side_by_side", first: 1) { nodes { id fields { ${_imgF} } } } }`;
+const Q_VALUE      = `{ nodes: metaobjects(type: "mls_value_banner", first: 1) { nodes { id fields { ${_imgF} } } } }`;
+const Q_COL_CFG    = `{ nodes: metaobjects(type: "mls_collection_section", first: 1) { nodes { id fields { key value } } } }`;
+const Q_ORIGIN     = `{ nodes: metaobjects(type: "mls_origin_section", first: 1) { nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id handle fields { ${_imgF} } } } } } } } }`;
+const Q_CATEGORY   = `{ nodes: metaobjects(type: "mls_category_section", first: 1) { nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id fields { ${_imgF} } } } } } } } }`;
+const Q_CUTS       = `{ nodes: metaobjects(type: "mls_cuts_section", first: 1) { nodes { id fields { key value references(first: 12) { nodes { ... on Metaobject { id fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } } } }`;
+const Q_FEATURED   = `{ nodes: metaobjects(type: "featured_collection", first: 10) { nodes { id fields { key value reference { ... on Collection { handle title } } references(first: 10) { nodes { ... on Metaobject { id fields { key value reference { ... on Collection { handle title } } } } } } } } } }`;
+const Q_COL_LIST   = `{ nodes: metaobjects(type: "featured_collection_list", first: 20) { nodes { id fields { ${_imgF} } } } }`;
+const Q_GIFT       = `{ nodes: metaobjects(type: "mls_first_order_gift", first: 1) { nodes { id fields { key value } } } }`;
+const Q_SALE_SEC   = `{ nodes: metaobjects(type: "mls_sale_section", first: 1) { nodes { id fields { key value reference { ... on Collection { handle title } } } } } }`;
 
 // Storefront API query to batch-fetch correct presentment prices by product GID.
 const REEL_PRODUCT_PRICES_QUERY = `#graphql
@@ -45,16 +110,6 @@ const REEL_PRODUCT_PRICES_QUERY = `#graphql
     }
   }
 ` as const;
-const Q_PROMO      = `{ nodes: metaobjects(type: "promo_side_by_side", first: 1) { nodes { id fields { ${imgFields} } } } }`;
-const Q_VALUE      = `{ nodes: metaobjects(type: "mls_value_banner", first: 1) { nodes { id fields { ${imgFields} } } } }`;
-const Q_COL_CFG    = `{ nodes: metaobjects(type: "mls_collection_section", first: 1) { nodes { id fields { key value } } } }`;
-const Q_ORIGIN     = `{ nodes: metaobjects(type: "mls_origin_section", first: 1) { nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id handle fields { ${imgFields} } } } } } } } }`;
-const Q_CATEGORY   = `{ nodes: metaobjects(type: "mls_category_section", first: 1) { nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id fields { ${imgFields} } } } } } } } }`;
-const Q_CUTS       = `{ nodes: metaobjects(type: "mls_cuts_section", first: 1) { nodes { id fields { key value references(first: 12) { nodes { ... on Metaobject { id fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } } } }`;
-const Q_FEATURED   = `{ nodes: metaobjects(type: "featured_collection", first: 10) { nodes { id fields { key value reference { ... on Collection { handle title } } references(first: 10) { nodes { ... on Metaobject { id fields { key value reference { ... on Collection { handle title } } } } } } } } } }`;
-const Q_COL_LIST   = `{ nodes: metaobjects(type: "featured_collection_list", first: 20) { nodes { id fields { ${imgFields} } } } }`;
-const Q_GIFT       = `{ nodes: metaobjects(type: "mls_first_order_gift", first: 1) { nodes { id fields { key value } } } }`;
-const Q_SALE_SEC   = `{ nodes: metaobjects(type: "mls_sale_section", first: 1) { nodes { id fields { key value reference { ... on Collection { handle title } } } } } }`;
 const Q_BLOG_ARTICLES = `
   query HomeBlogArticles {
     blogs(first: 5) {
@@ -108,8 +163,8 @@ function parseReelItems(
     if (video?.sources) {
       const mp4 = video.sources.find((s: any) => s.mimeType === "video/mp4") ?? video.sources[0];
       videoUrl = mp4?.url ?? null;
-      // Admin API Video uses preview.image.url
-      poster = video.preview?.image?.url ?? poster;
+      // Storefront API uses previewImage.url; Admin API uses preview.image.url
+      poster = video.previewImage?.url ?? video.preview?.image?.url ?? poster;
     }
 
     const price = priceMap[product.id] ?? { amount: "0", currencyCode: "AED" };
@@ -370,9 +425,39 @@ function parseCollectionSectionConfig(nodes: any[]): { heading: string; subHeadi
   return { heading, subHeading: (f.sub_heading?.value ?? "") as string };
 }
 
+const HOME_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "MLS UAE",
+  url: "https://mlsuae.ae",
+  logo: "https://mlsuae.ae/logo.png",
+  description: "Premium halal meats — Wagyu, Angus, lamb and more — delivered across the UAE.",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "Marasi Drive, Business Bay",
+    addressLocality: "Dubai",
+    addressCountry: "AE",
+  },
+  contactPoint: {
+    "@type": "ContactPoint",
+    telephone: "+971504516403",
+    contactType: "customer service",
+  },
+  sameAs: [
+    "https://www.instagram.com/mlsuae",
+    "https://www.facebook.com/mlsuae",
+  ],
+};
+
 export const meta: MetaFunction = () => [
   { title: "MLS UAE — Premium Meats" },
   { name: "description", content: "Premium Wagyu, Angus, lamb and more — delivered." },
+  { property: "og:type", content: "website" },
+  { property: "og:title", content: "MLS UAE — Premium Meats" },
+  { property: "og:description", content: "Premium Wagyu, Angus, lamb and more — delivered across the UAE." },
+  { property: "og:url", content: "https://mlsuae.ae/" },
+  { tagName: "link", rel: "canonical", href: "https://mlsuae.ae/" },
+  { "script:ld+json": HOME_JSON_LD },
 ];
 
 
@@ -405,37 +490,47 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const language = detectLanguage(request);
   const country = "AE" as const;
 
+  // Run Admin API (structure, always available) and Storefront API (translations, requires
+  // Storefront API access per metaobject type) in parallel. For each section we prefer the
+  // Storefront result when it has nodes — that means the type has access enabled and
+  // translations are served. Otherwise we fall back to Admin API so nothing disappears.
   const [
     heroRes, badgesRes, priceSecRes, priceTileRes, reelSecRes,
     promoRes, valueRes, colCfgRes, originRes, categoryRes,
     cutsRes, featuredRes, colListRes, reelTagged, reelItemsRes, giftRes, saleSecRes,
-    blogData, reviewsData, shopStats,
+    sfMetaRes, blogData, reviewsData, shopStats,
   ] = await Promise.all([
     af(Q_HERO), af(Q_BADGES), af(Q_PRICE_SEC), af(Q_PRICE_TILE), af(Q_REELS_SEC),
     af(Q_PROMO), af(Q_VALUE), af(Q_COL_CFG), af(Q_ORIGIN), af(Q_CATEGORY),
     af(Q_CUTS), af(Q_FEATURED), af(Q_COL_LIST),
-    context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" } }),
+    context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" } }).catch(() => ({ products: { edges: [] } })),
     af(Q_REEL_ITEMS), af(Q_GIFT), af(Q_SALE_SEC),
+    context.storefront.query(HOME_METAOBJECTS_QUERY, { variables: { language, country } }).catch(() => ({} as any)),
     context.storefront.query(Q_BLOG_ARTICLES).catch(() => null),
     fetchJudgemeStoreReviews(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN, 1, 9).catch(() => ({ reviews: [] as JudgemeReview[], current_page: 1, per_page: 9 })),
     fetchJudgemeShopStats(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN).catch(() => ({ average: 0, count: 0 })),
   ]);
 
+  // Prefer Storefront API section when it returned nodes (translated content available);
+  // otherwise use Admin API section (untranslated but always complete).
+  const sf = (sfSection: any, adminSection: any) =>
+    sfSection?.nodes?.length > 0 ? sfSection : adminSection;
+
   const data = {
-    heroBanners:          heroRes,
-    trustBadges:          badgesRes,
-    priceRangeSection:    priceSecRes,
-    priceTiles:           priceTileRes,
-    reelsSection:         reelSecRes,
-    promoSideBySide:      promoRes,
-    valueBanner:          valueRes,
-    collectionSectionConfig: colCfgRes,
-    originSection:        originRes,
-    categorySection:      categoryRes,
-    cutsSection:          cutsRes,
-    featuredCollections:  featuredRes,
-    featuredCollectionList: colListRes,
-    firstOrderGift:       giftRes,
+    heroBanners:             sf(sfMetaRes?.hero,                 heroRes),
+    trustBadges:             sf(sfMetaRes?.badges,               badgesRes),
+    priceRangeSection:       sf(sfMetaRes?.priceRangeSection,    priceSecRes),
+    priceTiles:              sf(sfMetaRes?.priceTiles,           priceTileRes),
+    reelsSection:            sf(sfMetaRes?.reelsSection,         reelSecRes),
+    promoSideBySide:         sf(sfMetaRes?.promo,                promoRes),
+    valueBanner:             sf(sfMetaRes?.valueBanner,          valueRes),
+    collectionSectionConfig: sf(sfMetaRes?.collectionSection,    colCfgRes),
+    originSection:           sf(sfMetaRes?.origin,    originRes),
+    categorySection:         sf(sfMetaRes?.category,  categoryRes),
+    cutsSection:             sf(sfMetaRes?.cuts,       cutsRes),
+    featuredCollections:     sf(sfMetaRes?.featuredCollections, featuredRes),
+    featuredCollectionList:  sf(sfMetaRes?.featuredCollectionList, colListRes),
+    firstOrderGift:          sf(sfMetaRes?.gift,                 giftRes),
   };
 
   const parsed = parseFeaturedCollections(data?.featuredCollections?.nodes ?? []);
@@ -462,9 +557,26 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
   const collectionSectionConfig = parseCollectionSectionConfig(data?.collectionSectionConfig?.nodes ?? []);
   const rawSection = buildFeaturedSection(parsedWithProducts);
-  const featuredSection = rawSection && collectionSectionConfig
+  const mergedSection = rawSection && collectionSectionConfig
     ? { ...rawSection, title: collectionSectionConfig.heading, subTitle: collectionSectionConfig.subHeading || undefined }
     : rawSection;
+
+  // Deduplicate products across tabs so the same item won't appear in both Lamb and Mutton (or any overlapping collections)
+  const seenTabIds = new Set<string>();
+  const featuredSection = mergedSection
+    ? {
+        ...mergedSection,
+        tabs: mergedSection.tabs.map(tab => ({
+          ...tab,
+          products: tab.products.filter((p: any) => {
+            const id = p.node?.id;
+            if (!id || seenTabIds.has(id)) return false;
+            seenTabIds.add(id);
+            return true;
+          }),
+        })),
+      }
+    : mergedSection;
   const collectionCards = parseFeaturedCollectionList(data?.featuredCollectionList?.nodes ?? []);
   const firstOrderGift = parseFirstOrderGift(data?.firstOrderGift?.nodes ?? []);
   const priceSection = parsePriceRangeSection(data?.priceRangeSection?.nodes ?? []);
@@ -488,9 +600,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     } catch { /* ignore missing collection */ }
   }
 
-  // Fetch correct AED presentment prices for reel products via Storefront API
-  // (Admin API prices are in a different unit — use Storefront @inContext for accuracy)
-  const reelItemNodes: any[] = reelItemsRes?.nodes ?? [];
+  const reelItemNodes: any[] = sf(sfMetaRes?.reelItems, reelItemsRes)?.nodes ?? [];
   const reelProductIds: string[] = reelItemNodes
     .map((n: any) => n.fields?.find((f: any) => f.key === "product")?.reference?.id)
     .filter(Boolean);
@@ -609,5 +719,21 @@ export default function Home() {
       <RecentlyViewed />
       <HomeReviews reviews={storeReviews} totalCount={reviewTotalCount} averageRating={reviewAverage} />
     </>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const is5xx = isRouteErrorResponse(error) && error.status >= 500;
+  return (
+    <div className="container mx-auto px-4 py-20 text-center">
+      <p className="text-5xl font-black text-crimson">{is5xx ? "500" : "!"}</p>
+      <h1 className="mt-3 text-xl font-bold">Something went wrong</h1>
+      <p className="mt-2 text-sm text-muted-foreground">We hit an unexpected error. Please try refreshing the page.</p>
+      <button type="button" onClick={() => window.location.reload()}
+        className="mt-6 inline-block rounded-lg bg-crimson px-6 py-3 text-sm font-bold text-white hover:bg-rich-red">
+        Refresh
+      </button>
+    </div>
   );
 }

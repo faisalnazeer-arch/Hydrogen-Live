@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { Facebook, Instagram, Linkedin, Mail, Phone, Twitter } from "lucide-react";
 import logo from "@/assets/mls-logo.png";
+import { useLocalePath } from "@/stores/localeStore";
 import {
   Accordion,
   AccordionContent,
@@ -19,6 +20,7 @@ const DEFAULTS = {
 };
 
 interface ContactData {
+  companyName: string;
   heading: string;
   address: string;
   phone: string;
@@ -43,6 +45,7 @@ export function Footer({ settings, menuCols }: Props) {
   const year = new Date().getFullYear();
 
   const contact: ContactData = {
+    companyName:   settings?.companyName    || DEFAULTS.companyName,
     heading:       settings?.contactHeading || DEFAULTS.contactHeading,
     address:       settings?.address        || DEFAULTS.address,
     phone:         settings?.phone          || DEFAULTS.phone,
@@ -115,7 +118,7 @@ function BrandCol({ contact }: { contact: ContactData }) {
       <div className="mb-3">
         <img src={logo} alt="MLS UAE" className="h-14 w-auto brightness-0 invert" />
       </div>
-      <p className="text-sm font-semibold text-white">{DEFAULTS.companyName}</p>
+      <p className="text-sm font-semibold text-gold">{contact.companyName}</p>
       {contact.brandText && (
         <p className="mt-1 text-sm text-off-white/70">{contact.brandText}</p>
       )}
@@ -222,16 +225,17 @@ function TikTokIcon({ className }: { className?: string }) {
 }
 
 function LinkList({ links }: { links: FooterLink[] }) {
+  const lp = useLocalePath();
   return (
-    <ul className="space-y-2.5 text-sm text-off-white/80">
+    <ul className="space-y-2.5 text-sm">
       {links.map((l) => (
         <li key={l.label}>
           {l.url.startsWith("http") ? (
-            <a href={l.url} target="_blank" rel="noopener noreferrer" className="hover:text-white">
+            <a href={l.url} target="_blank" rel="noopener noreferrer" className="text-off-white/80 hover:text-white">
               {l.label}
             </a>
           ) : (
-            <Link to={l.url} className="hover:text-white">
+            <Link to={lp(l.url)} className="text-off-white/80 hover:text-gold">
               {l.label}
             </Link>
           )}
