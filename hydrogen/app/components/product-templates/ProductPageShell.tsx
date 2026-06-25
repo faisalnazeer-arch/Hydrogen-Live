@@ -1424,9 +1424,13 @@ export function ProductPageShell({
             const parsed = iconBadges
               .map((node: any, i: number) => {
                 const fm = Object.fromEntries((node.fields ?? []).map((f: any) => [f.key, f]));
-                const heading = fm["heading"]?.value ?? null;
+                let heading = fm["heading"]?.value ?? null;
                 const iconUrl = fm["icon"]?.reference?.image?.url ?? null;
                 if (!heading) return null;
+                // Override delivery badge regardless of what CMS says
+                if (/deliver|1.hour|slot/i.test(heading)) {
+                  heading = t("product.trust_delivery");
+                }
                 return { id: node.id ?? String(i), heading, iconUrl, FallbackIcon: FALLBACK_ICONS[i % FALLBACK_ICONS.length] };
               })
               .filter(Boolean) as Array<{ id: string; heading: string; iconUrl: string | null; FallbackIcon: any }>;
