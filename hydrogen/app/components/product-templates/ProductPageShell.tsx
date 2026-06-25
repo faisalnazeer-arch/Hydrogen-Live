@@ -397,8 +397,8 @@ function DeliveryTab({ pageSettings }: { pageSettings: PageSettings | undefined 
     { label: "Tipping",               body: "There's no need to tip your delivery driver — we pay a living wage that doesn't depend on tips." },
   ];
   const DEFAULT_ABUDHABI: CityBlock[] = [
-    { label: "Delivery Time",         body: "Delivered in 1-hour slots. Last slot starts at 8:45 PM daily." },
-    { label: "Last Order Time",       body: "8:45 PM is our last order slot, all days of the week." },
+    { label: "Delivery Time",         body: "Express 2-hour delivery across Abu Dhabi." },
+    { label: "Last Order Time",       body: "8:30 PM is our last order cutoff, all days of the week." },
     { label: "Delivery Fee",          body: "No minimum order value. Standard delivery fee is AED 20." },
     { label: "Free Returns",          body: "We offer a \"no questions asked\" free returns policy which allows you to return delivered items to us for any reason up to 30 days from the delivery of your order, free of charge." },
     { label: "100% Satisfaction",     body: "We offer 100% satisfaction policy. Please WhatsApp us on our customer service number within 24 hours and we will fix your experience. Call or WhatsApp: +971 50 451 6403" },
