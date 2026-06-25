@@ -63,7 +63,7 @@ export default function BlogPage() {
         {articles.length === 0 ? (
           <p className="text-center text-muted-foreground py-16">No articles yet.</p>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
             {articles.map((article) => (
               <Link
                 key={article.handle}
@@ -84,7 +84,7 @@ export default function BlogPage() {
                   )}
                 </div>
 
-                <div className="flex flex-1 flex-col p-5">
+                <div className="flex flex-1 flex-col p-3 sm:p-5">
                   {article.tags.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-1.5">
                       {article.tags.slice(0, 2).map((tag) => (

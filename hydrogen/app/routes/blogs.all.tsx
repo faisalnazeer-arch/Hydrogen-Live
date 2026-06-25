@@ -52,7 +52,7 @@ export default function BlogsAll() {
         {articles.length === 0 ? (
           <p className="text-muted-foreground">No articles yet. Check back soon.</p>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
             {articles.map((article: any) => (
               <ArticleCard key={article.handle + article.blog.handle} article={article} />
             ))}
@@ -85,7 +85,7 @@ function ArticleCard({ article }: { article: any }) {
           <div className="absolute inset-0 bg-muted" />
         )}
       </div>
-      <div className="flex flex-1 flex-col p-4">
+      <div className="flex flex-1 flex-col p-3 sm:p-4">
         <p className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <Calendar className="h-3 w-3" />
           {date}
