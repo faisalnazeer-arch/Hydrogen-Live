@@ -74,19 +74,17 @@ function ArticleCard({ article }: { article: any }) {
       prefetch="intent"
       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:-translate-y-1 hover:border-crimson/40 hover:shadow-lg"
     >
-      {article.image ? (
-        <div className="aspect-[16/9] overflow-hidden">
+      <div className="relative w-full overflow-hidden bg-muted" style={{ paddingTop: "56.25%" }}>
+        {article.image ? (
           <img
             src={article.image.url}
             alt={article.image.altText ?? article.title}
-            width={article.image.width}
-            height={article.image.height}
-            className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+            className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
           />
-        </div>
-      ) : (
-        <div className="aspect-[16/9] bg-muted" />
-      )}
+        ) : (
+          <div className="absolute inset-0 bg-muted" />
+        )}
+      </div>
       <div className="flex flex-1 flex-col p-4">
         <p className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <Calendar className="h-3 w-3" />

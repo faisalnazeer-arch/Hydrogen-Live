@@ -70,22 +70,20 @@ export default function BlogPage() {
                 to={`/blogs/${blog.handle}/${article.handle}`}
                 className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
               >
-                {/* Image */}
-                <div className="aspect-[16/9] overflow-hidden bg-muted">
+                <div className="relative w-full overflow-hidden bg-muted" style={{ paddingTop: "56.25%" }}>
                   {article.image ? (
                     <img
                       src={article.image.url}
                       alt={article.image.altText ?? article.title}
-                      className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                      className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
-                    <div className="h-full w-full bg-gradient-to-br from-crimson/10 to-crimson/5 flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-crimson/10 to-crimson/5">
                       <span className="text-4xl">🥩</span>
                     </div>
                   )}
                 </div>
 
-                {/* Content */}
                 <div className="flex flex-1 flex-col p-5">
                   {article.tags.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-1.5">
@@ -100,16 +98,14 @@ export default function BlogPage() {
                     {article.title}
                   </h2>
                   {article.excerpt && (
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-3 flex-1">
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-2 flex-1">
                       {article.excerpt}
                     </p>
                   )}
                   <div className="mt-4 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" /> {formatDate(article.publishedAt)}
-                      </span>
-                    </div>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Calendar className="h-3 w-3" /> {formatDate(article.publishedAt)}
+                    </span>
                     <span className="flex items-center gap-1 text-xs font-semibold text-crimson">
                       Read <ArrowRight className="h-3 w-3" />
                     </span>
