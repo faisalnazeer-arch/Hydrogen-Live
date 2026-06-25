@@ -238,6 +238,55 @@ function toShopifyProduct(node: any): ShopifyProduct {
 
 // ── Loader ────────────────────────────────────────────────────────────────────
 
+// Arabic landing-page hero banners.
+// The lp_hero_slide metaobjects reference English banner images, and the Arabic versions
+// added in the translation app don't reach this headless storefront. The Arabic banners
+// already exist in Files, so map each slide (by its metaobject handle) to its Arabic
+// desktop/mobile image and swap them in for AR. Same approach as the home hero override.
+const AR_LP_BANNER: Record<string, { desktop: string; mobile: string }> = {
+  "aus-lamb-banner": {
+    desktop: "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/AUS-Lamb-A-Web.jpg?v=1779698205",
+    mobile:  "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/AUS-Lamb-A-Mobile.jpg?v=1779698284",
+  },
+  "poultry-banner": {
+    desktop: "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/Chicken-A-Web.jpg?v=1779698227",
+    mobile:  "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/Chicken-A--Mobile.jpg?v=1779698255",
+  },
+  "wagyu-banner": {
+    desktop: "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/AUS-Wagyu-A-Web.jpg?v=1779794888",
+    mobile:  "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/AUS-Wagyu-A-Mobile.jpg?v=1779794890",
+  },
+  "lp-hero-slide-it2rbauh": {
+    desktop: "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/US-Angus-A-web.jpg?v=1779794847",
+    mobile:  "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/US-Angus-A-Mobile.jpg?v=1779794847",
+  },
+  "lp-hero-slide-yay633id": {
+    desktop: "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/Vension-A-Web.jpg?v=1779698411",
+    mobile:  "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/Vension-A-Mobile.jpg?v=1779698454",
+  },
+  "lp-hero-slide-gvh37cy2": {
+    desktop: "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/Carcass-A-We.jpg?v=1779698345",
+    mobile:  "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/Carcass-A-Mobile.jpg?v=1779698314",
+  },
+};
+
+// Recursively walk the landing-page node tree and swap lp_hero_slide images for their
+// Arabic equivalents (AR only). Slides without an override keep their existing image.
+function applyArSlideImages(node: any): void {
+  if (!node || typeof node !== "object") return;
+  if (node.type === "lp_hero_slide" && node.handle && AR_LP_BANNER[node.handle]) {
+    const ov = AR_LP_BANNER[node.handle];
+    for (const f of node.fields ?? []) {
+      if (f.key === "desktop_image" && ov.desktop) f.reference = { image: { url: ov.desktop, altText: "" } };
+      if (f.key === "mobile_image"  && ov.mobile)  f.reference = { image: { url: ov.mobile,  altText: "" } };
+    }
+  }
+  for (const f of node.fields ?? []) {
+    if (f.reference) applyArSlideImages(f.reference);
+    for (const n of f.references?.nodes ?? []) applyArSlideImages(n);
+  }
+}
+
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const { handle } = params;
   if (!handle) throw new Response("Missing handle", { status: 400 });
@@ -280,6 +329,9 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
       lpPageNodes = enNodes;
     }
   }
+
+  // Swap landing-page hero banners for their Arabic versions (AR only).
+  if (userLanguage === "AR") lpPageNodes.forEach(applyArSlideImages);
 
   // Regular prose page
   if (lpPageNodes.length === 0) {
