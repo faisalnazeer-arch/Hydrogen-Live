@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData, Link } from "react-router";
-import { Calendar, User, ArrowLeft, Tag } from "lucide-react";
+import { Calendar, ArrowLeft, Tag } from "lucide-react";
 
 const ARTICLE_QUERY = `#graphql
   query Article($blogHandle: String!, $articleHandle: String!, $language: LanguageCode)
@@ -90,14 +90,6 @@ export default function ArticlePage() {
 
           {/* Meta */}
           <div className="mt-4 mb-8 flex flex-wrap items-center gap-4 text-sm text-muted-foreground border-b border-border pb-6">
-            {article.author?.name && (
-              <span className="flex items-center gap-1.5">
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-crimson/10 text-xs font-bold text-crimson">
-                  {article.author.name.charAt(0).toUpperCase()}
-                </span>
-                {article.author.name}
-              </span>
-            )}
             <span className="flex items-center gap-1.5">
               <Calendar className="h-4 w-4" />
               {formatDate(article.publishedAt)}

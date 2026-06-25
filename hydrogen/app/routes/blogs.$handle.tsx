@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData, Link } from "react-router";
-import { Calendar, User, ArrowRight } from "lucide-react";
+import { Calendar, ArrowRight } from "lucide-react";
 
 const BLOG_QUERY = `#graphql
   query Blog($handle: String!, $first: Int!, $after: String, $language: LanguageCode)
@@ -106,11 +106,6 @@ export default function BlogPage() {
                   )}
                   <div className="mt-4 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      {article.author?.name && (
-                        <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" /> {article.author.name}
-                        </span>
-                      )}
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" /> {formatDate(article.publishedAt)}
                       </span>
