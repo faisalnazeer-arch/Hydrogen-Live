@@ -55,7 +55,7 @@ export default function ArticlePage() {
           <img
             src={article.image.url}
             alt={article.image.altText ?? article.title}
-            className="h-full w-full object-cover object-center"
+            className="h-full w-full object-cover object-top"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
         </div>
@@ -114,7 +114,7 @@ export default function ArticlePage() {
               prose-strong:text-foreground prose-strong:font-semibold
               prose-a:text-crimson prose-a:no-underline hover:prose-a:underline
               prose-li:text-neutral-600 prose-li:leading-relaxed
-              prose-img:rounded-xl prose-img:shadow-md
+              prose-img:rounded-xl prose-img:shadow-md prose-img:w-full prose-img:h-auto prose-img:object-cover
               prose-blockquote:border-crimson prose-blockquote:text-neutral-500
               prose-hr:border-border"
             dangerouslySetInnerHTML={{ __html: article.contentHtml }}
