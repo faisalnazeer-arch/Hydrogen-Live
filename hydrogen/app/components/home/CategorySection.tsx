@@ -39,7 +39,7 @@ export function CategorySection({
   return (
     <section className="container mx-auto px-4 py-3 md:py-6">
       {/* Header */}
-      <div className="mb-1.5 text-center md:mb-2">
+      <div className="text-center">
         {subtitle && (
           <div className="mb-1.5 flex items-center justify-center gap-3">
             <span className="h-px w-6 rounded-full bg-crimson" />
