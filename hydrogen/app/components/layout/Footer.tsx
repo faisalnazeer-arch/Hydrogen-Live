@@ -118,7 +118,7 @@ function BrandCol({ contact }: { contact: ContactData }) {
       <div className="mb-3">
         <img src={logo} alt="MLS UAE" className="h-14 w-auto brightness-0 invert" />
       </div>
-      <p className="text-sm font-semibold text-gold">{contact.companyName}</p>
+      <p className="text-sm font-semibold text-white">{contact.companyName}</p>
       {contact.brandText && (
         <p className="mt-1 text-sm text-off-white/70">{contact.brandText}</p>
       )}
@@ -235,7 +235,7 @@ function LinkList({ links }: { links: FooterLink[] }) {
               {l.label}
             </a>
           ) : (
-            <Link to={lp(l.url)} className="text-off-white/80 hover:text-gold">
+            <Link to={lp(l.url)} className="text-off-white/80 hover:text-white">
               {l.label}
             </Link>
           )}
