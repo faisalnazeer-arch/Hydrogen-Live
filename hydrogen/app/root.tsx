@@ -563,7 +563,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           name="description"
           content="Premium beef, lamb, mutton & specialty cuts. 100% Halal certified. Same-day delivery across the UAE & Oman."
         />
-        <title>MLS — Muscat Livestock Store · Premium Fresh Meat Delivery</title>
         <Meta />
         <Links />
         {/* Google Tag Manager */}
