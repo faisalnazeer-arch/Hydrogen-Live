@@ -158,10 +158,11 @@ function parseReelItems(
     const f = Object.fromEntries(node.fields.map((x: any) => [x.key, x]));
     const product = f["product"]?.reference;
     const video = f["video"]?.reference;
-    if (!product) continue;
+    // Allow video-only reels (no product). Skip only when there's nothing to show.
+    if (!product && !video) continue;
 
     let videoUrl: string | null = null;
-    let poster: string | null = product.featuredImage?.url ?? null;
+    let poster: string | null = product?.featuredImage?.url ?? null;
 
     if (video?.sources) {
       const mp4 = video.sources.find((s: any) => s.mimeType === "video/mp4") ?? video.sources[0];
@@ -170,16 +171,17 @@ function parseReelItems(
       poster = video.previewImage?.url ?? video.preview?.image?.url ?? poster;
     }
 
-    const price = priceMap[product.id] ?? { amount: "0", currencyCode: "AED" };
+    const price = (product && priceMap[product.id]) ?? { amount: "0", currencyCode: "AED" };
 
     reels.push({
       id: node.id,
-      title: product.title,
-      handle: product.handle,
+      title: product?.title ?? "",
+      handle: product?.handle ?? "",
       price,
       poster,
       videoUrl,
       embedUrl: null,
+      productImage: product?.featuredImage?.url ?? null,
     });
   }
   return reels;
@@ -483,41 +485,10 @@ function pickReels(edges: any[]): ReelProduct[] {
       poster: videoNode.node.previewImage?.url ?? n.featuredImage?.url ?? null,
       videoUrl: !isExternal ? (mp4?.url ?? null) : null,
       embedUrl: isExternal ? (videoNode.node.embedUrl ?? null) : null,
+      productImage: n.featuredImage?.url ?? null,
     });
   }
   return reels;
-}
-
-// Arabic hero image overrides.
-// The hero_banner metaobjects have no native Shopify (Translate & Adapt) translation
-// for their image fields, and T LAB-style translation apps inject into the Online Store
-// theme — they never reach this headless storefront. Until a native `ar` translation is
-// registered, map a slide's metaobject id to the Arabic banner image it should use in AR.
-const AR_HERO_IMAGE_OVERRIDES: Record<
-  string,
-  { desktop?: ShopifyImageRef; mobile?: ShopifyImageRef }
-> = {
-  // Slide 2 — Brazilian grass-fed beef. Arabic banners uploaded to Files.
-  "gid://shopify/Metaobject/268880183612": {
-    desktop: { url: "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/Web-ARAB-banner.jpg?v=1782037488", altText: null, width: 1920, height: 550 },
-    mobile:  { url: "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/Mobile-ARAB-Banner.jpg?v=1782037458", altText: null, width: 450, height: 650 },
-  },
-};
-
-interface ShopifyImageRef { url: string; altText: string | null; width?: number; height?: number }
-
-// Swap a hero node's image references for their Arabic equivalents (AR locale only).
-function applyArHeroImages(node: any): any {
-  const ov = AR_HERO_IMAGE_OVERRIDES[node.id];
-  if (!ov) return node;
-  return {
-    ...node,
-    fields: (node.fields ?? []).map((f: any) => {
-      if (f.key === "desktop_image" && ov.desktop) return { ...f, reference: { image: ov.desktop } };
-      if (f.key === "mobile_image"  && ov.mobile)  return { ...f, reference: { image: ov.mobile } };
-      return f;
-    }),
-  };
 }
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
@@ -690,11 +661,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const reviewTotalCount: number = (reviewsData as any)?.total_count ?? 0;
   const reviewAverage: number = (shopStats as any)?.average ?? 0;
 
-  // Hero slides. In Arabic, swap in per-slide Arabic banner images where we have them
-  // (see AR_HERO_IMAGE_OVERRIDES); slides without an override keep their English image.
-  const allHeroNodes: any[] = data?.heroBanners?.nodes ?? [];
-  const heroSlides =
-    language === "AR" ? allHeroNodes.map(applyArHeroImages) : allHeroNodes;
+  // Hero slides come straight from the @inContext query: Arabic shows the native
+  // (Translate & Adapt) translation when present, otherwise the English image.
+  const heroSlides: any[] = data?.heroBanners?.nodes ?? [];
 
   // Parse the home section layout: one key per line, in display order; lines that are
   // empty or start with # are skipped (hidden). Empty/missing → component uses its default order.

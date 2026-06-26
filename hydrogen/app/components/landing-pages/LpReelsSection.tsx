@@ -26,6 +26,7 @@ function parseReelItems(nodes: any[]): ReelProduct[] {
       poster,
       videoUrl,
       embedUrl: null,
+      productImage: product.featuredImage?.url ?? null,
     });
   }
   return reels;

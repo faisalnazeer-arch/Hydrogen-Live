@@ -217,6 +217,7 @@ export interface ReelProduct {
   poster: string | null;
   videoUrl: string | null;
   embedUrl: string | null;
+  productImage: string | null;
 }
 
 

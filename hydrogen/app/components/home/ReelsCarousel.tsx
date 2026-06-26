@@ -1,17 +1,11 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router";
 import { useLocalePath } from "@/stores/localeStore";
 import { useT } from "@/i18n/strings";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, X, Volume2, VolumeX, ChevronUp, ChevronDown, ShoppingBag } from "lucide-react";
-import {
-  formatPrice,
-  shopifyImageUrl,
-  type ReelProduct,
-} from "@/lib/shopify";
-import { Button } from "@/components/ui/button";
+import { Play, X, Volume2, VolumeX } from "lucide-react";
+import { formatPrice, shopifyImageUrl, type ReelProduct } from "@/lib/shopify";
 import { HScroller } from "./HScroller";
-import { cn } from "@/lib/utils";
 
 
 export function ReelsCarousel({ reels, label, heading }: { reels: ReelProduct[]; label?: string; heading?: string }) {
@@ -110,12 +104,14 @@ function ReelCard({ reel: r, onOpen }: { reel: ReelProduct; onOpen: () => void }
         />
       )}
       <div className="absolute inset-0 bg-gradient-to-b from-charcoal/70 via-charcoal/10 to-transparent" />
-      <div className="absolute inset-x-2 top-2 text-left">
-        <div className="line-clamp-2 text-[11px] font-semibold leading-tight text-off-white">{r.title}</div>
-        <div className="mt-0.5 text-[10px] font-bold text-crimson-foreground">
-          {formatPrice(r.price.amount, r.price.currencyCode)}
+      {r.handle && (
+        <div className="absolute inset-x-2 top-2 text-left">
+          <div className="line-clamp-2 text-[11px] font-semibold leading-tight text-off-white">{r.title}</div>
+          <div className="mt-0.5 text-[10px] font-bold text-crimson-foreground">
+            {formatPrice(r.price.amount, r.price.currencyCode)}
+          </div>
         </div>
-      </div>
+      )}
       <div className="absolute inset-0 grid place-items-center">
         <span className="grid h-12 w-12 place-items-center rounded-full bg-off-white/90 text-charcoal shadow-md transition-all duration-300 group-hover:scale-110 group-hover:opacity-0">
           <Play className="ml-0.5 h-5 w-5 fill-current" />
@@ -125,6 +121,7 @@ function ReelCard({ reel: r, onOpen }: { reel: ReelProduct; onOpen: () => void }
   );
 }
 
+// ── Full-screen TikTok-style player ──────────────────────────────────────────
 function ReelsPlayer({
   reels,
   startIndex,
@@ -134,145 +131,166 @@ function ReelsPlayer({
   startIndex: number;
   onClose: () => void;
 }) {
-  const lp = useLocalePath();
-  const t = useT();
-  const [index, setIndex] = useState(startIndex);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [muted, setMuted] = useState(true);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const reel = reels[index];
+  const [activeId, setActiveId] = useState<string | null>(reels[startIndex]?.id ?? null);
 
-  // Autoplay on change
+  // Jump to the opened reel, lock body scroll, ESC to close.
   useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.currentTime = 0;
-    v.play().catch(() => {/* autoplay blocked */});
-  }, [index]);
-
-  // ESC to close
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowDown") setIndex((i) => Math.min(reels.length - 1, i + 1));
-      if (e.key === "ArrowUp") setIndex((i) => Math.max(0, i - 1));
-    };
-    window.addEventListener("keydown", onKey);
+    const el = containerRef.current?.children[startIndex] as HTMLElement | undefined;
+    el?.scrollIntoView({ behavior: "auto" });
     document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
-  }, [reels.length, onClose]);
-
-  const next = () => setIndex((i) => Math.min(reels.length - 1, i + 1));
-  const prev = () => setIndex((i) => Math.max(0, i - 1));
-
-  if (!reel) return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] grid place-items-center bg-charcoal/95 backdrop-blur"
+      className="fixed inset-0 z-[100] bg-black"
       onClick={onClose}
     >
+      {/* Global controls */}
       <button
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-off-white/10 text-off-white hover:bg-off-white/20"
+        className="absolute right-4 top-4 z-20 grid h-10 w-10 place-items-center rounded-full bg-off-white/15 text-off-white backdrop-blur transition-colors hover:bg-off-white/25"
       >
         <X className="h-5 w-5" />
       </button>
+      <button
+        type="button"
+        aria-label={muted ? "Unmute" : "Mute"}
+        onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
+        className="absolute right-4 top-16 z-20 grid h-10 w-10 place-items-center rounded-full bg-off-white/15 text-off-white backdrop-blur transition-colors hover:bg-off-white/25"
+      >
+        {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+      </button>
 
+      {/* Vertical snap scroller — swipe up/down between reels (TikTok-style) */}
       <div
-        className="relative h-[88vh] max-h-[800px] aspect-[9/16] overflow-hidden rounded-2xl bg-black shadow-2xl"
+        ref={containerRef}
+        className="h-full w-full snap-y snap-mandatory overflow-y-scroll overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {reels.map((reel) => (
+          <ReelSlide
+            key={reel.id}
+            reel={reel}
+            muted={muted}
+            active={activeId === reel.id}
+            onActive={() => setActiveId(reel.id)}
+            onClose={onClose}
+          />
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+function ReelSlide({
+  reel,
+  muted,
+  active,
+  onActive,
+  onClose,
+}: {
+  reel: ReelProduct;
+  muted: boolean;
+  active: boolean;
+  onActive: () => void;
+  onClose: () => void;
+}) {
+  const lp = useLocalePath();
+  const t = useT();
+  const slideRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Become active when this slide is the one in view.
+  useEffect(() => {
+    const el = slideRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting && e.intersectionRatio >= 0.6) onActive(); },
+      { threshold: [0.6] }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Only the active slide plays.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (active) { v.currentTime = 0; v.play().catch(() => {}); }
+    else v.pause();
+  }, [active]);
+
+  const thumb = reel.productImage ?? reel.poster;
+
+  return (
+    <div ref={slideRef} className="relative flex h-full w-full snap-start snap-always items-center justify-center">
+      <div
+        className="relative h-full w-full overflow-hidden bg-black md:aspect-[9/16] md:w-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {reel.videoUrl ? (
           <video
             ref={videoRef}
-            key={reel.id}
             src={reel.videoUrl}
             poster={reel.poster ?? undefined}
             playsInline
-            autoPlay
             loop
             muted={muted}
             className="h-full w-full object-cover"
           />
         ) : reel.embedUrl ? (
           <iframe
-            key={reel.id}
-            src={`${reel.embedUrl}?autoplay=1&mute=${muted ? 1 : 0}&controls=0&loop=1`}
+            src={`${reel.embedUrl}?autoplay=${active ? 1 : 0}&mute=${muted ? 1 : 0}&controls=0&loop=1`}
             allow="autoplay; encrypted-media"
             className="h-full w-full"
           />
+        ) : reel.poster ? (
+          <img src={reel.poster} alt={reel.title} className="h-full w-full object-cover" />
         ) : null}
 
-        {/* Gradient overlay */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/85 to-transparent" />
+        {/* Bottom gradient for legibility */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/80 to-transparent" />
 
-        {/* Top-right controls */}
-        <div className="absolute right-3 top-3 flex flex-col gap-2">
-          {reel.videoUrl && (
-            <button
-              type="button"
-              aria-label={muted ? "Unmute" : "Mute"}
-              onClick={() => setMuted((m) => !m)}
-              className="grid h-10 w-10 place-items-center rounded-full bg-off-white/10 text-off-white hover:bg-off-white/20"
+        {/* Product card — only when the reel is linked to a product */}
+        {reel.handle && (
+          <div className="absolute inset-x-3 bottom-4 flex items-center gap-3 rounded-2xl bg-white/95 p-2.5 shadow-xl backdrop-blur">
+            {thumb && (
+              <img
+                src={shopifyImageUrl(thumb, 120)}
+                alt={reel.title}
+                className="h-14 w-14 shrink-0 rounded-xl object-cover"
+              />
+            )}
+            <div className="min-w-0 flex-1 text-left">
+              <p className="truncate text-[13px] font-semibold leading-tight text-charcoal">{reel.title}</p>
+              <p className="mt-0.5 text-[14px] font-extrabold text-crimson">
+                {formatPrice(reel.price.amount, reel.price.currencyCode)}
+              </p>
+            </div>
+            <Link
+              to={lp(`/products/${reel.handle}`)}
+              onClick={onClose}
+              className="shrink-0 rounded-xl bg-crimson px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide !text-white shadow transition-colors hover:bg-rich-red"
             >
-              {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-            </button>
-          )}
-        </div>
-
-        {/* Up/Down navigation */}
-        <button
-          type="button"
-          aria-label="Previous reel"
-          onClick={prev}
-          disabled={index === 0}
-          className={cn(
-            "absolute left-1/2 top-3 -translate-x-1/2 grid h-9 w-9 place-items-center rounded-full bg-off-white/10 text-off-white hover:bg-off-white/20",
-            index === 0 && "opacity-30 cursor-not-allowed"
-          )}
-        >
-          <ChevronUp className="h-5 w-5" />
-        </button>
-        <button
-          type="button"
-          aria-label="Next reel"
-          onClick={next}
-          disabled={index === reels.length - 1}
-          className={cn(
-            "absolute bottom-24 left-1/2 -translate-x-1/2 grid h-9 w-9 place-items-center rounded-full bg-off-white/10 text-off-white hover:bg-off-white/20",
-            index === reels.length - 1 && "opacity-30 cursor-not-allowed"
-          )}
-        >
-          <ChevronDown className="h-5 w-5" />
-        </button>
-
-        {/* Bottom info + CTA */}
-        <div className="absolute inset-x-0 bottom-0 p-4">
-          <div className="mb-2 line-clamp-2 text-sm font-semibold text-off-white">
-            {reel.title}
-          </div>
-          <div className="mb-3 font-display text-xl font-bold text-off-white">
-            {formatPrice(reel.price.amount, reel.price.currencyCode)}
-          </div>
-          <Button
-            asChild
-            className="w-full bg-crimson !text-white hover:bg-rich-red"
-            onClick={onClose}
-          >
-            <Link to={lp(`/products/${reel.handle}`)}>
-              <ShoppingBag className="mr-2 h-4 w-4" /> {t("common.shop_this")}
+              {t("common.shop_this")}
             </Link>
-          </Button>
-        </div>
+          </div>
+        )}
       </div>
-    </motion.div>
+    </div>
   );
 }
