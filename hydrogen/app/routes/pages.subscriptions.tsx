@@ -492,8 +492,10 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         <span className="font-display text-sm font-semibold md:text-base">{q}</span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
-      <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: open ? "300px" : "0px" }}>
-        <p className="px-5 pb-5 text-sm leading-relaxed text-muted-foreground">{a}</p>
+      <div className={`grid transition-all duration-300 ease-in-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+        <div className="overflow-hidden">
+          <p className="px-5 pb-5 text-sm leading-relaxed text-muted-foreground">{a}</p>
+        </div>
       </div>
     </div>
   );
@@ -513,8 +515,10 @@ function PolicyItem({ index, question, answer }: { index: number; question: stri
         <span className="flex-1 font-display text-sm font-semibold text-white md:text-base">{question}</span>
         <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${open ? "rotate-180 text-crimson" : "text-white/65"}`} />
       </button>
-      <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: open ? "400px" : "0px" }}>
-        <p className="px-5 pb-5 text-sm leading-relaxed text-white/80 md:px-6 md:pb-6 md:text-[0.9375rem]">{answer}</p>
+      <div className={`grid transition-all duration-300 ease-in-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+        <div className="overflow-hidden">
+          <p className="px-5 pb-5 text-sm leading-relaxed text-white/80 md:px-6 md:pb-6 md:text-[0.9375rem]">{answer}</p>
+        </div>
       </div>
     </div>
   );
