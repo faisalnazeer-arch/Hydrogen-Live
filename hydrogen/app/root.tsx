@@ -563,9 +563,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
           name="description"
           content="Premium beef, lamb, mutton & specialty cuts. 100% Halal certified. Same-day delivery across the UAE & Oman."
         />
-        <title>MLS — Muscat Livestock Store · Premium Fresh Meat Delivery</title>
-        {/* Site-wide social tags (match the live site). Per-page og:title/description/image
-            and the real <title> come from each route's meta via <Meta/> below. */}
+        {/* Site-wide social tags (match the live site). The real page title and per-page
+            og:title/description/image come from each route's meta via <Meta/> below.
+            (No hardcoded <title> here — it would duplicate the route title.) */}
         <meta property="og:site_name" content="MLS UAE" />
         <meta property="og:locale" content={locale === "ar" ? "ar_AR" : "en_US"} />
         <meta name="twitter:card" content="summary_large_image" />
