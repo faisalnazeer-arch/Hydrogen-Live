@@ -3,6 +3,7 @@ import { Form, useActionData, useNavigation, useLoaderData } from "react-router"
 import { SHOPIFY_STORE_PERMANENT_DOMAIN } from "~/lib/shopify";
 import { MapPin, Phone, Mail, Clock, MessageCircle, CheckCircle2, ArrowRight, Send } from "lucide-react";
 import { detectLanguage } from "../lib/locale";
+import { applyArImages } from "../lib/arImages";
 
 export const meta: MetaFunction = () => [
   { title: "Contact Us — MLS UAE" },
@@ -32,6 +33,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     variables: { language, country: "AE" as const },
     cache: context.storefront.CacheNone(),
   });
+  if (language === "AR") applyArImages(data);
   const fields = Object.fromEntries(
     (data?.metaobject?.fields ?? []).map((f: any) => [f.key, f])
   );

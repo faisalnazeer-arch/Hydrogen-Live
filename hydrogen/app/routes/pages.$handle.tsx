@@ -1,5 +1,6 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData, Link } from "react-router";
+import { applyArImages } from "~/lib/arImages";
 import { LpHeroSlide } from "~/components/landing-pages/LpHeroSlide";
 import { LpProductGridSection } from "~/components/landing-pages/LpProductGridSection";
 import { LpReelsSection } from "~/components/landing-pages/LpReelsSection";
@@ -281,6 +282,9 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
       lpPageNodes = enNodes;
     }
   }
+
+  // In Arabic, swap any landing-page image for its `*_ar` counterpart where set.
+  if (userLanguage === "AR") applyArImages(lpPageNodes);
 
   // Regular prose page
   if (lpPageNodes.length === 0) {

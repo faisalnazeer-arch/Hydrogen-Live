@@ -3,6 +3,7 @@ import { useLoaderData } from "react-router";
 import { useCallback } from "react";
 import { FaqAccordion } from "@/components/ui/FaqAccordion";
 import { detectLanguage } from "../lib/locale";
+import { applyArImages } from "../lib/arImages";
 
 export const meta: MetaFunction = () => [
   { title: "MLS Affiliate Program — Make Money with MLS" },
@@ -75,9 +76,11 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     variables: { language, country: "AE" as const },
     cache: context.storefront.CacheNone(),
   });
+  if (language === "AR") applyArImages(data);
   let node = data?.metaobjects?.nodes?.[0];
   if (!node) {
     const adminData = await context.adminFetch(ADMIN_PAGE_QUERY).catch(() => null);
+    if (language === "AR") applyArImages(adminData);
     node = (adminData as any)?.metaobjects?.nodes?.[0] ?? null;
   }
   const f = Object.fromEntries((node?.fields ?? []).map((x: any) => [x.key, x]));

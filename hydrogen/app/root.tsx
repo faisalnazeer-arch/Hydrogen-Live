@@ -27,6 +27,7 @@ import { useCartSync } from "./hooks/useCartSync";
 import { useCartStore } from "./stores/cartStore";
 import { useLocaleStore, dirFor } from "./stores/localeStore";
 import { detectLanguage } from "./lib/locale";
+import { applyArImages } from "./lib/arImages";
 
 const DEFAULT_FAVICON = "https://cdn.shopify.com/s/files/1/0821/0202/6556/files/MLS-favicon.png?v=1693298131";
 
@@ -443,6 +444,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       }),
       context.adminFetch(ADMIN_FOOTER_QUERY),
     ]);
+    // In Arabic, swap any image field for its `*_ar` counterpart where set (mobile banners,
+    // nav images, etc.). English is untouched; empty `*_ar` falls back to the default image.
+    if (language === "AR") { applyArImages(data); applyArImages(adminData); }
     const mainMenu               = parseShopifyMenu(data?.mainMenu,              "main");
     const secondaryMenu          = parseShopifyMenu(data?.secondaryMenu,         "secondary");
     const mobileCategoriesMenu   = parseShopifyMenu(data?.mobileCategoriesMenu,  "mobile-cat");

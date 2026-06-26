@@ -3,6 +3,7 @@ import { useLoaderData, Link } from "react-router";
 import { Star, ChevronDown, ArrowRight, Settings, CheckCircle2, ChevronLeft, ChevronRight, ShieldCheck, MessageCircle } from "lucide-react";
 import { useState } from "react";
 import { detectLanguage } from "../lib/locale";
+import { applyArImages } from "../lib/arImages";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => [
   { title: `${data?.page?.heroTitle ?? "Subscriptions"} — MLS UAE` },
@@ -75,6 +76,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const admin = await context.adminFetch(ADMIN_PAGE_QUERY).catch(() => null);
     if ((admin as any)?.page?.nodes?.length) pageData = admin;
   }
+  if (language === "AR") applyArImages(pageData);
 
   // ── Subscription page ──
   const node = pageData?.page?.nodes?.[0];

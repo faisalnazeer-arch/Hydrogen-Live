@@ -2,6 +2,7 @@ import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData } from "react-router";
 import { Mail, MessageCircle, RefreshCw, BadgeCheck, Quote } from "lucide-react";
 import { detectLanguage } from "../lib/locale";
+import { applyArImages } from "../lib/arImages";
 
 export const meta: MetaFunction = () => [
   { title: "Refund & Exchange Policy — MLS UAE" },
@@ -39,6 +40,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     variables: { language, country: "AE" as const },
     cache: context.storefront.CacheNone(),
   });
+  if (language === "AR") applyArImages(data);
   const node = data?.metaobjects?.nodes?.[0];
   const f = Object.fromEntries((node?.fields ?? []).map((x: any) => [x.key, x]));
 

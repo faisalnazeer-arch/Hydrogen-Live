@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData, useRouteError, isRouteErrorResponse } from "react-router";
 import { detectLanguage } from "../lib/locale";
+import { applyArImages } from "../lib/arImages";
 import { useT } from "../i18n/strings";
 import { HeroBanner } from "../components/home/HeroBanner";
 import { TrustBadges } from "../components/home/TrustBadges";
@@ -541,6 +542,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     firstOrderGift:          sf(sfMetaRes?.gift,                 giftRes),
   };
 
+  // In Arabic, swap any image field for its `*_ar` counterpart where set (all metaobjects).
+  if (language === "AR") applyArImages(data);
+
   const parsed = parseFeaturedCollections(data?.featuredCollections?.nodes ?? []);
 
   // Fetch products for each unique collection handle via Storefront API (Admin API prices are incompatible)
@@ -661,8 +665,6 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const reviewTotalCount: number = (reviewsData as any)?.total_count ?? 0;
   const reviewAverage: number = (shopStats as any)?.average ?? 0;
 
-  // Hero slides come straight from the @inContext query: Arabic shows the native
-  // (Translate & Adapt) translation when present, otherwise the English image.
   const heroSlides: any[] = data?.heroBanners?.nodes ?? [];
 
   // Parse the home section layout: one key per line, in display order; lines that are

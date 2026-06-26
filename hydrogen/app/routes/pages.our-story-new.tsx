@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "react-router";
 import { ArrowRight, ShieldCheck, Award, Heart } from "lucide-react";
 import { detectLanguage } from "../lib/locale";
+import { applyArImages } from "../lib/arImages";
 
 function clean(s: string): string {
   return (s ?? "")
@@ -55,6 +56,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     variables: { language, country: "AE" as const },
     cache: context.storefront.CacheNone(),
   });
+  if (language === "AR") applyArImages(data);
   const node = data?.metaobjects?.nodes?.[0];
   const f = Object.fromEntries((node?.fields ?? []).map((x: any) => [x.key, x]));
 

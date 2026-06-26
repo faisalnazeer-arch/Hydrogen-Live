@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { ShoppingBag, Star, Tag, ArrowRight, Gift, Zap, Shield, Clock } from "lucide-react";
 import { detectLanguage } from "../lib/locale";
+import { applyArImages } from "../lib/arImages";
 
 export const meta: MetaFunction = () => [
   { title: "MLS Rewards — Unlock Savings & Rewards" },
@@ -39,6 +40,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       variables: { language, country: "AE" as const },
       cache: context.storefront.CacheNone(),
     });
+    if (language === "AR") applyArImages(data);
     const node = data?.metaobjects?.nodes?.[0];
     if (!node) return DEFAULTS;
     const f = Object.fromEntries((node.fields as any[]).map((x: any) => [x.key, x]));
