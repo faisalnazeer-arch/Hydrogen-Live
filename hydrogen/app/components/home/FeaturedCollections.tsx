@@ -23,7 +23,7 @@ export function FeaturedCollections({ cards, title, subtitle }: FeaturedCollecti
   if (!cards || cards.length === 0) return null;
 
   return (
-    <section className="container mx-auto px-4 py-6 md:py-8">
+    <section className="container mx-auto px-4 py-3 md:py-6">
       {(title || subtitle) && <SectionHeader title={title ?? ""} subtitle={subtitle} />}
       <HScroller>
         {cards.map((c) => (

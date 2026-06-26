@@ -43,7 +43,7 @@ export function RecentlyViewed({ excludeHandle }: RecentlyViewedProps = {}) {
   if (!data || data.length === 0) return null;
 
   return (
-    <section className="container mx-auto px-4 py-12">
+    <section className="container mx-auto px-4 py-3 md:py-6">
       <SectionHeader title="Recently Viewed" subtitle="Pick up where you left off" />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {data.slice(0, 5).map((p) => (

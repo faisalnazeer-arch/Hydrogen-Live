@@ -39,7 +39,7 @@ export function ValueBoxesBanner({ banner }: Props) {
   if (!banner.heading) return null;
 
   return (
-    <section className="container mx-auto px-4 py-8 md:py-12">
+    <section className="container mx-auto px-4 py-3 md:py-6">
       <div className="relative overflow-hidden rounded-2xl bg-charcoal">
 
         {/* Background image */}

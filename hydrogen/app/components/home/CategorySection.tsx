@@ -37,9 +37,9 @@ export function CategorySection({
   const viewAllHandle = activeTab ? activeTab.handle : handle;
 
   return (
-    <section className="container mx-auto px-4 py-8 md:py-12">
+    <section className="container mx-auto px-4 py-3 md:py-6">
       {/* Header */}
-      <div className="mb-4 text-center md:mb-5">
+      <div className="mb-1.5 text-center md:mb-2">
         {subtitle && (
           <div className="mb-1.5 flex items-center justify-center gap-3">
             <span className="h-px w-6 rounded-full bg-crimson" />
@@ -54,7 +54,7 @@ export function CategorySection({
 
       {/* Tabs */}
       {hasTabs && (
-        <div className="mb-2 flex justify-center md:mb-3">
+        <div className="mb-1.5 flex justify-center md:mb-2">
           <div className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {tabs.map((tab, idx) => {
               const isActive = idx === activeIdx;
@@ -79,7 +79,7 @@ export function CategorySection({
       )}
 
       {/* View all */}
-      <div className="mb-3 text-center">
+      <div className="mb-2 text-center">
         <Link
           to={lp(`/collections/${viewAllHandle}`)}
           className="inline-flex items-center gap-1 text-xs font-semibold text-crimson underline-offset-2 hover:underline md:text-sm"

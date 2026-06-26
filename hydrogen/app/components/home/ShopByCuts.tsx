@@ -11,10 +11,10 @@ export function ShopByCuts({ section }: Props) {
   if (!section || section.items.length === 0) return null;
 
   return (
-    <section className="py-8 md:py-12">
+    <section className="py-3 md:py-6">
       <div className="container mx-auto px-4">
 
-        <div className="mb-4 text-center md:mb-5">
+        <div className="mb-3 text-center md:mb-4">
           <div className="mb-1.5 flex items-center justify-center gap-3">
             <span className="h-px w-6 rounded-full bg-crimson" />
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">
@@ -28,7 +28,7 @@ export function ShopByCuts({ section }: Props) {
         </div>
 
         {/* Slider — all screen sizes */}
-        <HScroller className="px-2">
+        <HScroller>
           {section.items.map((c) => (
             <CutCard key={c.id} cut={c} />
           ))}
@@ -45,7 +45,7 @@ function CutCard({ cut }: { cut: CutsSectionData["items"][0] }) {
     <Link
       to={lp(cut.url)}
       prefetch="intent"
-      className="group flex w-24 shrink-0 snap-start flex-col items-center gap-3 md:w-32"
+      className="group flex w-[72px] shrink-0 snap-start flex-col items-center gap-3 md:w-32"
     >
       {/* Circle avatar */}
       <div

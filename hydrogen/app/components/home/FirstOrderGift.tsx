@@ -48,12 +48,12 @@ export function FirstOrderGift({ data }: Props) {
   if (!data || data.items.length === 0) return null;
 
   return (
-    <section className="bg-background py-8 md:py-12">
+    <section className="bg-background py-3 md:py-6">
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-5xl">
 
           {/* ── Header ── */}
-          <div className="mb-4 text-center md:mb-5">
+          <div className="mb-3 text-center md:mb-4">
             <div className="mb-1.5 flex items-center justify-center gap-3">
               <span className="h-px w-6 rounded-full bg-crimson" />
               <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">
@@ -76,20 +76,15 @@ export function FirstOrderGift({ data }: Props) {
             <div className="grid grid-cols-3 divide-x divide-border">
               {data.items.map((item, i) => (
                 <div key={i} className="flex flex-col items-center gap-1.5 px-2 py-3.5 text-center">
-                  {/* Emoji circle with step badge */}
-                  <div className="relative">
-                    <div className="grid h-10 w-10 place-items-center rounded-full bg-crimson/8 text-xl">
-                      {item.emoji}
-                    </div>
-                    <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-crimson text-[8px] font-black leading-none text-white shadow-sm">
-                      {i + 1}
-                    </span>
+                  {/* Emoji circle */}
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-crimson/8 text-xl">
+                    {item.emoji}
                   </div>
                   {/* Title */}
                   <p className="text-[10px] font-bold leading-tight text-foreground">{item.title}</p>
                   {/* Subtitle */}
                   {item.subtitle && (
-                    <p className="text-[9px] leading-tight text-muted-foreground">{item.subtitle}</p>
+                    <p className="-mt-1 text-[9px] leading-tight text-muted-foreground">{item.subtitle}</p>
                   )}
                 </div>
               ))}
@@ -103,14 +98,11 @@ export function FirstOrderGift({ data }: Props) {
                 key={i}
                 className="group flex flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
               >
-                {/* Emoji + ghost step number */}
-                <div className="mb-4 flex items-start justify-between">
+                {/* Emoji */}
+                <div className="mb-4 flex items-start">
                   <div className="grid h-11 w-11 place-items-center rounded-xl bg-crimson/8 text-2xl">
                     {item.emoji}
                   </div>
-                  <span className="font-display select-none text-5xl font-black leading-none text-foreground/[0.05]">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
                 </div>
 
                 {/* Title */}

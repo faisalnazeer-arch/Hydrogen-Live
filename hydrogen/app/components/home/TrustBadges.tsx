@@ -49,7 +49,7 @@ export function TrustBadges({ badges: rawBadges = [], centered = false }: TrustB
   if (parsed.length === 0) return null;
 
   return (
-    <section className="border-b border-border bg-background py-6 md:py-8">
+    <section className="border-b border-border bg-background py-3 md:py-6">
       <div className="container mx-auto px-4">
 
         {/* ── Mobile: icon-above-text, 3 across ── */}

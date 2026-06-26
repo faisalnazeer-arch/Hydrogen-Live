@@ -35,10 +35,10 @@ export function ShopByCategory({ section }: Props) {
   if (!section || section.items.length === 0) return null;
 
   return (
-    <section className="py-8 md:py-12">
+    <section className="py-3 md:py-6">
       <div className="container mx-auto px-4">
 
-        <div className="mb-4 text-center md:mb-5">
+        <div className="mb-3 text-center md:mb-4">
           <div className="mb-1.5 flex items-center justify-center gap-3">
             <span className="h-px w-6 rounded-full bg-crimson" />
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">

@@ -36,7 +36,7 @@ export function PromoSideBySide({ promo }: PromoSideBySideProps) {
   if (!promo) return null;
 
   return (
-    <section className="container mx-auto px-4 py-8 md:py-12">
+    <section className="container mx-auto px-4 py-3 md:py-6">
       <div className="grid overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)] md:grid-cols-2">
         {/* Image side — left on desktop, below text on mobile */}
         {promo.imageUrl && (

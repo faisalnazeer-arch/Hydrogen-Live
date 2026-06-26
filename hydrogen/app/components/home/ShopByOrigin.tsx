@@ -20,7 +20,7 @@ function OriginFlag({
 
   if (src) {
     return (
-      <div className="relative h-16 w-16 transition-transform duration-300 group-hover:scale-105">
+      <div className="relative h-14 w-14 md:h-16 md:w-16 transition-transform duration-300 group-hover:scale-105">
         <div className="absolute inset-0 rounded-full bg-gradient-to-br from-crimson/20 to-crimson/5 ring-2 ring-crimson/30 shadow-md" />
         <img
           src={src}
@@ -33,7 +33,7 @@ function OriginFlag({
   }
 
   return (
-    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-crimson/10 to-bone shadow-md ring-2 ring-crimson/30 transition-transform duration-300 group-hover:scale-105">
+    <div className="flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-full bg-gradient-to-br from-crimson/10 to-bone shadow-md ring-2 ring-crimson/30 transition-transform duration-300 group-hover:scale-105">
       <svg viewBox="0 0 64 64" className="h-8 w-8 text-crimson/60" fill="none" stroke="currentColor" strokeWidth="1.5">
         <circle cx="32" cy="32" r="18" />
         <path d="M32 14 C20 20 20 44 32 50 C44 44 44 20 32 14Z" />
@@ -79,11 +79,11 @@ export function ShopByOrigin({ section }: Props) {
       : section.items;
 
   return (
-    <section className="bg-bone py-8 md:py-12">
+    <section className="bg-bone py-3 md:py-6">
       <div className="container mx-auto px-4">
 
         {/* Header */}
-        <div className="mb-4 text-center md:mb-5">
+        <div className="mb-3 text-center md:mb-4">
           <div className="mb-1.5 flex items-center justify-center gap-3">
             <span className="h-px w-6 rounded-full bg-crimson" />
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">
@@ -98,7 +98,7 @@ export function ShopByOrigin({ section }: Props) {
 
         {/* Tabs */}
         {categories.length > 1 && (
-          <div className="mb-3 flex justify-center md:mb-4">
+          <div className="mb-2 flex justify-center md:mb-3">
             <div className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {categories.map((tab) => {
                 const isActive = activeTab === tab;
@@ -123,12 +123,12 @@ export function ShopByOrigin({ section }: Props) {
         )}
 
         {/* Carousel — keyed by tab so it resets scroll position on tab change */}
-        <HScroller key={activeTab} innerClassName="md:justify-center">
+        <HScroller key={activeTab} innerClassName="md:[justify-content:safe_center]">
           {activeItems.map((item) => (
             <Link
               key={item.id}
               to={lp(item.link)}
-              className="group flex w-[148px] shrink-0 snap-start flex-col items-center gap-3 rounded-2xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-1 hover:border-crimson hover:shadow-[var(--shadow-card)]"
+              className="group flex w-[112px] shrink-0 snap-start flex-col items-center gap-2 rounded-2xl border border-border bg-card p-3 md:w-[148px] md:gap-3 md:p-5 transition-all duration-200 hover:-translate-y-1 hover:border-crimson hover:shadow-[var(--shadow-card)]"
             >
               <OriginFlag
                 imageUrl={item.imageUrl}

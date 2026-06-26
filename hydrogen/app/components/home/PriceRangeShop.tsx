@@ -74,7 +74,7 @@ export function PriceRangeShop({ section, tiles = [] }: PriceRangeShopProps) {
         <div className="mx-auto max-w-6xl">
 
           {/* ── Centered header — consistent with other sections ── */}
-          <div className="mb-4 text-center md:mb-5">
+          <div className="mb-3 text-center md:mb-4">
             <div className="mb-1.5 flex items-center justify-center gap-3">
               <span className="h-px w-6 rounded-full bg-crimson" />
               <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-crimson">
