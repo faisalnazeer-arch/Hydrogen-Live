@@ -48,6 +48,7 @@ export default hydrogenRoutes([
   route('sitemap.xml', 'routes/sitemap[.]xml.tsx'),
   route('robots.txt', 'routes/robots[.]txt.tsx'),
   route('search', 'routes/search.tsx', { id: 'search' }),
+  route('collections', 'routes/collections._index.tsx'),
   route('collections/:handle', 'routes/collections.$handle.tsx'),
   route('blogs/all', 'routes/blogs.all.tsx'),
   route('blogs/:handle', 'routes/blogs.$handle.tsx'),

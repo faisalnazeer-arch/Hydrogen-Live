@@ -455,15 +455,28 @@ const HOME_JSON_LD = {
   ],
 };
 
+const WEBSITE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "MLS UAE",
+  url: "https://mlsuae.ae",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: "https://mlsuae.ae/search?q={search_term_string}",
+    "query-input": "required name=search_term_string",
+  },
+};
+
 export const meta: MetaFunction = () => [
-  { title: "MLS UAE — Premium Meats" },
+  { title: "MLS UAE — Fresh Meat Delivery in Dubai & Abu Dhabi" },
   { name: "description", content: "Premium Wagyu, Angus, lamb and more — delivered." },
   { property: "og:type", content: "website" },
-  { property: "og:title", content: "MLS UAE — Premium Meats" },
+  { property: "og:title", content: "MLS UAE — Fresh Meat Delivery in Dubai & Abu Dhabi" },
   { property: "og:description", content: "Premium Wagyu, Angus, lamb and more — delivered across the UAE." },
   { property: "og:url", content: "https://mlsuae.ae/" },
   { tagName: "link", rel: "canonical", href: "https://mlsuae.ae/" },
   { "script:ld+json": HOME_JSON_LD },
+  { "script:ld+json": WEBSITE_JSON_LD },
 ];
 
 
@@ -744,7 +757,12 @@ export default function Home() {
   const requested = (sectionOrder ?? []).filter((k) => k in sections);
   const order = requested.length > 0 ? requested : [...HOME_SECTION_ORDER];
 
-  return <>{order.map((k) => sections[k])}</>;
+  return (
+    <>
+      <h1 className="sr-only">Premium Fresh Meat Delivery in Dubai, Abu Dhabi &amp; UAE</h1>
+      {order.map((k) => sections[k])}
+    </>
+  );
 }
 
 export function ErrorBoundary() {

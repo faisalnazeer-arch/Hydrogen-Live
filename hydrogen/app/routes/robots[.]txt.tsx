@@ -13,6 +13,8 @@ Disallow: /checkouts/
 Disallow: /checkout
 Disallow: /carts
 Disallow: /account
+Disallow: /82102026556/checkouts
+Disallow: /82102026556/orders
 Disallow: /collections/*sort_by*
 Disallow: /*/collections/*sort_by*
 Disallow: /collections/*+*
@@ -149,7 +151,7 @@ Allow: /
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
-  const isProduction = url.hostname === PRODUCTION_HOST;
+  const isProduction = url.hostname === PRODUCTION_HOST || process.env.NODE_ENV === 'production';
 
   const body = isProduction
     ? PRODUCTION_ROBOTS
