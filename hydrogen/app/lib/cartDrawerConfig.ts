@@ -1,10 +1,12 @@
 import { useRouteLoaderData } from "react-router";
+import type { FreeGiftRule } from "@/stores/cartStore";
 
 export interface CartDrawerConfig {
   freeShippingThreshold: number;
   deliveryItems: string[];
   freeGiftSubVariantId: string;
   freeGiftCarVariantId: string;
+  freeGiftRules: FreeGiftRule[];
 }
 
 const DEFAULT_CONFIG: CartDrawerConfig = {
@@ -17,6 +19,7 @@ const DEFAULT_CONFIG: CartDrawerConfig = {
   ],
   freeGiftSubVariantId: "gid://shopify/ProductVariant/48766692720956",
   freeGiftCarVariantId: "gid://shopify/ProductVariant/48650846765372",
+  freeGiftRules: [],
 };
 
 export function useCartDrawerConfig(): CartDrawerConfig {
@@ -28,5 +31,6 @@ export function useCartDrawerConfig(): CartDrawerConfig {
     deliveryItems: config.deliveryItems?.length > 0 ? config.deliveryItems : DEFAULT_CONFIG.deliveryItems,
     freeGiftSubVariantId: config.freeGiftSubVariantId ?? "",
     freeGiftCarVariantId: config.freeGiftCarVariantId ?? "",
+    freeGiftRules: config.freeGiftRules ?? [],
   };
 }

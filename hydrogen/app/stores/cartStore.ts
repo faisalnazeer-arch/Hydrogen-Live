@@ -417,17 +417,24 @@ const EMPTY: Pick<CartStore,
 
 // ── Free gift helpers ──────────────────────────────────────────────────────
 
-// Set by CartDrawer on mount from the mls_cart_drawer_config metaobject.
-const _giftIds = { sub: "", car: "" };
-export function initGiftIds(sub: string, car: string) {
-  _giftIds.sub = sub;
-  _giftIds.car = car;
+// One rule per free gift, driven by the mls_free_gift_rule metaobjects.
+export interface FreeGiftRule {
+  variantId: string;       // free product variant to add
+  matchTitles: string[];   // lowercase substrings; a line-item title must CONTAIN one (OR). Empty = any item
+  minSubtotal: number;     // 0 = no minimum
+  subtotalScope: "cart_total" | "matched_items" | "subscription_items";
+  requireSubscription: boolean;
 }
 
-// Pre-fetch gift variant images so they're cached before the first subscription add
-export function warmGiftCache(sub: string, car: string) {
-  if (sub) void fetchGiftVariantData(sub);
-  if (car) void fetchGiftVariantData(car);
+// Set by CartDrawer on mount from the mls_free_gift_rule metaobjects.
+let _giftRules: FreeGiftRule[] = [];
+export function initGiftRules(rules: FreeGiftRule[]) {
+  _giftRules = rules.filter((r) => r.variantId);
+}
+
+// Pre-fetch gift variant images so they're cached before the first add.
+export function warmGiftRuleCache(rules: FreeGiftRule[]) {
+  for (const r of rules) if (r.variantId) void fetchGiftVariantData(r.variantId);
 }
 
 function makeGiftItem(variantId: string): CartItem {
@@ -479,82 +486,62 @@ async function syncFreeGifts(
   if (_giftSyncing) return;
   _giftSyncing = true;
   try {
-    const subId = _giftIds.sub;
-    const carId = _giftIds.car;
-    if (!subId && !carId) return;
+    const rules = _giftRules;
+    if (rules.length === 0) return;
 
     const { items, cartId } = get();
     if (!cartId) return;
 
-    // Only user items (exclude the gifts themselves) drive the logic
-    const userItems = items.filter((i) => i.variantId !== subId && i.variantId !== carId);
-
+    const giftVariantIds = new Set(rules.map((r) => r.variantId));
+    // Only user items (exclude the gifts themselves) drive the logic.
+    const userItems = items.filter((i) => !giftVariantIds.has(i.variantId));
+    const subtotalOf = (list: CartItem[]) =>
+      list.reduce((sum, i) => sum + parseFloat(i.price.amount) * i.quantity, 0);
     const subscriptionItems = userItems.filter((i) => !!i.sellingPlanId);
-    const subscriptionSubtotal = subscriptionItems.reduce(
-      (sum, i) => sum + parseFloat(i.price.amount) * i.quantity,
-      0,
-    );
-    const wantSub =
-      !!subId &&
-      subscriptionItems.length > 0 &&
-      subscriptionSubtotal >= 99;
-    const wantCar = !!carId && userItems.some(
-      (i) => i.product.node.title.toLowerCase().includes("carcass"),
-    );
+    const subscriptionSubtotal = subtotalOf(subscriptionItems);
+    const cartSubtotal = subtotalOf(userItems);
 
-    const hasSub = items.find((i) => i.variantId === subId);
-    const hasCar = items.find((i) => i.variantId === carId);
+    // Evaluate each rule independently. (Snapshots taken before the loop, mirroring
+    // the previous two-gift logic — every rule targets a distinct gift variant.)
+    for (const rule of rules) {
+      const matched = userItems.filter((i) => {
+        if (rule.requireSubscription && !i.sellingPlanId) return false;
+        if (rule.matchTitles.length === 0) return true;
+        const title = (i.product.node.title ?? "").toLowerCase();
+        return rule.matchTitles.some((t) => title.includes(t));
+      });
+      const subtotal =
+        rule.subtotalScope === "subscription_items" ? subscriptionSubtotal
+        : rule.subtotalScope === "matched_items" ? subtotalOf(matched)
+        : cartSubtotal;
+      const want = matched.length > 0 && subtotal >= rule.minSubtotal;
+      const has = items.find((i) => i.variantId === rule.variantId);
 
-    // ── Subscription gift ──────────────────────────────────────────────────
-    if (subId) {
-      if (wantSub && !hasSub) {
-        const gift = makeGiftItem(subId);
+      if (want && !has) {
+        const gift = makeGiftItem(rule.variantId);
         // Apply cached image/title immediately if available — no waiting
-        const cachedSub = _giftVariantCache.get(subId) ?? {};
-        set((s) => ({ items: [...s.items, { ...gift, ...cachedSub, isPending: true }] }));
+        const cached = _giftVariantCache.get(rule.variantId) ?? {};
+        set((s) => ({ items: [...s.items, { ...gift, ...cached, isPending: true }] }));
         const [res, variantData] = await Promise.all([
           addLineToShopifyCart(cartId, gift),
-          fetchGiftVariantData(subId),
+          fetchGiftVariantData(rule.variantId),
         ]);
         set((s) => ({
           items: res.success
-            ? s.items.map((i) => i.variantId === subId && i.isPending
+            ? s.items.map((i) => i.variantId === rule.variantId && i.isPending
                 ? { ...i, ...variantData, lineId: res.lineId ?? null, isPending: false } : i)
-            : s.items.filter((i) => !(i.variantId === subId && i.isPending)),
+            : s.items.filter((i) => !(i.variantId === rule.variantId && i.isPending)),
         }));
-      } else if (!wantSub && hasSub?.lineId) {
-        set((s) => ({ items: s.items.filter((i) => i.variantId !== subId) }));
-        await removeLineFromShopifyCart(cartId, hasSub.lineId);
-      }
-    }
-
-    // ── Carcass gift ───────────────────────────────────────────────────────
-    if (carId) {
-      if (wantCar && !hasCar) {
-        const gift = makeGiftItem(carId);
-        // Apply cached image/title immediately if available — no waiting
-        const cachedCar = _giftVariantCache.get(carId) ?? {};
-        set((s) => ({ items: [...s.items, { ...gift, ...cachedCar, isPending: true }] }));
-        const [res, variantData] = await Promise.all([
-          addLineToShopifyCart(cartId, gift),
-          fetchGiftVariantData(carId),
-        ]);
-        set((s) => ({
-          items: res.success
-            ? s.items.map((i) => i.variantId === carId && i.isPending
-                ? { ...i, ...variantData, lineId: res.lineId ?? null, isPending: false } : i)
-            : s.items.filter((i) => !(i.variantId === carId && i.isPending)),
-        }));
-      } else if (!wantCar && hasCar?.lineId) {
-        set((s) => ({ items: s.items.filter((i) => i.variantId !== carId) }));
-        await removeLineFromShopifyCart(cartId, hasCar.lineId);
+      } else if (!want && has?.lineId) {
+        set((s) => ({ items: s.items.filter((i) => i.variantId !== rule.variantId) }));
+        await removeLineFromShopifyCart(cartId, has.lineId);
       }
     }
 
     // After all gift operations: if every item is gone reset the cartId so
     // the next addItem creates a fresh cart instead of reusing a stale one.
     // This is intentionally inside the try (not finally) so early-returns
-    // (no gift IDs, no cartId) never incorrectly clear a valid cart.
+    // (no rules, no cartId) never incorrectly clear a valid cart.
     if (get().items.length === 0) {
       set({ cartId: null, checkoutUrl: null });
     }

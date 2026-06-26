@@ -197,6 +197,9 @@ const ADMIN_FOOTER_QUERY = `
     cartDrawer: metaobjects(type: "mls_cart_drawer_config", first: 1) {
       nodes { id fields { key value } }
     }
+    freeGiftRules: metaobjects(type: "mls_free_gift_rule", first: 20) {
+      nodes { id fields { key value } }
+    }
   }
 `;
 
@@ -287,6 +290,30 @@ function parseCartDrawerConfig(nodes: any[]) {
     freeGiftSubVariantId: f.free_gift_subscription_variant_id?.value ?? "",
     freeGiftCarVariantId: f.free_gift_carcass_variant_id?.value ?? "",
   };
+}
+
+// Parse mls_free_gift_rule metaobjects into the cart's free-gift rule engine input.
+function parseFreeGiftRules(nodes: any[]) {
+  return (nodes ?? [])
+    .map((n: any) => {
+      const f = Object.fromEntries((n.fields ?? []).map((x: any) => [x.key, x.value]));
+      if (f.enabled !== "true") return null;
+      const variantId = (f.free_variant ?? "") as string;
+      if (!variantId) return null;
+      const scope =
+        f.subtotal_scope === "matched_items" || f.subtotal_scope === "subscription_items"
+          ? f.subtotal_scope
+          : "cart_total";
+      return {
+        variantId,
+        matchTitles: ((f.match_titles ?? "") as string)
+          .split("\n").map((s) => s.trim().toLowerCase()).filter(Boolean),
+        minSubtotal: parseFloat(f.min_subtotal ?? "0") || 0,
+        subtotalScope: scope as "cart_total" | "matched_items" | "subscription_items",
+        requireSubscription: f.require_subscription === "true",
+      };
+    })
+    .filter(Boolean);
 }
 
 function parseAnnouncementMessages(nodes: any[]): string[] {
@@ -421,7 +448,10 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const mobileCategoriesMenu   = parseShopifyMenu(data?.mobileCategoriesMenu,  "mobile-cat");
     const footerSettings = parseFooterSettings(adminData?.footerSettings?.nodes ?? []);
     const announcementMessages = parseAnnouncementMessages(adminData?.announcementBar?.nodes ?? []);
-    const cartDrawerConfig = parseCartDrawerConfig(adminData?.cartDrawer?.nodes ?? []);
+    const cartDrawerConfig = {
+      ...parseCartDrawerConfig(adminData?.cartDrawer?.nodes ?? []),
+      freeGiftRules: parseFreeGiftRules(adminData?.freeGiftRules?.nodes ?? []),
+    };
 
     function menuToCol(menu: any): { heading: string; links: FooterLink[] } | null {
       if (!menu?.items?.length) return null;
@@ -484,7 +514,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       footerSettings: null as FooterSettings | null,
       footerMenuCols: [] as { heading: string; links: FooterLink[] }[],
       announcementMessages: [] as string[],
-      cartDrawerConfig: { freeShippingThreshold: 350, deliveryItems: [], freeGiftSubVariantId: "", freeGiftCarVariantId: "" },
+      cartDrawerConfig: { freeShippingThreshold: 350, deliveryItems: [], freeGiftSubVariantId: "", freeGiftCarVariantId: "", freeGiftRules: [] },
       navItemImages: {} as Record<string, string>,
       mobileBanners: [] as MobileBanner[],
       mobileMenu: [] as MobileMenuTab[],

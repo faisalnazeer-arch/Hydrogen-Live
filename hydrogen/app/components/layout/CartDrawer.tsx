@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useShallow } from "zustand/react/shallow";
-import { useCartStore, initGiftIds, warmGiftCache } from "@/stores/cartStore";
+import { useCartStore, initGiftRules, warmGiftRuleCache } from "@/stores/cartStore";
 import { formatPrice, shopifyImageUrl } from "@/lib/shopify";
 import { useT } from "@/i18n/strings";
 import { useCartDrawerConfig } from "@/lib/cartDrawerConfig";
@@ -152,14 +152,14 @@ export function CartDrawer() {
 
   useEffect(() => { setNoteValue(orderNote); }, [orderNote]);
 
-  const subGiftId     = drawerConfig.freeGiftSubVariantId;
-  const carcassGiftId = drawerConfig.freeGiftCarVariantId;
+  const giftRules = drawerConfig.freeGiftRules;
+  const giftVariantIds = new Set(giftRules.map((r) => r.variantId));
 
-  // Keep the store's gift IDs in sync and pre-warm the variant image cache
+  // Keep the store's gift rules in sync and pre-warm the variant image cache
   useEffect(() => {
-    initGiftIds(subGiftId, carcassGiftId);
-    warmGiftCache(subGiftId, carcassGiftId);
-  }, [subGiftId, carcassGiftId]);
+    initGiftRules(giftRules);
+    warmGiftRuleCache(giftRules);
+  }, [giftRules]);
 
   // localSubtotal = actual item prices × quantities — updates immediately on every qty tap.
   // This is what's shown as "Subtotal". Compare-at (original) prices are already shown
@@ -352,8 +352,7 @@ export function CartDrawer() {
                 {items.map((item) => {
                   const img = item.product.node.images.edges[0]?.node;
                   const pending = !!item.isPending;
-                  const isGift = !!(subGiftId && item.variantId === subGiftId) ||
-                                 !!(carcassGiftId && item.variantId === carcassGiftId);
+                  const isGift = giftVariantIds.has(item.variantId);
                   return (
                     <li
                       key={`${item.variantId}-${item.sellingPlanId ?? "none"}`}
