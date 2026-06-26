@@ -52,7 +52,7 @@ function CutCard({ cut }: { cut: CutsSectionData["items"][0] }) {
         className={[
           "relative aspect-square w-full overflow-hidden rounded-full transition-all duration-300",
           "ring-2 ring-transparent group-hover:ring-crimson/50 group-hover:shadow-[0_6px_20px_rgba(185,28,28,0.18)]",
-          cut.imageUrl ? "bg-charcoal" : "bg-crimson/8 group-hover:bg-crimson/14",
+          cut.imageUrl ? "bg-white" : "bg-crimson/8 group-hover:bg-crimson/14",
         ].join(" ")}
       >
         {cut.imageUrl ? (

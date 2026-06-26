@@ -6,7 +6,7 @@ import { HeroBanner } from "../components/home/HeroBanner";
 import { TrustBadges } from "../components/home/TrustBadges";
 import { FeaturedCollections } from "../components/home/FeaturedCollections";
 import type { FeaturedCollectionCard } from "../components/home/FeaturedCollections";
-import { PriceRangeShop, parsePriceRangeSection, parsePriceTiles } from "../components/home/PriceRangeShop";
+import { parsePriceRangeSection, parsePriceTiles } from "../components/home/PriceRangeShop";
 import { FirstOrderGift, parseFirstOrderGift } from "../components/home/FirstOrderGift";
 import { PromoSideBySide, parsePromoSideBySide } from "../components/home/PromoSideBySide";
 import { CategorySection } from "../components/home/CategorySection";
@@ -729,7 +729,6 @@ export default function Home() {
         subtitle={t("home.featured_sub")}
       />
       <FirstOrderGift data={firstOrderGift} />
-      <PriceRangeShop section={priceSection} tiles={priceTiles} />
       {saleSection && (
         <CategorySection
           handle={saleSection.collectionHandle}

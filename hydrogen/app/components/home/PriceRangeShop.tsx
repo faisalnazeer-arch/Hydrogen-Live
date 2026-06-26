@@ -127,13 +127,6 @@ function PriceTileCard({ tile }: { tile: PriceTile }) {
       {/* All content sits above the fill */}
       <div className="relative z-10 flex flex-col">
 
-        {/* Tier label */}
-        {tile.priceLabel && (
-          <span className="mb-1.5 block text-[8px] font-bold uppercase tracking-[0.18em] text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70 md:mb-2 md:text-[9px]">
-            {tile.priceLabel}
-          </span>
-        )}
-
         {/* Price number */}
         <div className="flex items-baseline gap-0.5">
           <span className="text-xl font-black leading-none tracking-tight text-foreground transition-colors duration-300 group-hover:text-white md:text-3xl">
