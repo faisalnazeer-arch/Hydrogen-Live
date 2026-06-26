@@ -48,17 +48,36 @@ const PAGE_QUERY = `
   }
 ` as const;
 
+// Admin-API version (no @inContext). Fallback for when the Storefront query returns
+// nothing — e.g. if these metaobjects' Storefront access is disabled — so the page
+// content never disappears. Admin always sees the data.
+const ADMIN_PAGE_QUERY = `
+  {
+    page: metaobjects(type: "mls_subscription_page", first: 1) {
+      nodes { fields { key value references(first: 20) { nodes { ... on Metaobject { id fields { key value } } } } } }
+    }
+    policy: metaobjects(type: "mls_subscription_policy", first: 1) {
+      nodes { fields { key value reference { ... on MediaImage { image { url altText } } } references(first: 20) { nodes { ... on Metaobject { id fields { key value } } } } } }
+    }
+  }
+` as const;
+
 // ─── Loader ───────────────────────────────────────────────────────────────────
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
   const language = detectLanguage(request);
-  const adminData = await context.storefront.query(PAGE_QUERY, {
+  let pageData: any = await context.storefront.query(PAGE_QUERY, {
     variables: { language, country: "AE" as const },
     cache: context.storefront.CacheNone(),
   });
+  // Fall back to the Admin API if Storefront returned no page (access may be disabled).
+  if (!pageData?.page?.nodes?.length) {
+    const admin = await context.adminFetch(ADMIN_PAGE_QUERY).catch(() => null);
+    if ((admin as any)?.page?.nodes?.length) pageData = admin;
+  }
 
   // ── Subscription page ──
-  const node = adminData?.page?.nodes?.[0];
+  const node = pageData?.page?.nodes?.[0];
   const f = Object.fromEntries((node?.fields ?? []).map((x: any) => [x.key, x]));
   const refs = (key: string) => f[key]?.references?.nodes ?? [];
 
@@ -102,7 +121,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   };
 
   // ── Subscription policy ──
-  const pNode = adminData?.policy?.nodes?.[0];
+  const pNode = pageData?.policy?.nodes?.[0];
   const pf = Object.fromEntries((pNode?.fields ?? []).map((x: any) => [x.key, x]));
   const policy = {
     title:       pf.hero_title?.value             ?? "Subscription Policies",

@@ -40,13 +40,46 @@ const PAGE_QUERY = `
   }
 ` as const;
 
+// Admin-API version (no @inContext). Used as a fallback when the Storefront query
+// returns nothing — e.g. if this metaobject's Storefront access is disabled — so the
+// page content never disappears. Admin always sees the data.
+const ADMIN_PAGE_QUERY = `
+  {
+    metaobjects(type: "mls_affiliate_page", first: 1) {
+      nodes {
+        fields {
+          key
+          value
+          reference { ... on MediaImage { image { url altText } } }
+          references(first: 20) {
+            nodes {
+              ... on Metaobject {
+                id
+                fields {
+                  key
+                  value
+                  reference { ... on MediaImage { image { url altText } } }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+` as const;
+
 export async function loader({ context, request }: LoaderFunctionArgs) {
   const language = detectLanguage(request);
   const data = await context.storefront.query(PAGE_QUERY, {
     variables: { language, country: "AE" as const },
     cache: context.storefront.CacheNone(),
   });
-  const node = data?.metaobjects?.nodes?.[0];
+  let node = data?.metaobjects?.nodes?.[0];
+  if (!node) {
+    const adminData = await context.adminFetch(ADMIN_PAGE_QUERY).catch(() => null);
+    node = (adminData as any)?.metaobjects?.nodes?.[0] ?? null;
+  }
   const f = Object.fromEntries((node?.fields ?? []).map((x: any) => [x.key, x]));
 
   const features = (f.features?.references?.nodes ?? []).map((n: any) => {
