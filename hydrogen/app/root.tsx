@@ -635,7 +635,7 @@ function PageLoader() {
       >
         {/* Logo */}
         <div style={{ animation: "_mls-logo 0.4s ease-out 0s both", marginBottom: 28 }}>
-          <img src={iconSrc} alt="" style={{ height: 80, width: "auto", objectFit: "contain" }} />
+          <img src={iconSrc} alt="" style={{ height: 104, width: "auto", objectFit: "contain" }} />
         </div>
 
         {isAr ? (

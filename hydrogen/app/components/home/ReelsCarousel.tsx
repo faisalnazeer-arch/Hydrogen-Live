@@ -264,7 +264,7 @@ function ReelsPlayer({
           </div>
           <Button
             asChild
-            className="w-full bg-crimson text-crimson-foreground hover:bg-rich-red"
+            className="w-full bg-crimson !text-white hover:bg-rich-red"
             onClick={onClose}
           >
             <Link to={lp(`/products/${reel.handle}`)}>
