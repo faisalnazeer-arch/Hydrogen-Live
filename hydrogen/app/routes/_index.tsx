@@ -468,11 +468,11 @@ const WEBSITE_JSON_LD = {
 };
 
 export const meta: MetaFunction = () => [
-  { title: "MLS UAE — Fresh Meat Delivery in Dubai & Abu Dhabi" },
-  { name: "description", content: "Premium Wagyu, Angus, lamb and more — delivered." },
+  { title: "Fresh meat delivered in 1-hour slots until 8:45 PM - MLS UAE" },
+  { name: "description", content: "Fresh premium meat delivered within 1 hour across Dubai & Abu Dhabi. Order halal beef, lamb, chicken & more with fast, hygienic doorstep delivery." },
   { property: "og:type", content: "website" },
-  { property: "og:title", content: "MLS UAE — Fresh Meat Delivery in Dubai & Abu Dhabi" },
-  { property: "og:description", content: "Premium Wagyu, Angus, lamb and more — delivered across the UAE." },
+  { property: "og:title", content: "Fresh meat delivered in 1-hour slots until 8:45 PM - MLS UAE" },
+  { property: "og:description", content: "Fresh premium meat delivered within 1 hour across Dubai & Abu Dhabi. Order halal beef, lamb, chicken & more with fast, hygienic doorstep delivery." },
   { property: "og:url", content: "https://mlsuae.ae/" },
   { tagName: "link", rel: "canonical", href: "https://mlsuae.ae/" },
   { "script:ld+json": HOME_JSON_LD },
