@@ -1188,7 +1188,8 @@ export function ProductPageShell({
                   <ChevronUp className="h-3.5 w-3.5" />
                 </button>
 
-                <div className="no-scrollbar flex flex-col gap-1.5 overflow-y-auto [max-height:50vh] md:[max-height:460px]">
+                <div className="relative min-h-0 w-full flex-1">
+                  <div className="no-scrollbar absolute inset-0 flex flex-col items-center gap-1.5 overflow-y-auto">
                   {allMedia.map((media, i) => {
                     const thumb = media.type === "image" ? shopifyImageUrl(media.url, 200) : media.type === "video" ? (media.poster ?? "") : (media as any).poster ?? "";
                     const isActive = i === activeMediaIdx;
@@ -1209,6 +1210,7 @@ export function ProductPageShell({
                       </button>
                     );
                   })}
+                  </div>
                 </div>
 
                 {/* Down arrow — only when not at last thumb */}
@@ -1223,28 +1225,26 @@ export function ProductPageShell({
               </div>
             )}
 
-            {/* Main image — 50vh cap on mobile, no cap on desktop */}
-            <div className="relative min-w-0 flex-1 overflow-hidden rounded-xl bg-muted [max-height:50vh] md:[max-height:none]">
-              <div className="aspect-square h-full w-full">
-                {activeMedia?.type === "video" && activeMedia.mp4Url ? (
-                  <video src={activeMedia.mp4Url} poster={activeMedia.poster ?? undefined}
-                    controls autoPlay muted loop playsInline className="h-full w-full object-contain md:object-cover" />
-                ) : activeMedia?.type === "external_video" ? (
-                  <iframe src={activeMedia.embedUrl} className="h-full w-full"
-                    allow="autoplay; encrypted-media" allowFullScreen title="Product video" />
-                ) : activeMedia?.type === "image" ? (
-                  <img src={shopifyImageUrl(activeMedia.url, 800)} alt={activeMedia.altText ?? product.title}
-                    className="h-full w-full object-contain md:object-cover transition-opacity duration-300" key={activeMediaIdx} />
-                ) : null}
-                <div className="absolute left-3 top-3 flex flex-col gap-1.5">
-                  <OriginBadge origin={origin} />
-                  {variant?.compareAtPrice && (
-                    <span className="inline-flex rounded-sm bg-crimson px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-crimson-foreground">{t("product.sale")}</span>
-                  )}
-                  {isFrozen && (
-                    <span className="inline-flex rounded-sm bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">Frozen</span>
-                  )}
-                </div>
+            {/* Main image — square; image fills via object-cover (no letterbox bands) */}
+            <div className="relative aspect-square min-w-0 flex-1 self-start overflow-hidden rounded-xl bg-muted">
+              {activeMedia?.type === "video" && activeMedia.mp4Url ? (
+                <video src={activeMedia.mp4Url} poster={activeMedia.poster ?? undefined}
+                  controls autoPlay muted loop playsInline className="h-full w-full object-cover" />
+              ) : activeMedia?.type === "external_video" ? (
+                <iframe src={activeMedia.embedUrl} className="h-full w-full"
+                  allow="autoplay; encrypted-media" allowFullScreen title="Product video" />
+              ) : activeMedia?.type === "image" ? (
+                <img src={shopifyImageUrl(activeMedia.url, 800)} alt={activeMedia.altText ?? product.title}
+                  className="h-full w-full object-cover transition-opacity duration-300" key={activeMediaIdx} />
+              ) : null}
+              <div className="absolute left-3 top-3 flex flex-col gap-1.5">
+                <OriginBadge origin={origin} />
+                {variant?.compareAtPrice && (
+                  <span className="inline-flex rounded-sm bg-crimson px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-crimson-foreground">{t("product.sale")}</span>
+                )}
+                {isFrozen && (
+                  <span className="inline-flex rounded-sm bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">Frozen</span>
+                )}
               </div>
             </div>
           </div>
@@ -1266,7 +1266,7 @@ export function ProductPageShell({
           </div>
 
           {/* Price */}
-          <div className="flex flex-col gap-1">
+          <div className="-mt-2.5 flex flex-col gap-1 sm:-mt-3">
             <div className="flex flex-wrap items-center gap-3">
               <span className="font-display text-2xl font-bold text-crimson sm:text-3xl">{formatPrice(displayPrice?.amount ?? "0", currency)}</span>
               {displayCompareAt && <span className="text-sm text-muted-foreground line-through sm:text-base">{formatPrice(displayCompareAt.amount, currency)}</span>}

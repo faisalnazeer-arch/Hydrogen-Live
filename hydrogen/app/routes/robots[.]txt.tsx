@@ -53,6 +53,8 @@ Disallow: /checkouts/
 Disallow: /checkout
 Disallow: /carts
 Disallow: /orders
+Disallow: /82102026556/checkouts
+Disallow: /82102026556/orders
 Disallow: /*?*oseid=*
 Disallow: /*preview_theme_id*
 Disallow: /*preview_script_id*
