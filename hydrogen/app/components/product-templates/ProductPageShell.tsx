@@ -59,33 +59,13 @@ export interface ProductPageShellProps {
   iconBadges?: any[];
 }
 
-const DESC_CLAMP_PX = 120;
+
 
 // ── Description with read more ──────────────────────────────────────────────
 function DescriptionWithToggle({ html }: { html: string }) {
-  const t = useT();
-  const [expanded, setExpanded] = useState(false);
-  const innerRef = useRef<HTMLDivElement>(null);
-  const [overflow, setOverflow] = useState(false);
-  useEffect(() => {
-    if (innerRef.current) setOverflow(innerRef.current.scrollHeight > DESC_CLAMP_PX + 10);
-  }, [html]);
   return (
-    <div>
-      <div
-        className="overflow-hidden transition-[max-height] duration-500 ease-in-out"
-        style={{ maxHeight: expanded ? "none" : DESC_CLAMP_PX }}
-      >
-        <div ref={innerRef} className="prose prose-sm max-w-none [&_p]:leading-relaxed [&_table]:block [&_table]:overflow-x-auto [&_pre]:overflow-x-auto [&_img]:max-w-full"
-          dangerouslySetInnerHTML={{ __html: html }} />
-      </div>
-      {overflow && (
-        <button type="button" onClick={() => setExpanded((e) => !e)}
-          className="mt-2 text-xs font-semibold text-crimson hover:underline">
-          {expanded ? t("product.view_less") : t("product.view_more")}
-        </button>
-      )}
-    </div>
+    <div className="prose prose-sm max-w-none [&_p]:leading-relaxed [&_table]:block [&_table]:overflow-x-auto [&_pre]:overflow-x-auto [&_img]:max-w-full"
+      dangerouslySetInnerHTML={{ __html: html }} />
   );
 }
 
@@ -957,6 +937,26 @@ export function ProductPageShell({
   const THUMB_SCROLL = 88; // scroll 1 thumb+gap per arrow click
   const atcSentinelRef = useRef<HTMLDivElement>(null);
 
+  // Lift Richpanel above sticky ATC only while the bar is actually visible
+  useEffect(() => {
+    if (stickyVisible) {
+      document.body.classList.add("pdp-page");
+    } else {
+      document.body.classList.remove("pdp-page");
+    }
+    return () => { document.body.classList.remove("pdp-page"); };
+  }, [stickyVisible]);
+
+  // Push Richpanel behind sticky expanded panel — toggle atc-expanded on body
+  useEffect(() => {
+    if (stickyExpanded) {
+      document.body.classList.add("atc-expanded");
+    } else {
+      document.body.classList.remove("atc-expanded");
+    }
+    return () => { document.body.classList.remove("atc-expanded"); };
+  }, [stickyExpanded]);
+
   // Track this product as recently viewed
   useEffect(() => { addToRecentlyViewed(product.handle); }, [product.handle, addToRecentlyViewed]);
 
@@ -1142,75 +1142,89 @@ export function ProductPageShell({
         );
       })()}
 
-      <div className="container mx-auto grid gap-6 px-4 pb-4 md:grid-cols-2 md:items-start md:gap-10">
+      {/* Issue 3: pb-24 on mobile so last content clears the sticky ATC bar */}
+      <div className="container mx-auto grid gap-6 px-4 pb-24 md:pb-4 md:grid-cols-2 md:items-start md:gap-10">
         {/* ── Media gallery ── */}
         <div className="flex min-w-0 flex-col gap-3 md:sticky md:top-36 md:self-start">
 
-          {/* Main image */}
-          <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
-            {activeMedia?.type === "video" && activeMedia.mp4Url ? (
-              <video src={activeMedia.mp4Url} poster={activeMedia.poster ?? undefined}
-                controls autoPlay muted loop playsInline className="h-full w-full object-cover" />
-            ) : activeMedia?.type === "external_video" ? (
-              <iframe src={activeMedia.embedUrl} className="h-full w-full"
-                allow="autoplay; encrypted-media" allowFullScreen title="Product video" />
-            ) : activeMedia?.type === "image" ? (
-              <img src={shopifyImageUrl(activeMedia.url, 800)} alt={activeMedia.altText ?? product.title}
-                className="h-full w-full object-cover transition-opacity duration-300" key={activeMediaIdx} />
-            ) : null}
-            <div className="absolute left-4 top-4 flex flex-col gap-1.5">
-              <OriginBadge origin={origin} />
-              {variant?.compareAtPrice && (
-                <span className="inline-flex rounded-sm bg-crimson px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-crimson-foreground">{t("product.sale")}</span>
-              )}
-              {isFrozen && (
-                <span className="inline-flex rounded-sm bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">Frozen</span>
-              )}
+          {/* Unified layout: left vertical thumb rail + main image to the right.
+              Mobile: 56px rail, 50vh max-height main image.
+              Desktop: 80px rail, full aspect-square main image. */}
+          <div className="flex flex-row gap-2 md:gap-3">
+
+            {/* Vertical thumbnail rail with up/down nav arrows */}
+            {allMedia.length > 1 && (
+              <div className="flex flex-col items-center gap-1" style={{ width: 64 }}>
+                {/* Up arrow — only when not at first thumb */}
+                <button
+                  type="button"
+                  aria-label="Previous image"
+                  onClick={() => setActiveMediaIdx((i) => Math.max(0, i - 1))}
+                  className={`flex h-5 w-full items-center justify-center rounded text-muted-foreground transition-opacity hover:text-foreground ${activeMediaIdx === 0 ? "pointer-events-none opacity-0" : "opacity-70"}`}
+                >
+                  <ChevronUp className="h-3.5 w-3.5" />
+                </button>
+
+                <div className="no-scrollbar flex flex-col gap-1.5 overflow-y-auto [max-height:50vh] md:[max-height:460px]">
+                  {allMedia.map((media, i) => {
+                    const thumb = media.type === "image" ? shopifyImageUrl(media.url, 200) : media.type === "video" ? (media.poster ?? "") : (media as any).poster ?? "";
+                    const isActive = i === activeMediaIdx;
+                    return (
+                      <button key={i} type="button" onClick={() => setActiveMediaIdx(i)}
+                        className={`relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 md:h-16 md:w-16 ${
+                          isActive
+                            ? "border-crimson shadow-[inset_0_0_0_1px_rgba(180,0,0,0.25)]"
+                            : "border-transparent opacity-60 hover:opacity-100 hover:border-border/60"
+                        }`}>
+                        {thumb && <img src={thumb} alt="" className="h-full w-full object-cover" />}
+                        {(media.type === "video" || media.type === "external_video") && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                            <Play className="h-4 w-4 fill-white text-white" />
+                          </div>
+                        )}
+                        {isActive && <span className="absolute bottom-1 left-1/2 h-[3px] w-4 -translate-x-1/2 rounded-full bg-crimson" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Down arrow — only when not at last thumb */}
+                <button
+                  type="button"
+                  aria-label="Next image"
+                  onClick={() => setActiveMediaIdx((i) => Math.min(allMedia.length - 1, i + 1))}
+                  className={`flex h-5 w-full items-center justify-center rounded text-muted-foreground transition-opacity hover:text-foreground ${activeMediaIdx === allMedia.length - 1 ? "pointer-events-none opacity-0" : "opacity-70"}`}
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Main image — 50vh cap on mobile, no cap on desktop */}
+            <div className="relative min-w-0 flex-1 overflow-hidden rounded-xl bg-muted [max-height:50vh] md:[max-height:none]">
+              <div className="aspect-square h-full w-full">
+                {activeMedia?.type === "video" && activeMedia.mp4Url ? (
+                  <video src={activeMedia.mp4Url} poster={activeMedia.poster ?? undefined}
+                    controls autoPlay muted loop playsInline className="h-full w-full object-contain md:object-cover" />
+                ) : activeMedia?.type === "external_video" ? (
+                  <iframe src={activeMedia.embedUrl} className="h-full w-full"
+                    allow="autoplay; encrypted-media" allowFullScreen title="Product video" />
+                ) : activeMedia?.type === "image" ? (
+                  <img src={shopifyImageUrl(activeMedia.url, 800)} alt={activeMedia.altText ?? product.title}
+                    className="h-full w-full object-contain md:object-cover transition-opacity duration-300" key={activeMediaIdx} />
+                ) : null}
+                <div className="absolute left-3 top-3 flex flex-col gap-1.5">
+                  <OriginBadge origin={origin} />
+                  {variant?.compareAtPrice && (
+                    <span className="inline-flex rounded-sm bg-crimson px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-crimson-foreground">{t("product.sale")}</span>
+                  )}
+                  {isFrozen && (
+                    <span className="inline-flex rounded-sm bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">Frozen</span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-
-          {/* Thumbnail row — below main image, all screen sizes */}
-          {allMedia.length > 1 && (
-            <div className="relative w-full">
-              {/* Left arrow */}
-              <button type="button" aria-label="Previous images"
-                onClick={() => thumbTrackRef.current?.scrollBy({ left: -THUMB_SCROLL, behavior: 'smooth' })}
-                className={`absolute left-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background shadow-md transition-all duration-200 hover:bg-muted hover:shadow-lg ${thumbCanLeft ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-
-              {/* Scrollable track — no-scrollbar hides scrollbar on all browsers */}
-              <div ref={thumbTrackRef} className="no-scrollbar flex w-full gap-2 overflow-x-auto">
-                {allMedia.map((media, i) => {
-                  const thumb = media.type === "image" ? shopifyImageUrl(media.url, 200) : media.type === "video" ? (media.poster ?? "") : (media as any).poster ?? "";
-                  const isActive = i === activeMediaIdx;
-                  return (
-                    <button key={i} type="button" onClick={() => setActiveMediaIdx(i)}
-                      className={`relative h-[80px] w-[80px] flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 ${
-                        isActive
-                          ? "border-crimson shadow-[inset_0_0_0_1px_rgba(180,0,0,0.25)]"
-                          : "border-transparent opacity-60 hover:opacity-100 hover:border-border/60"
-                      }`}>
-                      {thumb && <img src={thumb} alt="" className="h-full w-full object-cover" />}
-                      {(media.type === "video" || media.type === "external_video") && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                          <Play className="h-5 w-5 fill-white text-white" />
-                        </div>
-                      )}
-                      {isActive && <span className="absolute bottom-1 left-1/2 h-[3px] w-6 -translate-x-1/2 rounded-full bg-crimson" />}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Right arrow */}
-              <button type="button" aria-label="Next images"
-                onClick={() => thumbTrackRef.current?.scrollBy({ left: THUMB_SCROLL, behavior: 'smooth' })}
-                className={`absolute right-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background shadow-md transition-all duration-200 hover:bg-muted hover:shadow-lg ${thumbCanRight ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          )}
         </div>
 
         {/* ── Product info ── */}
@@ -1510,7 +1524,7 @@ export function ProductPageShell({
       />
 
       {/* ── Sticky Add to Cart bar ── */}
-      <div className={`fixed bottom-0 left-0 right-0 z-40 overflow-hidden border-t border-border bg-background/95 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur transition-transform duration-300 ${stickyVisible ? "translate-y-0" : "translate-y-full"}`}>
+      <div className={`fixed bottom-0 left-0 right-0 z-30 overflow-hidden border-t border-border bg-background shadow-[0_-4px_20px_rgba(0,0,0,0.08)] transition-transform duration-300 ${stickyVisible ? "translate-y-0" : "translate-y-full"}`}>
 
         {/* ── Expandable panel: variants + subscription ── */}
         <div className={`transition-all duration-300 ease-in-out ${stickyExpanded ? "max-h-[65vh] overflow-y-auto" : "max-h-0 overflow-hidden"}`}>
@@ -1582,16 +1596,13 @@ export function ProductPageShell({
         </div>
 
         {/* ── Main ATC row ── */}
-        <div className="flex w-full items-center gap-2 px-3 py-2.5">
-          {images[0] && (
-            <img src={shopifyImageUrl(images[0].url, 80)} alt={product.title} className="h-9 w-9 flex-shrink-0 rounded-lg object-cover sm:h-10 sm:w-10" />
-          )}
+        <div className="flex w-full items-center gap-2 px-3 py-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[11px] font-semibold sm:text-xs">{product.title}</p>
+            <p className="truncate text-xs font-semibold leading-tight">{product.title}</p>
             {variant?.title && variant.title !== "Default Title" && (
-              <p className="truncate text-[10px] text-muted-foreground sm:text-[11px]">{variant.title}</p>
+              <p className="truncate text-[10px] text-muted-foreground leading-tight">{variant.title}</p>
             )}
-            <p className="text-[11px] font-bold text-crimson sm:text-xs">{formatPrice(displayPrice?.amount ?? "0", currency)}</p>
+            <p className="text-sm font-bold text-crimson leading-tight">{formatPrice(displayPrice?.amount ?? "0", currency)}</p>
           </div>
 
           {/* Expand toggle */}

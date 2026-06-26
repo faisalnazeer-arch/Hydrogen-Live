@@ -36,6 +36,49 @@ a { transition: color 0.18s ease, opacity 0.18s ease; }
 footer .hover\:text-gold:hover { color: var(--color-gold); }
 
 
+/*
+ * Issue 4: Richpanel chat launcher offset on mobile PDP.
+ * The sticky ATC bar is ~64px tall. We push the launcher up only on
+ * screens below md (768px) — the body class `.pdp-page` is added by
+ * ProductPageShell only when the sticky bar is rendered.
+ * This must NOT affect other pages (no .pdp-page = no offset).
+ * Selector targets Richpanel's stable outer container id, not hashed classes.
+ */
+/* Richpanel launcher: always bottom-right, above sticky ATC (z-30), below drawers (z-50) */
+#richpanel-widget,
+#richpanel-container,
+[id^="richpanel"],
+.richpanel-launcher {
+  right: 20px !important;
+  left: auto !important;
+  z-index: 40 !important;
+}
+
+/* On any PDP (sticky ATC visible), lift launcher above the bar on ALL screen sizes.
+   Sticky ATC bar is ~56px; 76px gives a comfortable 20px gap above it. */
+body.pdp-page #richpanel-widget,
+body.pdp-page #richpanel-container,
+body.pdp-page [id^="richpanel"],
+body.pdp-page .richpanel-launcher {
+  bottom: 76px !important;
+}
+
+/* When any Radix overlay/dialog/sheet is open, push Richpanel behind it */
+body:has([data-radix-dialog-overlay][data-state="open"]) #richpanel-widget,
+body:has([data-radix-dialog-overlay][data-state="open"]) #richpanel-container,
+body:has([data-radix-dialog-overlay][data-state="open"]) [id^="richpanel"],
+body:has([data-radix-dialog-overlay][data-state="open"]) .richpanel-launcher {
+  z-index: 20 !important;
+}
+
+/* When sticky ATC options panel is expanded, push Richpanel behind it */
+body.atc-expanded #richpanel-widget,
+body.atc-expanded #richpanel-container,
+body.atc-expanded [id^="richpanel"],
+body.atc-expanded .richpanel-launcher {
+  z-index: 20 !important;
+}
+
 /* Language toggle active state — driven by html[lang] set from cookie via
    inline <head> script, so it's correct before React even renders (no flash) */
 :root[lang="en"] .locale-btn[data-locale="en"],
