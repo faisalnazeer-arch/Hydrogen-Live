@@ -397,8 +397,8 @@ function DeliveryTab({ pageSettings }: { pageSettings: PageSettings | undefined 
     { label: "Tipping",               body: "There's no need to tip your delivery driver — we pay a living wage that doesn't depend on tips." },
   ];
   const DEFAULT_ABUDHABI: CityBlock[] = [
-    { label: "Delivery Time",         body: "Delivered in 1-hour slots. Last slot starts at 8:45 PM daily." },
-    { label: "Last Order Time",       body: "8:45 PM is our last order slot, all days of the week." },
+    { label: "Delivery Time",         body: "Express 2-hour delivery across Abu Dhabi." },
+    { label: "Last Order Time",       body: "8:30 PM is our last order cutoff, all days of the week." },
     { label: "Delivery Fee",          body: "No minimum order value. Standard delivery fee is AED 20." },
     { label: "Free Returns",          body: "We offer a \"no questions asked\" free returns policy which allows you to return delivered items to us for any reason up to 30 days from the delivery of your order, free of charge." },
     { label: "100% Satisfaction",     body: "We offer 100% satisfaction policy. Please WhatsApp us on our customer service number within 24 hours and we will fix your experience. Call or WhatsApp: +971 50 451 6403" },
@@ -1424,9 +1424,13 @@ export function ProductPageShell({
             const parsed = iconBadges
               .map((node: any, i: number) => {
                 const fm = Object.fromEntries((node.fields ?? []).map((f: any) => [f.key, f]));
-                const heading = fm["heading"]?.value ?? null;
+                let heading = fm["heading"]?.value ?? null;
                 const iconUrl = fm["icon"]?.reference?.image?.url ?? null;
                 if (!heading) return null;
+                // Override delivery badge regardless of what CMS says
+                if (/deliver|1.hour|slot/i.test(heading)) {
+                  heading = t("product.trust_delivery");
+                }
                 return { id: node.id ?? String(i), heading, iconUrl, FallbackIcon: FALLBACK_ICONS[i % FALLBACK_ICONS.length] };
               })
               .filter(Boolean) as Array<{ id: string; heading: string; iconUrl: string | null; FallbackIcon: any }>;

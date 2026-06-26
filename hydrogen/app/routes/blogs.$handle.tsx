@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData, Link } from "react-router";
-import { Calendar, User, ArrowRight } from "lucide-react";
+import { Calendar, ArrowRight } from "lucide-react";
 
 const BLOG_QUERY = `#graphql
   query Blog($handle: String!, $first: Int!, $after: String, $language: LanguageCode)
@@ -63,30 +63,28 @@ export default function BlogPage() {
         {articles.length === 0 ? (
           <p className="text-center text-muted-foreground py-16">No articles yet.</p>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
             {articles.map((article) => (
               <Link
                 key={article.handle}
                 to={`/blogs/${blog.handle}/${article.handle}`}
                 className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
               >
-                {/* Image */}
-                <div className="aspect-[16/9] overflow-hidden bg-muted">
+                <div className="relative w-full overflow-hidden bg-muted" style={{ paddingTop: "56.25%" }}>
                   {article.image ? (
                     <img
                       src={article.image.url}
                       alt={article.image.altText ?? article.title}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
-                    <div className="h-full w-full bg-gradient-to-br from-crimson/10 to-crimson/5 flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-crimson/10 to-crimson/5">
                       <span className="text-4xl">🥩</span>
                     </div>
                   )}
                 </div>
 
-                {/* Content */}
-                <div className="flex flex-1 flex-col p-5">
+                <div className="flex flex-1 flex-col p-3 sm:p-5">
                   {article.tags.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-1.5">
                       {article.tags.slice(0, 2).map((tag) => (
@@ -100,21 +98,14 @@ export default function BlogPage() {
                     {article.title}
                   </h2>
                   {article.excerpt && (
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-3 flex-1">
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-2 flex-1">
                       {article.excerpt}
                     </p>
                   )}
                   <div className="mt-4 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      {article.author?.name && (
-                        <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" /> {article.author.name}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" /> {formatDate(article.publishedAt)}
-                      </span>
-                    </div>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Calendar className="h-3 w-3" /> {formatDate(article.publishedAt)}
+                    </span>
                     <span className="flex items-center gap-1 text-xs font-semibold text-crimson">
                       Read <ArrowRight className="h-3 w-3" />
                     </span>

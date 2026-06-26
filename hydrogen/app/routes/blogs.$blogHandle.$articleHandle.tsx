@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import { useLoaderData, Link } from "react-router";
-import { Calendar, User, ArrowLeft, Tag } from "lucide-react";
+import { Calendar, ArrowLeft, Tag } from "lucide-react";
 
 const ARTICLE_QUERY = `#graphql
   query Article($blogHandle: String!, $articleHandle: String!, $language: LanguageCode)
@@ -49,15 +49,35 @@ export default function ArticlePage() {
   return (
     <div className="min-h-screen bg-background">
 
-      {/* Hero image */}
+      {/* Hero — image with title overlaid at bottom on desktop */}
       {article.image && (
-        <div className="relative h-[280px] overflow-hidden bg-muted md:h-[420px]">
+        <div className="relative overflow-hidden bg-muted" style={{ height: "clamp(220px, 45vw, 480px)" }}>
           <img
             src={article.image.url}
             alt={article.image.altText ?? article.title}
-            className="h-full w-full object-cover object-center"
+            className="h-full w-full object-cover object-top"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+          {/* Gradient + title overlay — desktop only */}
+          <div className="absolute inset-0 hidden flex-col justify-end bg-gradient-to-t from-black/75 via-black/30 to-transparent p-8 md:flex">
+            <div className="mx-auto w-full max-w-3xl">
+              {article.tags.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {article.tags.map((tag) => (
+                    <span key={tag} className="flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
+                      <Tag className="h-2.5 w-2.5" /> {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <h1 className="font-display text-3xl font-extrabold leading-tight text-white lg:text-4xl xl:text-5xl">
+                {article.title}
+              </h1>
+              <p className="mt-3 flex items-center gap-1.5 text-sm text-white/70">
+                <Calendar className="h-4 w-4" />
+                {formatDate(article.publishedAt)}
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -72,37 +92,28 @@ export default function ArticlePage() {
             <ArrowLeft className="h-4 w-4" /> Back to {blog.title}
           </Link>
 
-          {/* Tags */}
-          {article.tags.length > 0 && (
-            <div className="mb-4 flex flex-wrap gap-2">
-              {article.tags.map((tag) => (
-                <span key={tag} className="flex items-center gap-1 rounded-full bg-crimson/10 px-3 py-1 text-[11px] font-semibold text-crimson">
-                  <Tag className="h-2.5 w-2.5" /> {tag}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Title */}
-          <h1 className="font-display text-3xl font-extrabold leading-tight text-foreground md:text-4xl lg:text-5xl">
-            {article.title}
-          </h1>
-
-          {/* Meta */}
-          <div className="mt-4 mb-8 flex flex-wrap items-center gap-4 text-sm text-muted-foreground border-b border-border pb-6">
-            {article.author?.name && (
-              <span className="flex items-center gap-1.5">
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-crimson/10 text-xs font-bold text-crimson">
-                  {article.author.name.charAt(0).toUpperCase()}
-                </span>
-                {article.author.name}
-              </span>
+          {/* Mobile-only: tags + title + date (desktop shows these in the hero overlay) */}
+          <div className="md:hidden">
+            {article.tags.length > 0 && (
+              <div className="mb-4 flex flex-wrap gap-2">
+                {article.tags.map((tag) => (
+                  <span key={tag} className="flex items-center gap-1 rounded-full bg-crimson/10 px-3 py-1 text-[11px] font-semibold text-crimson">
+                    <Tag className="h-2.5 w-2.5" /> {tag}
+                  </span>
+                ))}
+              </div>
             )}
-            <span className="flex items-center gap-1.5">
+            <h1 className="font-display text-2xl font-extrabold leading-tight text-foreground">
+              {article.title}
+            </h1>
+            <div className="mt-3 mb-6 flex items-center gap-1.5 border-b border-border pb-6 text-sm text-muted-foreground">
               <Calendar className="h-4 w-4" />
               {formatDate(article.publishedAt)}
-            </span>
+            </div>
           </div>
+
+          {/* Desktop: spacer below hero before body */}
+          <div className="hidden md:block mb-8 border-b border-border pb-2" />
 
           {/* Article body */}
           <div
@@ -114,7 +125,7 @@ export default function ArticlePage() {
               prose-strong:text-foreground prose-strong:font-semibold
               prose-a:text-crimson prose-a:no-underline hover:prose-a:underline
               prose-li:text-neutral-600 prose-li:leading-relaxed
-              prose-img:rounded-xl prose-img:shadow-md
+              prose-img:rounded-xl prose-img:shadow-md prose-img:w-full prose-img:h-auto prose-img:object-cover
               prose-blockquote:border-crimson prose-blockquote:text-neutral-500
               prose-hr:border-border"
             dangerouslySetInnerHTML={{ __html: article.contentHtml }}

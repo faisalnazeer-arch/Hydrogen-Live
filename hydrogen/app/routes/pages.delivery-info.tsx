@@ -6,7 +6,7 @@ import { detectLanguage } from "../lib/locale";
 
 export const meta: MetaFunction = () => [
   { title: "Delivery Info — MLS UAE" },
-  { name: "description", content: "Same-day delivery across Dubai, Abu Dhabi, Sharjah and Ajman. 2-hour express delivery available." },
+  { name: "description", content: "Same-day delivery across Dubai, Abu Dhabi, Sharjah and Ajman. 1-hour slot delivery until 8:45 PM in Dubai." },
 ];
 
 // ─── Storefront metaobject query ──────────────────────────────────────────────
@@ -39,13 +39,13 @@ const FALLBACK_CITIES = [
     id: "dubai",
     label: "Dubai",
     emoji: "🏙️",
-    cutoff: "8:30 PM",
-    window: "2 hours",
-    hours: "10 AM – 8:30 PM, all days",
+    cutoff: "8:45 PM",
+    window: "1-hour slots",
+    hours: "10 AM – 8:45 PM, all days",
     fee: "AED 15",
     notes: [
-      "Express 2-hour delivery across all Dubai areas",
-      "Order anytime up to 8:30 PM for same-day delivery",
+      "Delivered in 1-hour slots across all Dubai areas",
+      "Order anytime up to 8:45 PM for same-day delivery",
       "No minimum order value",
       "Deliveries continue until 10:30 PM",
     ],
@@ -182,7 +182,7 @@ export default function DeliveryInfoPage() {
       <div className="border-b border-border">
         <div className="container mx-auto flex flex-wrap items-center justify-center gap-6 px-4 py-4">
           {[
-            { icon: Clock, text: "2-hour express delivery" },
+            { icon: Clock, text: "1-hour slot delivery" },
             { icon: Package, text: "Insulated cold-chain packaging" },
             { icon: MapPin, text: "Dubai, Abu Dhabi & Sharjah/Ajman" },
           ].map(({ icon: Icon, text }) => (
