@@ -622,7 +622,7 @@ export function CartDrawer() {
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="mt-2 w-full rounded-lg border border-border py-2.5 text-sm font-semibold text-foreground transition-colors hover:border-crimson hover:text-crimson"
+                  className="mt-2 w-full rounded-lg border border-border py-3 text-base font-semibold text-foreground transition-colors hover:border-crimson hover:text-crimson"
                 >
                   {t("cart.continue")}
                 </button>

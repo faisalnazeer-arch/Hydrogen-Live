@@ -95,14 +95,14 @@ export function SearchAutosuggest({
     <div ref={ref} className="relative w-full">
       <form onSubmit={(e) => { e.preventDefault(); submit(q); }}>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
           <input
             value={q}
             onChange={(e) => { setQ(e.target.value); setOpen(true); }}
             onFocus={() => { if (q.trim().length >= 2) setOpen(true); }}
             type="search"
             placeholder={resolvedPlaceholder}
-            className="w-full rounded-full border border-border bg-card py-2 pl-10 pr-4 text-sm outline-none focus:border-crimson"
+            className="w-full rounded-full border border-border bg-card py-3 pl-11 pr-4 text-base font-semibold outline-none focus:border-crimson"
           />
           {isFetching && (
             <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />

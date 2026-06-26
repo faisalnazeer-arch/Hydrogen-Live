@@ -730,7 +730,7 @@ function PageLoader() {
           textTransform: isAr ? "none" : "uppercase",
           direction: isAr ? "rtl" : "ltr",
           animation: `_mls-tag 0.35s ease-out ${isAr ? "1.04s" : "1.2s"} both`,
-        }}>{isAr ? "جودة لحوم فاخرة" : "Premium Quality Meats"}</p>
+        }}>{isAr ? "100% طازج وحلال" : "100% Fresh & Halal"}</p>
 
         {/* Staggered crimson dots */}
         <div style={{ display: "flex", gap: 7, marginTop: 40 }}>
