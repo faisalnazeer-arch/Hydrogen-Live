@@ -97,6 +97,9 @@ const Q_FEATURED   = `{ nodes: metaobjects(type: "featured_collection", first: 1
 const Q_COL_LIST   = `{ nodes: metaobjects(type: "featured_collection_list", first: 20) { nodes { id fields { ${_imgF} } } } }`;
 const Q_GIFT       = `{ nodes: metaobjects(type: "mls_first_order_gift", first: 1) { nodes { id fields { key value } } } }`;
 const Q_SALE_SEC   = `{ nodes: metaobjects(type: "mls_sale_section", first: 1) { nodes { id fields { key value reference { ... on Collection { handle title } } } } } }`;
+// Home layout: one mls_home_layout metaobject with a `section_order` multi-line text field
+// (one section key per line, in display order; omit a line or prefix with # to hide it).
+const Q_HOME_LAYOUT = `{ nodes: metaobjects(type: "mls_home_layout", first: 1) { nodes { id fields { key value } } } }`;
 
 // Storefront API query to batch-fetch correct presentment prices by product GID.
 const REEL_PRODUCT_PRICES_QUERY = `#graphql
@@ -530,7 +533,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     heroRes, badgesRes, priceSecRes, priceTileRes, reelSecRes,
     promoRes, valueRes, colCfgRes, originRes, categoryRes,
     cutsRes, featuredRes, colListRes, reelTagged, reelItemsRes, giftRes, saleSecRes,
-    sfMetaRes, blogData, reviewsData, shopStats,
+    sfMetaRes, blogData, reviewsData, shopStats, homeLayoutRes,
   ] = await Promise.all([
     af(Q_HERO), af(Q_BADGES), af(Q_PRICE_SEC), af(Q_PRICE_TILE), af(Q_REELS_SEC),
     af(Q_PROMO), af(Q_VALUE), af(Q_COL_CFG), af(Q_ORIGIN), af(Q_CATEGORY),
@@ -541,6 +544,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     context.storefront.query(Q_BLOG_ARTICLES).catch(() => null),
     fetchJudgemeStoreReviews(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN, 1, 9).catch(() => ({ reviews: [] as JudgemeReview[], current_page: 1, per_page: 9 })),
     fetchJudgemeShopStats(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN).catch(() => ({ average: 0, count: 0 })),
+    // Home section layout (order + visibility). Catches so a missing definition never breaks the page.
+    context.adminFetch(Q_HOME_LAYOUT).then((d: any) => d?.nodes ?? {}).catch(() => ({})),
   ]);
 
   // Prefer Storefront API section when it returned nodes (translated content available);
@@ -691,7 +696,17 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const heroSlides =
     language === "AR" ? allHeroNodes.map(applyArHeroImages) : allHeroNodes;
 
+  // Parse the home section layout: one key per line, in display order; lines that are
+  // empty or start with # are skipped (hidden). Empty/missing → component uses its default order.
+  const sectionOrderRaw = ((homeLayoutRes?.nodes?.[0]?.fields ?? []) as any[])
+    .find((f) => f.key === "section_order")?.value ?? "";
+  const sectionOrder: string[] = sectionOrderRaw
+    .split("\n")
+    .map((s: string) => s.trim())
+    .filter((s: string) => s.length > 0 && !s.startsWith("#"));
+
   return {
+    sectionOrder,
     heroSlides,
     trustBadges: data?.trustBadges?.nodes ?? [],
     featuredSection,
@@ -716,47 +731,49 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   };
 }
 
+// Default home section order + the full set of valid section keys. The mls_home_layout
+// metaobject can reorder these or omit any to hide it; anything not listed below is ignored.
+const HOME_SECTION_ORDER = [
+  "hero", "trust_badges", "featured_collections", "first_order_gift", "sale",
+  "featured_products", "shop_by_category", "shop_by_cuts", "shop_by_origin",
+  "reels", "promo", "value_boxes", "blog", "recently_viewed", "reviews",
+] as const;
+
 export default function Home() {
-  const { heroSlides, trustBadges, featuredSection, collectionCards, priceSection, priceTiles, promo, reelsLabel, reelsHeading, reels, categorySection, originSection, valueBanner, cutsSection, firstOrderGift, saleSection, saleProducts, blogArticles, storeReviews, reviewTotalCount, reviewAverage } = useLoaderData<typeof loader>();
+  const { sectionOrder, heroSlides, trustBadges, featuredSection, collectionCards, promo, reelsLabel, reelsHeading, reels, categorySection, originSection, valueBanner, cutsSection, firstOrderGift, saleSection, saleProducts, blogArticles, storeReviews, reviewTotalCount, reviewAverage } = useLoaderData<typeof loader>();
   const t = useT();
-  return (
-    <>
-      <HeroBanner slides={heroSlides} />
-      <TrustBadges badges={trustBadges} />
-      <FeaturedCollections
-        cards={collectionCards}
-        title={t("home.featured")}
-        subtitle={t("home.featured_sub")}
-      />
-      <FirstOrderGift data={firstOrderGift} />
-      {saleSection && (
-        <CategorySection
-          handle={saleSection.collectionHandle}
-          title={saleSection.heading}
-          subtitle={saleSection.subHeading}
-          products={saleProducts}
-        />
-      )}
-      {featuredSection && (
-        <CategorySection
-          handle={featuredSection.tabs[0]?.handle ?? ""}
-          title={featuredSection.title}
-          subtitle={featuredSection.subTitle}
-          products={featuredSection.tabs[0]?.products ?? []}
-          tabs={featuredSection.tabs}
-        />
-      )}
-      <ShopByCategory section={categorySection} />
-      <ShopByCuts section={cutsSection} />
-      <ShopByOrigin section={originSection} />
-      <ReelsCarousel reels={reels} label={reelsLabel} heading={reelsHeading} />
-      <PromoSideBySide promo={promo} />
-      <ValueBoxesBanner banner={valueBanner} />
-      <HomeBlogSection articles={blogArticles} />
-      <RecentlyViewed />
-      <HomeReviews reviews={storeReviews} totalCount={reviewTotalCount} averageRating={reviewAverage} />
-    </>
-  );
+
+  // Each section keyed so the layout metaobject can reorder / hide them. Conditional
+  // sections resolve to null (and are simply skipped) when their data is absent.
+  const sections: Record<string, React.ReactNode> = {
+    hero: <HeroBanner key="hero" slides={heroSlides} />,
+    trust_badges: <TrustBadges key="trust_badges" badges={trustBadges} />,
+    featured_collections: (
+      <FeaturedCollections key="featured_collections" cards={collectionCards} title={t("home.featured")} subtitle={t("home.featured_sub")} />
+    ),
+    first_order_gift: <FirstOrderGift key="first_order_gift" data={firstOrderGift} />,
+    sale: saleSection ? (
+      <CategorySection key="sale" handle={saleSection.collectionHandle} title={saleSection.heading} subtitle={saleSection.subHeading} products={saleProducts} />
+    ) : null,
+    featured_products: featuredSection ? (
+      <CategorySection key="featured_products" handle={featuredSection.tabs[0]?.handle ?? ""} title={featuredSection.title} subtitle={featuredSection.subTitle} products={featuredSection.tabs[0]?.products ?? []} tabs={featuredSection.tabs} />
+    ) : null,
+    shop_by_category: <ShopByCategory key="shop_by_category" section={categorySection} />,
+    shop_by_cuts: <ShopByCuts key="shop_by_cuts" section={cutsSection} />,
+    shop_by_origin: <ShopByOrigin key="shop_by_origin" section={originSection} />,
+    reels: <ReelsCarousel key="reels" reels={reels} label={reelsLabel} heading={reelsHeading} />,
+    promo: <PromoSideBySide key="promo" promo={promo} />,
+    value_boxes: <ValueBoxesBanner key="value_boxes" banner={valueBanner} />,
+    blog: <HomeBlogSection key="blog" articles={blogArticles} />,
+    recently_viewed: <RecentlyViewed key="recently_viewed" />,
+    reviews: <HomeReviews key="reviews" reviews={storeReviews} totalCount={reviewTotalCount} averageRating={reviewAverage} />,
+  };
+
+  // Use the metaobject-defined order when it provides at least one known key; otherwise the default.
+  const requested = (sectionOrder ?? []).filter((k) => k in sections);
+  const order = requested.length > 0 ? requested : [...HOME_SECTION_ORDER];
+
+  return <>{order.map((k) => sections[k])}</>;
 }
 
 export function ErrorBoundary() {
