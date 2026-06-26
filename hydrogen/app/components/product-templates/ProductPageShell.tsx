@@ -641,7 +641,7 @@ function ProductDetailsTab({ product }: { product: any }) {
         <div className="flex flex-wrap gap-2">
           {parseTags(suitableTags).map((tag) => (
             <span key={tag}
-              className="rounded-full border border-crimson/30 bg-crimson/5 px-3 py-1.5 text-xs font-semibold text-crimson">
+              className="rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
               {tag}
             </span>
           ))}
@@ -937,14 +937,37 @@ export function ProductPageShell({
   const THUMB_SCROLL = 88; // scroll 1 thumb+gap per arrow click
   const atcSentinelRef = useRef<HTMLDivElement>(null);
 
-  // Lift Richpanel above sticky ATC only while the bar is actually visible
+  // Hide the Richpanel chat launcher while the sticky ATC bar is visible so it can't overlap
+  // the bar. We add a class (`.mls-rp-hidden { display:none !important }`) to every Richpanel
+  // element — non-destructive (doesn't touch the widget's own inline styles, and removing the
+  // class reverts cleanly), and a MutationObserver re-applies it if the widget injects/
+  // re-renders. An open (full-screen) chat is left visible.
   useEffect(() => {
-    if (stickyVisible) {
-      document.body.classList.add("pdp-page");
-    } else {
+    document.body.classList.toggle("pdp-page", stickyVisible);
+
+    // Richpanel uses two id/class families: `richpanel*` and `rp-*` (e.g. rp-customer-widget).
+    const sel =
+      '[id*="richpanel"],[class*="richpanel"],[id^="rp-"],[id^="rp_"],[class*="rp-customer-widget"],[class*="rp-micro-app"],[class*="rp-messenger"]';
+    const apply = () => {
+      const chatOpen = document.documentElement.classList.contains("rp-messenger-active-html-full");
+      const hide = stickyVisible && !chatOpen;
+      document.querySelectorAll(sel).forEach((el) => el.classList.toggle("mls-rp-hidden", hide));
+    };
+    apply();
+
+    let raf = 0;
+    const obs = new MutationObserver(() => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => { raf = 0; apply(); });
+    });
+    if (stickyVisible) obs.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      obs.disconnect();
+      if (raf) window.cancelAnimationFrame(raf);
       document.body.classList.remove("pdp-page");
-    }
-    return () => { document.body.classList.remove("pdp-page"); };
+      document.querySelectorAll(".mls-rp-hidden").forEach((el) => el.classList.remove("mls-rp-hidden"));
+    };
   }, [stickyVisible]);
 
   // Push Richpanel behind sticky expanded panel — toggle atc-expanded on body
@@ -1245,7 +1268,7 @@ export function ProductPageShell({
           {/* Price */}
           <div className="flex flex-col gap-1">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="font-display text-xl font-bold text-crimson sm:text-2xl">{formatPrice(displayPrice?.amount ?? "0", currency)}</span>
+              <span className="font-display text-2xl font-bold text-crimson sm:text-3xl">{formatPrice(displayPrice?.amount ?? "0", currency)}</span>
               {displayCompareAt && <span className="text-sm text-muted-foreground line-through sm:text-base">{formatPrice(displayCompareAt.amount, currency)}</span>}
               <StockBadge available={variant?.availableForSale ?? false} qty={variant?.quantityAvailable ?? null} />
             </div>

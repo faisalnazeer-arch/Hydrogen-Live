@@ -54,14 +54,10 @@ footer .hover\:text-gold:hover { color: var(--color-gold); }
   z-index: 40 !important;
 }
 
-/* On any PDP (sticky ATC visible), lift launcher above the bar on ALL screen sizes.
-   Sticky ATC bar is ~56px; 76px gives a comfortable 20px gap above it. */
-body.pdp-page #richpanel-widget,
-body.pdp-page #richpanel-container,
-body.pdp-page [id^="richpanel"],
-body.pdp-page .richpanel-launcher {
-  bottom: 76px !important;
-}
+/* Hide the Richpanel chat launcher while the PDP sticky ATC bar is visible. ProductPageShell
+   adds this class (to every Richpanel element) on sticky-bar visibility, and removes it when
+   the bar scrolls away / a chat is open — so the launcher never overlaps the bar. */
+.mls-rp-hidden { display: none !important; }
 
 /* When any Radix overlay/dialog/sheet is open, push Richpanel behind it */
 body:has([data-radix-dialog-overlay][data-state="open"]) #richpanel-widget,

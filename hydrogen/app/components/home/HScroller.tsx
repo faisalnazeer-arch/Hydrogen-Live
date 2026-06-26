@@ -55,7 +55,7 @@ export function HScroller({ children, className, innerClassName }: HScrollerProp
       <div
         ref={ref}
         className={cn(
-          "flex snap-x snap-proximity gap-2 -mx-4 px-4 scroll-px-4 md:mx-0 md:px-0 md:scroll-px-0 overflow-x-auto scroll-smooth py-0 sm:gap-3 md:py-2 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [will-change:scroll-position]",
+          "flex snap-x snap-proximity gap-2 -mx-4 ps-4 pe-0 scroll-ps-4 md:mx-0 md:ps-0 md:pe-0 md:scroll-ps-0 overflow-x-auto scroll-smooth py-0 sm:gap-3 md:py-2 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [will-change:scroll-position]",
           innerClassName
         )}
       >
