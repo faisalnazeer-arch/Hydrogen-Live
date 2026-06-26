@@ -1166,7 +1166,7 @@ export function ProductPageShell({
       })()}
 
       {/* Issue 3: pb-24 on mobile so last content clears the sticky ATC bar */}
-      <div className="container mx-auto grid gap-6 px-4 pb-24 md:pb-4 md:grid-cols-2 md:items-start md:gap-10">
+      <div className="container mx-auto grid gap-6 px-4 pb-4 md:grid-cols-2 md:items-start md:gap-10">
         {/* ── Media gallery ── */}
         <div className="flex min-w-0 flex-col gap-3 md:sticky md:top-36 md:self-start">
 
@@ -1177,7 +1177,7 @@ export function ProductPageShell({
 
             {/* Vertical thumbnail rail with up/down nav arrows */}
             {allMedia.length > 1 && (
-              <div className="flex flex-col items-center gap-1" style={{ width: 64 }}>
+              <div className="flex w-12 flex-col items-center gap-1 md:w-16">
                 {/* Up arrow — only when not at first thumb */}
                 <button
                   type="button"
@@ -1194,7 +1194,7 @@ export function ProductPageShell({
                     const isActive = i === activeMediaIdx;
                     return (
                       <button key={i} type="button" onClick={() => setActiveMediaIdx(i)}
-                        className={`relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 md:h-16 md:w-16 ${
+                        className={`relative h-11 w-11 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 md:h-16 md:w-16 ${
                           isActive
                             ? "border-crimson shadow-[inset_0_0_0_1px_rgba(180,0,0,0.25)]"
                             : "border-transparent opacity-60 hover:opacity-100 hover:border-border/60"
