@@ -56,7 +56,6 @@ const COLLECTION_QUERY = `#graphql
   ) @inContext(language: $language, country: $country) {
     collection(handle: $handle) {
       id title handle description
-      seo { title description }
       products(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse) {
         pageInfo {
           hasNextPage
@@ -184,10 +183,8 @@ function CollectionDescription({ text }: { text: string }) {
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
-  const seo = (data?.collection as any)?.seo;
-  // Prefer the Shopify SEO fields (Search engine listing), fall back to the collection's own title/description.
-  const title = seo?.title?.trim() || `${data?.collection?.title ?? "Collection"} — MLS UAE`;
-  const description = seo?.description?.trim() || data?.collection?.description || "";
+  const title = `${data?.collection?.title ?? "Collection"} — MLS UAE`;
+  const description = data?.collection?.description ?? "";
   const image = (data?.collection as any)?.image?.url as string | undefined;
   const canonical = `https://mlsuae.ae${location.pathname}`;
 

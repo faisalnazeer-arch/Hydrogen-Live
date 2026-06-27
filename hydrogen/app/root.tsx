@@ -559,8 +559,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var m=document.cookie.match(/(?:^|;\\s*)lang=([a-z]{2})/);if(m&&m[1]==='ar'){document.documentElement.lang='ar';document.documentElement.dir='rtl';}}catch(e){}})();` }} />
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-        {/* No hardcoded <meta name="description"> here — each route's meta owns it (a static
-            one would duplicate and override the per-page description for SEO). */}
+        <meta
+          name="description"
+          content="Premium beef, lamb, mutton & specialty cuts. 100% Halal certified. Same-day delivery across the UAE & Oman."
+        />
         {/* Site-wide social tags (match the live site). The real page title and per-page
             og:title/description/image come from each route's meta via <Meta/> below.
             (No hardcoded <title> here — it would duplicate the route title.) */}
