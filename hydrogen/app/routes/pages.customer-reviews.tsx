@@ -74,17 +74,47 @@ const METAFIELD_QUERY = `{
 }`;
 
 export async function loader({ context }: LoaderFunctionArgs) {
-  const data = await context.adminFetch(METAFIELD_QUERY);
-  const shop = data?.shop ?? {};
+  const { env } = context as any;
+  const shopDomain = env?.PUBLIC_STORE_DOMAIN ?? "mls-uae.myshopify.com";
+  const apiToken   = env?.JUDGEME_API_TOKEN ?? "";
 
+  // Fetch metafields for count/rating/histogram and REST API reviews in parallel
+  const [metaData, page1, page2] = await Promise.all([
+    context.adminFetch(METAFIELD_QUERY),
+    apiToken
+      ? fetch(`https://judge.me/api/v1/reviews?api_token=${encodeURIComponent(apiToken)}&shop_domain=${encodeURIComponent(shopDomain)}&page=1&per_page=50`, { headers: { Accept: "application/json" } }).then(r => r.ok ? r.json() : { reviews: [] }).catch(() => ({ reviews: [] }))
+      : Promise.resolve({ reviews: [] }),
+    apiToken
+      ? fetch(`https://judge.me/api/v1/reviews?api_token=${encodeURIComponent(apiToken)}&shop_domain=${encodeURIComponent(shopDomain)}&page=2&per_page=50`, { headers: { Accept: "application/json" } }).then(r => r.ok ? r.json() : { reviews: [] }).catch(() => ({ reviews: [] }))
+      : Promise.resolve({ reviews: [] }),
+  ]);
+
+  const shop = metaData?.shop ?? {};
   const header    = shop.header?.value ?? "";
-  const reviews0  = shop.reviews0?.value ?? "";
-  const reviews1  = shop.reviews1?.value ?? "";
   const count     = Number(shop.count?.value ?? 0);
   const rating    = Number(shop.rating?.value ?? 0);
   const medals    = shop.medals?.value ?? "";
   const histogram = parseHistogram(header);
-  const reviews   = parseReviews(reviews0 + reviews1);
+
+  // Map REST API reviews to ParsedReview — pictures come with correct URLs directly
+  const apiReviews: ParsedReview[] = [...(page1.reviews ?? []), ...(page2.reviews ?? [])].map((r: any) => ({
+    id:       String(r.id),
+    rating:   r.rating ?? 5,
+    author:   r.reviewer?.name ?? "Customer",
+    date:     r.created_at ?? "",
+    title:    r.title ?? "",
+    body:     r.body ?? "",
+    product:  r.product_title ?? "",
+    verified: r.verified === "verified_buyer",
+    pictures: (r.pictures ?? [])
+      .filter((p: any) => !p.hidden)
+      .map((p: any) => ({ small: p.urls?.small ?? p.urls?.compact ?? p.urls?.original ?? "", original: p.urls?.original ?? "" })),
+  }));
+
+  // Fall back to HTML parsing from metafields if REST API returned nothing
+  const reviews0 = shop.reviews0?.value ?? "";
+  const reviews1 = shop.reviews1?.value ?? "";
+  const reviews = apiReviews.length > 0 ? apiReviews : parseReviews(reviews0 + reviews1);
 
   return { reviews, count, rating, histogram, medals };
 }

@@ -69,7 +69,7 @@ function parseWidgetHtml(html: string, page: number, perPage: number): JudgemeRe
     const dateM   = chunk.match(/class='jdgm-rev__timestamp[^']*'[^>]*data-content='([^']+)'/);
     const titleM  = chunk.match(/<b class='jdgm-rev__title'>([^<]*)<\/b>/);
     const bodyM   = chunk.match(/<div class='jdgm-rev__body'>([\s\S]*?)<\/div>/);
-    const picMs   = [...chunk.matchAll(/href='(https:\/\/(?:judgeme(?:-public-images)?\.imgix\.net|cdn\.judge\.me\/reviews\/pictures)[^']+)'/g)];
+    const picMs   = [...chunk.matchAll(/href='(https:\/\/(?:(?:review-images|judgeme(?:-public-images)?)\.judge\.me|judgeme(?:-public-images)?\.imgix\.net|cdn\.judge\.me\/reviews\/pictures)[^']+)'/g)];
 
     let createdAt = new Date().toISOString();
     try { if (dateM?.[1]) createdAt = new Date(dateM[1]).toISOString(); } catch { /* keep default */ }
