@@ -1,5 +1,6 @@
 import {
   Links,
+  Link,
   Meta,
   Outlet,
   Scripts,
@@ -832,8 +833,31 @@ function DataLayerRouteTracker() {
   return null;
 }
 
+function MobileTopBanner({ banner }: { banner: MobileBanner | null }) {
+  if (!banner) return null;
+  const inner = (
+    <img
+      src={banner.imageUrl}
+      alt={banner.altText || ""}
+      className="block w-full h-auto"
+      loading="eager"
+      fetchPriority="high"
+    />
+  );
+  return (
+    <div className="md:hidden w-full overflow-hidden">
+      {banner.url && banner.url !== "/" ? (
+        <Link to={banner.url} prefetch="intent" className="block">
+          {inner}
+        </Link>
+      ) : inner}
+    </div>
+  );
+}
+
 export default function App() {
   const { mainMenu, secondaryMenu, mobileMenu, mobileCategoriesMenu, footerSettings, footerMenuCols, announcementMessages, navItemImages, mobileBanners } = useLoaderData<typeof loader>();
+  const mobileTopBanner = mobileBanners[0] ?? null;
   return (
     <QueryClientProvider client={queryClient}>
       <PageLoader />
@@ -843,6 +867,7 @@ export default function App() {
       <RichpanelWidget />
       <div className="flex min-h-screen flex-col">
         <AnnouncementBar messages={announcementMessages} />
+        <MobileTopBanner banner={mobileTopBanner} />
         <Header mainMenu={mainMenu} secondaryMenu={secondaryMenu} navItemImages={navItemImages} mobileBanners={mobileBanners} mobileMenu={mobileMenu} mobileCategoriesMenu={mobileCategoriesMenu} />
         <main className="flex-1">
           <Outlet />
