@@ -631,6 +631,28 @@ function RichpanelWidget() {
     w.richpanel.load("mlslive1884");
     w.richpanel.loaded = true;
   }, []);
+
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.id = "rp-footer-hide";
+    style.textContent = `.rp-hide-near-footer #richpanel-root, .rp-hide-near-footer #rp-messenger-container, .rp-hide-near-footer [id^="richpanel"] { opacity: 0 !important; pointer-events: none !important; transition: opacity 0.2s; }`;
+    document.head.appendChild(style);
+
+    const onScroll = () => {
+      const footer = document.querySelector("footer");
+      if (!footer) return;
+      const footerTop = footer.getBoundingClientRect().top;
+      const threshold = window.innerHeight * 0.85;
+      document.body.classList.toggle("rp-hide-near-footer", footerTop < threshold);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      style.remove();
+    };
+  }, []);
+
   return null;
 }
 
