@@ -10,7 +10,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     env.PUBLIC_STORE_DOMAIN,
     env.JUDGEME_API_TOKEN,
     page,
-    10,
+    20,
   );
 
   return Response.json({ reviews: data.reviews, totalCount: data.total_count ?? 0 });

@@ -124,7 +124,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
 export default function CustomerReviewsPage() {
   const { reviews: initialReviews, count, rating, histogram, medals } = useLoaderData<typeof loader>();
   const [allReviews, setAllReviews] = useState<ParsedReview[]>(initialReviews);
-  const [page, setPage] = useState(3); // loader already fetched pages 1+2
+  const [page, setPage] = useState(6); // loader fetched 100 reviews = pages 1-5 at 20/page
   const fetcher = useFetcher<{ reviews: JudgemeReview[]; totalCount: number }>();
 
   useEffect(() => {
