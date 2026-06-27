@@ -3,6 +3,7 @@ import {
   createCartHandler,
   createCustomerAccountClient,
   createStorefrontClient,
+  storefrontRedirect,
   cartGetIdDefault,
   cartSetIdDefault,
 } from "@shopify/hydrogen";
@@ -122,6 +123,10 @@ export default {
       });
 
       const response = await handleRequest(request);
+
+      if (response.status === 404) {
+        return storefrontRedirect({request, response, storefront});
+      }
 
       if (session.isPending) {
         response.headers.set("Set-Cookie", await session.commit());
