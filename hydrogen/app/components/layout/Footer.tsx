@@ -1,6 +1,5 @@
 import { Link } from "react-router";
-import { Facebook, Instagram, Linkedin, Mail, Phone, Twitter } from "lucide-react";
-import logo from "@/assets/mls-logo.png";
+import { Facebook, Instagram, Linkedin, Phone, Twitter } from "lucide-react";
 import { useLocalePath } from "@/stores/localeStore";
 import {
   Accordion,
@@ -54,7 +53,7 @@ export function Footer({ settings, menuCols }: Props) {
     facebook:      settings?.facebookUrl,
     twitter:       settings?.twitterUrl,
     tiktok:        settings?.tiktokUrl,
-    whatsapp:      settings?.whatsappUrl,
+    whatsapp:      settings?.whatsappUrl    || `https://wa.me/971504516403`,
     linkedin:      settings?.linkedinUrl,
     brandText:     settings?.brandText,
     copyright:     settings?.copyright      || DEFAULTS.copyright,
@@ -67,15 +66,15 @@ export function Footer({ settings, menuCols }: Props) {
       <div className="container mx-auto px-4 py-12">
 
         {/* ── Desktop ─────────────────────────────────────────────── */}
-        <div className="hidden gap-10 md:flex md:flex-wrap">
+        <div className="hidden gap-10 md:flex md:flex-wrap md:items-start">
           <BrandCol contact={contact} />
           {menuCols.map((col) => (
             <NavCol key={col.heading} heading={col.heading} links={col.links} />
           ))}
-          <ContactCol contact={contact} />
+          <NewsletterCol />
         </div>
 
-        {/* ── Mobile accordion ────────────────────────────────────── */}
+        {/* ── Mobile ──────────────────────────────────────────────── */}
         <div className="md:hidden">
           <BrandCol contact={contact} />
           <Accordion type="single" collapsible className="mt-6">
@@ -89,16 +88,13 @@ export function Footer({ settings, menuCols }: Props) {
                 </AccordionContent>
               </AccordionItem>
             ))}
-            <AccordionItem value="contact" className="border-off-white/10">
-              <AccordionTrigger className="font-display text-sm font-bold uppercase tracking-wider text-white hover:no-underline">
-                {contact.heading}
-              </AccordionTrigger>
-              <AccordionContent>
-                <ContactList contact={contact} />
-                <div className="mt-5 klaviyo-form-TXvrLy" />
-              </AccordionContent>
-            </AccordionItem>
           </Accordion>
+          {/* Klaviyo signup on mobile below accordions */}
+          <div className="mt-8">
+            <p className="mb-1 text-base font-bold text-white">Want discounts?</p>
+            <p className="mb-4 text-sm text-off-white/70">Subscribe to our newsletter and get 10% off your first purchase!</p>
+            <div className="klaviyo-form-TXvrLy" />
+          </div>
         </div>
       </div>
 
@@ -114,19 +110,52 @@ export function Footer({ settings, menuCols }: Props) {
 }
 
 function BrandCol({ contact }: { contact: ContactData }) {
+  const whatsappHref = contact.whatsapp?.startsWith("http")
+    ? contact.whatsapp
+    : `https://wa.me/${(contact.phone || DEFAULTS.phone).replace(/\D/g, "")}`;
+
   return (
-    <div className="min-w-[240px] max-w-[320px] flex-1">
-      <div className="mb-3">
-        <img src={logo} alt="MLS UAE" className="h-14 w-auto brightness-0 invert" />
-      </div>
-      <p className="text-sm font-semibold text-white">{contact.companyName}</p>
-      {contact.brandText && (
-        <p className="mt-1 text-sm text-off-white/70">{contact.brandText}</p>
+    <div className="min-w-[240px] max-w-[300px] flex-1">
+      {/* Company name */}
+      <p className="text-sm font-bold text-white">{contact.companyName}</p>
+
+      {/* Address */}
+      {contact.address && (
+        <p className="mt-3 whitespace-pre-line text-sm text-off-white/70 uppercase">
+          {contact.address}
+        </p>
       )}
-      <div className="mt-4 flex flex-wrap gap-3">
-        {contact.instagram && (
-          <a href={contact.instagram} aria-label="Instagram" className="text-off-white/70 hover:text-white" target="_blank" rel="noopener noreferrer">
-            <Instagram className="h-5 w-5" />
+
+      {/* Email + WhatsApp as plain text lines */}
+      <div className="mt-4 space-y-1 text-sm">
+        {contact.email && (
+          <p>
+            <span className="font-semibold text-white">Email: </span>
+            <a href={`mailto:${contact.email}`} className="text-off-white/80 hover:text-white">
+              {contact.email}
+            </a>
+          </p>
+        )}
+        {contact.phone && (
+          <p>
+            <span className="font-semibold text-white">Whatsapp</span>
+            <a
+              href={whatsappHref}
+              className="text-off-white/80 hover:text-white"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {contact.phone}
+            </a>
+          </p>
+        )}
+      </div>
+
+      {/* Social icons */}
+      <div className="mt-5 flex flex-wrap gap-4">
+        {contact.phone && (
+          <a href={`tel:${contact.phone}`} aria-label="Phone" className="text-off-white/70 hover:text-white">
+            <Phone className="h-5 w-5" />
           </a>
         )}
         {contact.facebook && (
@@ -134,8 +163,13 @@ function BrandCol({ contact }: { contact: ContactData }) {
             <Facebook className="h-5 w-5" />
           </a>
         )}
+        {contact.instagram && (
+          <a href={contact.instagram} aria-label="Instagram" className="text-off-white/70 hover:text-white" target="_blank" rel="noopener noreferrer">
+            <Instagram className="h-5 w-5" />
+          </a>
+        )}
         {contact.whatsapp && (
-          <a href={contact.whatsapp} aria-label="WhatsApp" className="text-off-white/70 hover:text-white" target="_blank" rel="noopener noreferrer">
+          <a href={whatsappHref} aria-label="WhatsApp" className="text-off-white/70 hover:text-white" target="_blank" rel="noopener noreferrer">
             <WhatsAppIcon className="h-5 w-5" />
           </a>
         )}
@@ -162,7 +196,7 @@ function BrandCol({ contact }: { contact: ContactData }) {
 function NavCol({ heading, links }: { heading: string; links: FooterLink[] }) {
   return (
     <div className="min-w-[140px] flex-1">
-      <h4 className="mb-4 font-display text-sm font-bold uppercase tracking-wider text-white">
+      <h4 className="mb-4 font-display text-sm font-bold text-white">
         {heading}
       </h4>
       <LinkList links={links} />
@@ -170,44 +204,15 @@ function NavCol({ heading, links }: { heading: string; links: FooterLink[] }) {
   );
 }
 
-function ContactCol({ contact }: { contact: ContactData }) {
+function NewsletterCol() {
   return (
-    <div className="min-w-[200px] flex-1">
-      <h4 className="mb-4 font-display text-sm font-bold uppercase tracking-wider text-white">
-        {contact.heading}
-      </h4>
-      <ContactList contact={contact} />
-      {/* Klaviyo newsletter signup */}
-      <div className="mt-5 klaviyo-form-TXvrLy" />
+    <div className="min-w-[220px] max-w-[280px] flex-1">
+      <h4 className="mb-2 font-display text-base font-bold text-white">Want discounts?</h4>
+      <p className="mb-4 text-sm text-off-white/70">
+        Subscribe to our newsletter and get 10% off your first purchase!
+      </p>
+      <div className="klaviyo-form-TXvrLy" />
     </div>
-  );
-}
-
-function ContactList({ contact }: { contact: ContactData }) {
-  return (
-    <ul className="space-y-2.5 text-sm text-off-white/80">
-      {contact.phone && (
-        <li className="flex items-center gap-2">
-          <Phone className="h-4 w-4 shrink-0 text-white" />
-          <a
-            href={`https://wa.me/${contact.phone.replace(/\D/g, "")}`}
-            className="hover:text-white"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {contact.phone}
-          </a>
-        </li>
-      )}
-      {contact.email && (
-        <li className="flex items-center gap-2">
-          <Mail className="h-4 w-4 shrink-0 text-white" />
-          <a href={`mailto:${contact.email}`} className="hover:text-white">
-            {contact.email}
-          </a>
-        </li>
-      )}
-    </ul>
   );
 }
 
