@@ -450,7 +450,7 @@ function MobileMenuDrawer({
             <Link key={banner.id} to={lp(banner.url)} onClick={onClose} prefetch="intent"
               className="relative flex-1 overflow-hidden rounded-xl">
               <img src={cdnImg(banner.imageUrl, 300)} alt={banner.altText}
-                className="h-24 w-full object-cover" loading={idx === 0 ? "eager" : "lazy"} />
+                className="w-full h-auto block" loading={idx === 0 ? "eager" : "lazy"} />
               {(banner.heading || banner.highlight) && (
                 <div className="absolute inset-0 flex flex-col justify-center bg-gradient-to-r from-black/50 to-transparent pl-3 pr-1">
                   {banner.heading   && <span className="text-[11px] font-black leading-tight text-white drop-shadow">{banner.heading}</span>}

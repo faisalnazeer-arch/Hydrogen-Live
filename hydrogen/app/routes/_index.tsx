@@ -766,7 +766,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 const HOME_SECTION_ORDER = [
   "hero", "trust_badges", "featured_collections", "first_order_gift", "sale",
   "featured_products", "shop_by_category", "shop_by_cuts", "shop_by_origin",
-  "reels", "promo", "value_boxes", "blog", "recently_viewed", "reviews",
+  "reels", "promo", "value_boxes", "recently_viewed", "reviews", "blog",
 ] as const;
 
 export default function Home() {
