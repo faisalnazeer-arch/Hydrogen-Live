@@ -34,11 +34,17 @@ function parseReviews(html: string): ParsedReview[] {
     const body    = part.match(/class='jdgm-rev__content'[^>]*>([\s\S]*?)<\/p>/)?.[1]?.replace(/<[^>]+>/g, "").trim() ?? "";
     const product = part.match(/class='jdgm-rev__product-title'[^>]*>([^<]+)/)?.[1]?.replace(/^about\s+/i, "").trim() ?? "";
 
-    // Extract pictures
+    // Extract pictures — Judge.me lazy-loads with data-src, href holds the full-res URL
     const pictures: { small: string; original: string }[] = [];
-    const picMatches = part.matchAll(/href='([^']+)'[^>]*>\s*<img[^>]+src='([^']+)'/g);
+    const picMatches = part.matchAll(/href='(https?:\/\/[^']*(?:imgix\.net|judge\.me)[^']*)'[^>]*>[\s\S]*?<img[^>]+(?:data-src|src)='([^']+)'/g);
     for (const m of picMatches) {
       if (m[1] && m[2]) pictures.push({ original: m[1], small: m[2] });
+    }
+    // Fallback: if data-src/src thumbnail is a placeholder, use the href URL for both
+    for (const pic of pictures) {
+      if (!pic.small || pic.small.startsWith("data:") || pic.small.length < 10) {
+        pic.small = pic.original;
+      }
     }
 
     if (!id) continue;
