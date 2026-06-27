@@ -411,7 +411,7 @@ export default function Collection() {
             <>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
                 {filtered.map((p) => (
-                  <ProductCard key={p.node.id} product={p} />
+                  <ProductCard key={p.node.id} product={p} collectionHandle={collection.handle} />
                 ))}
               </div>
 

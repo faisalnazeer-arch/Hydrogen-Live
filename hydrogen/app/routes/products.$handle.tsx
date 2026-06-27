@@ -285,7 +285,8 @@ const EMPTY_LAZY = {
 };
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
-  const { handle } = params;
+  // Support both /products/:handle and /collections/:collectionHandle/products/:productHandle
+  const handle = params.handle ?? params.productHandle;
   if (!handle) throw new Response("Missing handle", { status: 400 });
 
   const { env } = context;

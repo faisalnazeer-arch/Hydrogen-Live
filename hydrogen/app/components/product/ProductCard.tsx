@@ -20,12 +20,16 @@ interface ProductCardProps {
   product: ShopifyProduct;
   onQuickView?: (product: ShopifyProduct) => void;
   ratingOverride?: { average: number; count: number };
+  collectionHandle?: string;
 }
 
-export const ProductCard = memo(function ProductCard({ product, onQuickView, ratingOverride }: ProductCardProps) {
+export const ProductCard = memo(function ProductCard({ product, onQuickView, ratingOverride, collectionHandle }: ProductCardProps) {
   const t = useT();
   const lp = useLocalePath();
   const node = product.node;
+  const productPath = collectionHandle
+    ? `/collections/${collectionHandle}/products/${node.handle}`
+    : `/products/${node.handle}`;
   const variants = node.variants.edges.map((e) => e.node);
   const firstAvailable = variants.find((v) => v.availableForSale) ?? variants[0];
   const isAvailable = !!firstAvailable?.availableForSale;
@@ -87,7 +91,7 @@ export const ProductCard = memo(function ProductCard({ product, onQuickView, rat
     >
       {/* ── Image ── */}
       <Link
-        to={lp(`/products/${node.handle}`)}
+        to={lp(productPath)}
         prefetch="viewport"
         className="relative block aspect-square overflow-hidden bg-muted"
       >
@@ -147,7 +151,7 @@ export const ProductCard = memo(function ProductCard({ product, onQuickView, rat
       {/* ── Card body ── */}
       <div className="flex flex-1 flex-col p-3">
         <Link
-          to={lp(`/products/${node.handle}`)}
+          to={lp(productPath)}
           prefetch="viewport"
           className="text-balance text-xs font-medium leading-snug text-foreground transition-colors hover:text-crimson sm:text-sm"
           title={node.title}

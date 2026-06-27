@@ -58,6 +58,7 @@ export default hydrogenRoutes([
   route('search', 'routes/search.tsx', { id: 'search' }),
   route('collections', 'routes/collections._index.tsx'),
   route('collections/:handle', 'routes/collections.$handle.tsx'),
+  route('collections/:collectionHandle/products/:productHandle', 'routes/products.$handle.tsx', { id: 'collection-product' }),
   route('blogs/all', 'routes/blogs.all.tsx'),
   route('blogs/:handle', 'routes/blogs.$handle.tsx'),
   route('blogs/:blogHandle/:articleHandle', 'routes/blogs.$blogHandle.$articleHandle.tsx'),
