@@ -55,7 +55,7 @@ const HOME_METAOBJECTS_QUERY = `#graphql
       nodes { id fields { key value } }
     }
     origin: metaobjects(type: "mls_origin_section", first: 1) {
-      nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id handle fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } }
+      nodes { id fields { key value references(first: 50) { nodes { ... on Metaobject { id handle fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } }
     }
     category: metaobjects(type: "mls_category_section", first: 1) {
       nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } }
@@ -91,7 +91,7 @@ const Q_REEL_ITEMS = `{ nodes: metaobjects(type: "reel_item", first: 20) { nodes
 const Q_PROMO      = `{ nodes: metaobjects(type: "promo_side_by_side", first: 1) { nodes { id fields { ${_imgF} } } } }`;
 const Q_VALUE      = `{ nodes: metaobjects(type: "mls_value_banner", first: 1) { nodes { id fields { ${_imgF} } } } }`;
 const Q_COL_CFG    = `{ nodes: metaobjects(type: "mls_collection_section", first: 1) { nodes { id fields { key value } } } }`;
-const Q_ORIGIN     = `{ nodes: metaobjects(type: "mls_origin_section", first: 1) { nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id handle fields { ${_imgF} } } } } } } } }`;
+const Q_ORIGIN     = `{ nodes: metaobjects(type: "mls_origin_section", first: 1) { nodes { id fields { key value references(first: 50) { nodes { ... on Metaobject { id handle fields { ${_imgF} } } } } } } } }`;
 const Q_CATEGORY   = `{ nodes: metaobjects(type: "mls_category_section", first: 1) { nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id fields { ${_imgF} } } } } } } } }`;
 const Q_CUTS       = `{ nodes: metaobjects(type: "mls_cuts_section", first: 1) { nodes { id fields { key value references(first: 12) { nodes { ... on Metaobject { id fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } } } }`;
 const Q_FEATURED   = `{ nodes: metaobjects(type: "featured_collection", first: 10) { nodes { id fields { key value reference { ... on Collection { handle title } } references(first: 10) { nodes { ... on Metaobject { id fields { key value reference { ... on Collection { handle title } } } } } } } } } }`;
