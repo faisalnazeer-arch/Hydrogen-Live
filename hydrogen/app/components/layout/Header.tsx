@@ -151,7 +151,7 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
             </button>
           </div>
           <a
-            href={`https://mlsuae.ae/customer_authentication/redirect?locale=${locale}&region_country=AE`}
+            href="/account"
             aria-label={t("nav.account")}
           >
             <Button variant="ghost" size="icon">
@@ -772,7 +772,7 @@ function MobileMenuDrawer({
         </div>
       </div>
       <div className="shrink-0 px-3 pb-3">
-        <a href={`https://mlsuae.ae/customer_authentication/redirect?locale=${locale}&region_country=AE`}
+        <a href="/account"
           className="flex w-full items-center justify-center rounded-lg bg-crimson py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors hover:bg-rich-red"
           style={{ color: '#ffffff' }}
         >{t("nav.login_signup")}</a>
