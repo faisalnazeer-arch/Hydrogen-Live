@@ -67,7 +67,7 @@ export default {
         waitUntil,
         request,
         session,
-        customerAccountId: env.PUBLIC_CUSTOMER_ACCOUNT_API_CLIENT_ID ?? env.PUBLIC_CUSTOMER_ACCOUNT_CLIENT_ID,
+        customerAccountId: (env as any).PUBLIC_CUSTOMER_ACCOUNT_API_CLIENT_ID ?? env.PUBLIC_CUSTOMER_ACCOUNT_CLIENT_ID,
         customerAccountUrl: env.PUBLIC_CUSTOMER_ACCOUNT_API_URL,
       } as any);
 
