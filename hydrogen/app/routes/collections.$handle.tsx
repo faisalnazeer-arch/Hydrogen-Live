@@ -191,7 +191,7 @@ export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
   const image = (data?.collection as any)?.image?.url as string | undefined;
   const canonical = `https://mlsuae.ae${location.pathname}`;
 
-  const jsonLd = {
+  const breadcrumbLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
@@ -199,6 +199,16 @@ export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
       { "@type": "ListItem", position: 2, name: "Collections", item: "https://mlsuae.ae/collections" },
       { "@type": "ListItem", position: 3, name: data?.collection?.title ?? "Collection", item: canonical },
     ],
+  };
+
+  const collectionLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: data?.collection?.title ?? "Collection",
+    description,
+    url: canonical,
+    ...(image ? { image } : {}),
+    provider: { "@type": "Organization", name: "MLS UAE", url: "https://mlsuae.ae" },
   };
 
   return [
@@ -210,7 +220,8 @@ export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
     ...(image ? [{ property: "og:image", content: image }] : []),
     { property: "og:url", content: canonical },
     { tagName: "link", rel: "canonical", href: canonical },
-    { "script:ld+json": jsonLd },
+    { "script:ld+json": breadcrumbLd },
+    { "script:ld+json": collectionLd },
   ];
 };
 

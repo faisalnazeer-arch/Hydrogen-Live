@@ -8,6 +8,14 @@ import { StarRating } from "~/components/reviews/StarRating";
 export const meta: MetaFunction = () => [
   { title: "Customer Reviews — MLS UAE" },
   { name: "description", content: "Read genuine customer reviews for MLS UAE. Over 7000 verified buyers share their experience." },
+  { tagName: "link", rel: "canonical", href: "https://mlsuae.ae/pages/customer-reviews" },
+  { "script:ld+json": {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "MLS UAE Customer Reviews",
+    url: "https://mlsuae.ae/pages/customer-reviews",
+    description: "Verified customer reviews for MLS UAE — premium halal meat delivery in Dubai, Abu Dhabi and UAE.",
+  }},
 ];
 
 interface ParsedReview {

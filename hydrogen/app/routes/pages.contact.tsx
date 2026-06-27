@@ -8,6 +8,28 @@ import { applyArImages } from "../lib/arImages";
 export const meta: MetaFunction = () => [
   { title: "Contact Us — MLS UAE" },
   { name: "description", content: "Reach MLS UAE — Premium halal meat delivered. Call, WhatsApp or email us 9 AM to 10 PM daily." },
+  { tagName: "link", rel: "canonical", href: "https://mlsuae.ae/pages/contact" },
+  { "script:ld+json": {
+    "@context": "https://schema.org",
+    "@type": "ContactPage",
+    name: "Contact MLS UAE",
+    url: "https://mlsuae.ae/pages/contact",
+    description: "Reach MLS UAE by phone, WhatsApp or email. We're available 9 AM to 10 PM daily.",
+    mainEntity: {
+      "@type": "Organization",
+      name: "MLS UAE",
+      url: "https://mlsuae.ae",
+      telephone: "+971504516403",
+      email: "info@mlsuae.ae",
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "Marasi Drive, Business Bay",
+        addressLocality: "Dubai",
+        addressCountry: "AE",
+      },
+      openingHours: "Mo-Su 09:00-22:00",
+    },
+  }},
 ];
 
 const CONTACT_QUERY = `

@@ -33,11 +33,37 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   return { blog, article: blog.articleByHandle };
 }
 
-export const meta: MetaFunction<typeof loader> = ({ data }) => [
-  { title: `${data?.article?.seo?.title ?? data?.article?.title ?? "Article"} — MLS UAE` },
-  { name: "description", content: data?.article?.seo?.description ?? data?.article?.excerpt ?? "" },
-  ...(data?.article?.image ? [{ property: "og:image", content: data.article.image.url }] : []),
-];
+export const meta: MetaFunction<typeof loader> = ({ data }) => {
+  const title = data?.article?.seo?.title ?? data?.article?.title ?? "Article";
+  const description = data?.article?.seo?.description ?? data?.article?.excerpt ?? "";
+  const image = data?.article?.image?.url;
+  const url = `https://mlsuae.ae/blogs/${data?.blog?.handle ?? "news"}/${data?.article?.handle ?? ""}`;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: title,
+    description,
+    url,
+    datePublished: data?.article?.publishedAt ?? "",
+    author: { "@type": "Organization", name: "MLS UAE", url: "https://mlsuae.ae" },
+    publisher: {
+      "@type": "Organization",
+      name: "MLS UAE",
+      url: "https://mlsuae.ae",
+      logo: { "@type": "ImageObject", url: "https://mlsuae.ae/cdn/shop/files/logo_97c8d848-b3ec-4a82-a68e-dcedc161529c.png?v=1711022728" },
+    },
+    ...(image ? { image: [image] } : {}),
+  };
+  return [
+    { title: `${title} — MLS UAE` },
+    { name: "description", content: description },
+    { property: "og:type", content: "article" },
+    { property: "og:url", content: url },
+    ...(image ? [{ property: "og:image", content: image }] : []),
+    { tagName: "link", rel: "canonical", href: url },
+    { "script:ld+json": jsonLd },
+  ];
+};
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-AE", { year: "numeric", month: "long", day: "numeric" });
