@@ -94,6 +94,7 @@ const PRODUCT_QUERY = `#graphql
   @inContext(language: $language, country: $country) {
     product(handle: $handle) {
       id title handle descriptionHtml vendor
+      seo { title description }
       tags
       images(first: 10) { nodes { url altText } }
       media(first: 12) {
@@ -538,10 +539,12 @@ function renderTemplate(suffix: string | null | undefined, props: any) {
 
 export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
   const product = data?.product;
-  const title = product?.title
-    ? `Buy ${product.title} Online in Dubai & Abu Dhabi - MLS UAE`
-    : "MLS UAE — Fresh Meat Delivery in Dubai & Abu Dhabi";
-  const description = (product?.description ?? "Premium halal meat delivered across UAE.").slice(0, 160);
+  // Use Shopify SEO fields first (set in Admin → product → Search engine listing)
+  const title = product?.seo?.title?.trim()
+    || (product?.title ? `Buy ${product.title} Online in Dubai & Abu Dhabi - MLS UAE` : "MLS UAE — Fresh Meat Delivery in Dubai & Abu Dhabi");
+  const description = (product?.seo?.description?.trim()
+    || product?.description
+    || "Premium halal meat delivered across UAE.").slice(0, 160);
   const image = product?.images?.edges?.[0]?.node?.url ?? product?.images?.nodes?.[0]?.url;
   const canonical = `https://mlsuae.ae${location.pathname}`;
 
