@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "react-router";
 import { Facebook, Instagram, Linkedin, Phone, Twitter } from "lucide-react";
 import logo from "@/assets/mls-logo.png";
@@ -210,13 +211,27 @@ function NavCol({ heading, links }: { heading: string; links: FooterLink[] }) {
 }
 
 function NewsletterCol() {
+  useEffect(() => {
+    // Klaviyo scans DOM on load — after hydration we must re-trigger it
+    if (typeof window !== "undefined") {
+      const kl = (window as any).klaviyo;
+      if (kl && typeof kl.push === "function") {
+        kl.push(["identify", {}]);
+      }
+      // Also fire the generic onsite re-init
+      const onsite = (window as any)._klOnsite;
+      if (Array.isArray(onsite)) {
+        onsite.push(["openForm", "TXvrLy"]);
+      }
+    }
+  }, []);
+
   return (
     <div className="min-w-[220px] max-w-[280px] flex-1">
       <h4 className="mb-2 font-display text-base font-bold text-white">Want discounts?</h4>
       <p className="mb-4 text-sm text-off-white/70">
         Subscribe to our newsletter and get 10% off your first purchase!
       </p>
-      {/* Klaviyo embed — must use open+close tags so the DOM node exists for Klaviyo's scanner */}
       <div className="klaviyo-form-TXvrLy"></div>
     </div>
   );
