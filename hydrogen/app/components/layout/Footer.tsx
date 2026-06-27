@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { Facebook, Instagram, Linkedin, Phone, Twitter } from "lucide-react";
+import logo from "@/assets/mls-logo.png";
 import { useLocalePath } from "@/stores/localeStore";
 import {
   Accordion,
@@ -93,7 +94,7 @@ export function Footer({ settings, menuCols }: Props) {
           <div className="mt-8">
             <p className="mb-1 text-base font-bold text-white">Want discounts?</p>
             <p className="mb-4 text-sm text-off-white/70">Subscribe to our newsletter and get 10% off your first purchase!</p>
-            <div className="klaviyo-form-TXvrLy" />
+            <div className="klaviyo-form-TXvrLy"></div>
           </div>
         </div>
       </div>
@@ -116,6 +117,10 @@ function BrandCol({ contact }: { contact: ContactData }) {
 
   return (
     <div className="min-w-[240px] max-w-[300px] flex-1">
+      {/* Logo */}
+      <div className="mb-4">
+        <img src={logo} alt="MLS UAE" className="h-14 w-auto brightness-0 invert" />
+      </div>
       {/* Company name */}
       <p className="text-sm font-bold text-white">{contact.companyName}</p>
 
@@ -211,7 +216,8 @@ function NewsletterCol() {
       <p className="mb-4 text-sm text-off-white/70">
         Subscribe to our newsletter and get 10% off your first purchase!
       </p>
-      <div className="klaviyo-form-TXvrLy" />
+      {/* Klaviyo embed — must use open+close tags so the DOM node exists for Klaviyo's scanner */}
+      <div className="klaviyo-form-TXvrLy"></div>
     </div>
   );
 }
