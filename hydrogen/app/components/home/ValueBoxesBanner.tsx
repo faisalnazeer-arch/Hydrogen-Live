@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { ArrowRight, Truck, ShieldCheck, Package, Star } from "lucide-react";
+import { shopifyImageUrl } from "@/lib/shopify";
 
 export interface ValueBannerData {
   eyebrow: string;
@@ -31,7 +32,7 @@ export function ValueBoxesBanner({ banner }: Props) {
   if (!banner.heading && banner.imageUrl) {
     return (
       <div className="w-full">
-        <img src={banner.imageUrl} alt={banner.imageAlt || ""} className="w-full h-auto" />
+        <img src={shopifyImageUrl(banner.imageUrl, 1200)} alt={banner.imageAlt || ""} loading="lazy" decoding="async" className="w-full h-auto" />
       </div>
     );
   }
@@ -45,8 +46,10 @@ export function ValueBoxesBanner({ banner }: Props) {
         {/* Background image */}
         {banner.imageUrl && (
           <img
-            src={banner.imageUrl}
+            src={shopifyImageUrl(banner.imageUrl, 800)}
             alt={banner.imageAlt || banner.heading}
+            loading="lazy"
+            decoding="async"
             className="absolute inset-0 h-full w-full object-cover opacity-15"
           />
         )}
