@@ -210,6 +210,9 @@ const ADMIN_FOOTER_QUERY = `
 const INTERNAL_HOSTS = new Set([
   'mls-uae.myshopify.com',
   'mlsuae.ae',
+  'www.mlsuae.ae',
+  'mlsuaestaging.com',
+  'www.mlsuaestaging.com',
   'hydrogen-lovable-48c64f68e36675c8b8e2.o2.myshopify.dev',
 ]);
 function toPath(u: string): string {
