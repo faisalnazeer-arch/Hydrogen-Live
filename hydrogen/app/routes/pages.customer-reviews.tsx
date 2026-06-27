@@ -1,6 +1,8 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
-import { useLoaderData } from "react-router";
-import { ShieldCheck, PenLine, User } from "lucide-react";
+import { useLoaderData, useFetcher } from "react-router";
+import { useState, useEffect } from "react";
+import { ShieldCheck, PenLine, User, Loader2 } from "lucide-react";
+import type { JudgemeReview } from "~/lib/judgeme";
 import { cn } from "~/lib/utils";
 import { StarRating } from "~/components/reviews/StarRating";
 export const meta: MetaFunction = () => [
@@ -120,8 +122,40 @@ export async function loader({ context }: LoaderFunctionArgs) {
 }
 
 export default function CustomerReviewsPage() {
-  const { reviews, count, rating, histogram, medals } = useLoaderData<typeof loader>();
-  const allPhotos = reviews.flatMap(r => r.pictures);
+  const { reviews: initialReviews, count, rating, histogram, medals } = useLoaderData<typeof loader>();
+  const [allReviews, setAllReviews] = useState<ParsedReview[]>(initialReviews);
+  const [page, setPage] = useState(3); // loader already fetched pages 1+2
+  const fetcher = useFetcher<{ reviews: JudgemeReview[]; totalCount: number }>();
+
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data?.reviews) return;
+    const incoming: ParsedReview[] = fetcher.data.reviews.map((r: JudgemeReview) => ({
+      id:       String(r.id),
+      rating:   r.rating ?? 5,
+      author:   r.reviewer?.name ?? "Customer",
+      date:     r.created_at ?? "",
+      title:    r.title ?? "",
+      body:     r.body ?? "",
+      product:  "",
+      verified: r.verified === "verified_buyer",
+      pictures: (r.pictures ?? []).map(p => ({
+        small:    p.urls?.small ?? p.urls?.original ?? "",
+        original: p.urls?.original ?? "",
+      })),
+    }));
+    setAllReviews(prev => {
+      const seen = new Set(prev.map(r => r.id));
+      return [...prev, ...incoming.filter(r => !seen.has(r.id))];
+    });
+  }, [fetcher.state, fetcher.data]);
+
+  const loadMore = () => {
+    fetcher.load(`/api/reviews/store?page=${page}`);
+    setPage(p => p + 1);
+  };
+
+  const hasMore = allReviews.length < count;
+  const allPhotos = allReviews.flatMap(r => r.pictures);
 
   const starLabels = ["1 star", "2 stars", "3 stars", "4 stars", "5 stars"];
   const histTotal = histogram.reduce((s, n) => s + n, 0);
@@ -225,12 +259,31 @@ export default function CustomerReviewsPage() {
         )}
 
         {/* Reviews Grid */}
-        {reviews.length > 0 ? (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {reviews.map((review) => (
-              <ReviewCard key={review.id} review={review} />
-            ))}
-          </div>
+        {allReviews.length > 0 ? (
+          <>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {allReviews.map((review) => (
+                <ReviewCard key={review.id} review={review} />
+              ))}
+            </div>
+
+            {hasMore && (
+              <div className="mt-8 flex justify-center">
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  disabled={fetcher.state === "loading"}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border px-8 py-3 text-sm font-semibold transition-colors hover:border-crimson hover:text-crimson disabled:opacity-50"
+                >
+                  {fetcher.state === "loading" ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Loading...</>
+                  ) : (
+                    `Load more (${count - allReviews.length} remaining)`
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <p className="text-center text-muted-foreground">No reviews found.</p>
         )}
