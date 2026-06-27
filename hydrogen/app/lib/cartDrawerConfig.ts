@@ -13,8 +13,7 @@ const DEFAULT_CONFIG: CartDrawerConfig = {
   freeShippingThreshold: 350,
   deliveryItems: [
     "Fresh delivery within **1 hour** across Dubai, **2 hours** across Abu Dhabi & same-day across Sharjah and Ajman.",
-    "**10% off** on AED 600 purchase.",
-    "🎁 **Special Offer Activated:** FREE gift of 2x Angus beef burgers and 1x AUS Grass-fed Beef Striploin on orders above **AED 40** with your first purchase!",
+    "Order before **8:45 PM** for same-day delivery, 7 days a week.",
     "**Free Shipping** above AED 350",
   ],
   freeGiftSubVariantId: "gid://shopify/ProductVariant/48766692720956",
