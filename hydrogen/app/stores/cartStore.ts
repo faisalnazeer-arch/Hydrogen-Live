@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { toast } from "sonner";
+import { pushDataLayer, gaItem } from "@/lib/dataLayer";
 import {
   storefrontApiRequest,
   type MoneyV2,
@@ -569,6 +570,20 @@ export const useCartStore = create<CartStore>()(
       addItem: async (item) => {
         // Silently block manual addition of zero-price (free-gift) products
         if (parseFloat(item.price.amount) === 0) return;
+        // GTM dataLayer — add_to_cart (covers PDP, quick-buy, every add source)
+        pushDataLayer("add_to_cart", {
+          ecommerce: {
+            currency: item.price.currencyCode,
+            value: (parseFloat(item.price.amount) || 0) * item.quantity,
+            items: [gaItem({
+              id: (item.product as any)?.handle ?? item.variantId,
+              name: (item.product as any)?.title,
+              price: item.price.amount,
+              quantity: item.quantity,
+              variant: item.variantTitle,
+            })],
+          },
+        });
         const { items, cartId, clearCart } = get();
         const existing = items.find(
           (i) => i.variantId === item.variantId && (i.sellingPlanId ?? null) === (item.sellingPlanId ?? null)

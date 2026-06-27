@@ -28,6 +28,7 @@ import { HScroller } from "~/components/home/HScroller";
 import { RecentlyViewed } from "~/components/home/RecentlyViewed";
 import { GloboProductOptions } from "~/components/product/GloboProductOptions";
 import type { GloboOptionSet } from "~/lib/globo";
+import { pushDataLayer, gaItem } from "~/lib/dataLayer";
 
 export interface PageSettings {
   deliveryTitle: string;
@@ -1039,6 +1040,17 @@ export function ProductPageShell({
     const idx = images.findIndex((img: any) => img.url === variant.image!.url);
     if (idx !== -1) setActiveMediaIdx(idx);
   }, [selectedVariantId]); // eslint-disable-line
+
+  // GTM dataLayer — view_item (once per product page)
+  useEffect(() => {
+    pushDataLayer("view_item", {
+      ecommerce: {
+        currency,
+        value: parseFloat(displayPrice?.amount ?? "0") || 0,
+        items: [gaItem({ id: product.handle, name: product.title, price: displayPrice?.amount, variant: variant?.title })],
+      },
+    });
+  }, [product.handle]); // eslint-disable-line
 
   const allMedia = buildMediaItems(images, mediaNodes);
   const activeMedia = allMedia[activeMediaIdx];

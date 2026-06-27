@@ -6,14 +6,16 @@ import {
   ScrollRestoration,
   useLoaderData,
   useNavigation,
+  useLocation,
   useRouteError,
   useRouteLoaderData,
   isRouteErrorResponse,
 } from "react-router";
 import type { LinksFunction, LoaderFunctionArgs, ShouldRevalidateFunctionArgs } from "react-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNonce } from "@shopify/hydrogen";
 import styles from "./styles.css?url";
+import { pushDataLayer } from "./lib/dataLayer";
 import mlsLogo from "./assets/mls-logo.png";
 import mlsFavicon from "./assets/mls-favicon.png";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -808,12 +810,25 @@ export function ErrorBoundary() {
   );
 }
 
+// GTM dataLayer — page_view on SPA route changes. The first page load is captured by GTM's
+// own load trigger, so we skip the initial render to avoid double-counting.
+function DataLayerRouteTracker() {
+  const location = useLocation();
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    pushDataLayer("page_view", { page_path: location.pathname + location.search });
+  }, [location.pathname, location.search]);
+  return null;
+}
+
 export default function App() {
   const { mainMenu, secondaryMenu, mobileMenu, mobileCategoriesMenu, footerSettings, footerMenuCols, announcementMessages, navItemImages, mobileBanners } = useLoaderData<typeof loader>();
   return (
     <QueryClientProvider client={queryClient}>
       <PageLoader />
       <LocaleSync />
+      <DataLayerRouteTracker />
       <CartSyncWrapper />
       <RichpanelWidget />
       <div className="flex min-h-screen flex-col">

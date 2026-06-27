@@ -19,6 +19,7 @@ import { Link, useLocation, useNavigate } from "react-router";
 import { useShallow } from "zustand/react/shallow";
 import { useCartStore, initGiftRules, warmGiftRuleCache } from "@/stores/cartStore";
 import { formatPrice, shopifyImageUrl } from "@/lib/shopify";
+import { pushDataLayer, gaItem } from "@/lib/dataLayer";
 import { useT } from "@/i18n/strings";
 import { useCartDrawerConfig } from "@/lib/cartDrawerConfig";
 import type { DiscountInfo } from "@/routes/api.discounts";
@@ -208,6 +209,20 @@ export function CartDrawer() {
 
   const handleCheckout = () => {
     const url = getCheckoutUrl();
+    // GTM dataLayer — begin_checkout
+    pushDataLayer("begin_checkout", {
+      ecommerce: {
+        currency: items[0]?.price?.currencyCode ?? "AED",
+        value: optimisticTotal,
+        items: items.map((i) => gaItem({
+          id: (i.product as any)?.handle ?? i.variantId,
+          name: (i.product as any)?.title,
+          price: i.price.amount,
+          quantity: i.quantity,
+          variant: i.variantTitle,
+        })),
+      },
+    });
     if (url) { setOpen(false); window.location.href = url; }
   };
 
