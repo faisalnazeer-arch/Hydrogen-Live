@@ -484,7 +484,7 @@ export function CartDrawer() {
 
           {/* Footer — tabs + totals */}
           {items.length > 0 && (
-            <div className="relative space-y-1 border-t border-border px-2 pb-1.5 pt-1.5">
+            <div className="relative space-y-1 border-t border-border px-2 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom,0px))]">
               {/* Tab row */}
               <div className="grid grid-cols-3 gap-1.5">
                 {tabs.map((tab) => {

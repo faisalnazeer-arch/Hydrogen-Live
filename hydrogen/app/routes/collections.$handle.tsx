@@ -55,7 +55,7 @@ const COLLECTION_QUERY = `#graphql
     $country: CountryCode
   ) @inContext(language: $language, country: $country) {
     collection(handle: $handle) {
-      id title handle description
+      id title handle description descriptionHtml
       seo { title description }
       products(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse) {
         pageInfo {
@@ -145,32 +145,26 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 }
 
 /* ─── Description ─────────────────────────────────────────────────────────── */
-function CollectionDescription({ text }: { text: string }) {
+function CollectionDescription({ html }: { html: string }) {
   const t = useT();
   const [expanded, setExpanded] = useState(false);
-  const [isMultiLine, setIsMultiLine] = useState(false);
-  const ref = useRef<HTMLParagraphElement>(null);
+  const [isLong, setIsLong] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.overflow = "visible";
-    el.style.display = "block";
-    const fullH = el.scrollHeight;
-    el.style.overflow = "";
-    el.style.display = "";
-    setIsMultiLine(fullH > el.clientHeight + 2);
-  }, [text]);
+    setIsLong(el.scrollHeight > el.clientHeight + 4);
+  }, [html]);
 
   return (
-    <div className="mx-auto mt-2 max-w-2xl text-center">
-      <p
+    <div className="mx-auto mt-3 max-w-2xl text-left">
+      <div
         ref={ref}
-        className={`text-sm text-muted-foreground transition-all ${!expanded ? "line-clamp-1" : ""}`}
-      >
-        {text}
-      </p>
-      {isMultiLine && (
+        className={`prose prose-sm prose-neutral dark:prose-invert max-w-none text-muted-foreground transition-all [&_h1]:font-bold [&_h2]:font-bold [&_h3]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_li]:mb-1 ${!expanded ? "max-h-20 overflow-hidden" : ""}`}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+      {isLong && (
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
@@ -323,7 +317,7 @@ export default function Collection() {
       <div className="border-b border-border bg-card px-4 py-8 md:py-10">
         <div className="container mx-auto text-center">
           <h1 className="font-display text-2xl font-bold leading-snug tracking-tight md:text-3xl">{collection.title}</h1>
-          {collection.description && <CollectionDescription text={collection.description} />}
+          {(collection as any).descriptionHtml && <CollectionDescription html={(collection as any).descriptionHtml} />}
         </div>
       </div>
 
