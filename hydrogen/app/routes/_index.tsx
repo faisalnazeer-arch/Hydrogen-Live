@@ -526,10 +526,10 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     af(Q_HERO), af(Q_BADGES), af(Q_PRICE_SEC), af(Q_PRICE_TILE), af(Q_REELS_SEC),
     af(Q_PROMO), af(Q_VALUE), af(Q_COL_CFG), af(Q_ORIGIN), af(Q_CATEGORY),
     af(Q_CUTS), af(Q_FEATURED), af(Q_COL_LIST),
-    context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" }, cache: context.storefront.CacheShort() }).catch(() => ({ products: { edges: [] } })),
+    context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" } }).catch(() => ({ products: { edges: [] } })),
     af(Q_REEL_ITEMS), af(Q_GIFT), af(Q_SALE_SEC),
-    context.storefront.query(HOME_METAOBJECTS_QUERY, { variables: { language, country }, cache: context.storefront.CacheShort() }).catch(() => ({} as any)),
-    context.storefront.query(Q_BLOG_ARTICLES, { cache: context.storefront.CacheShort() }).catch(() => null),
+    context.storefront.query(HOME_METAOBJECTS_QUERY, { variables: { language, country } }).catch(() => ({} as any)),
+    context.storefront.query(Q_BLOG_ARTICLES).catch(() => null),
     fetchJudgemeStoreReviews(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN, 1, 9).catch(() => ({ reviews: [] as JudgemeReview[], current_page: 1, per_page: 9 })),
     fetchJudgemeShopStats(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN).catch(() => ({ average: 0, count: 0 })),
     // Home section layout (order + visibility). Catches so a missing definition never breaks the page.
@@ -571,7 +571,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   if (allHandles.length > 0) {
     await Promise.all(allHandles.map(async (handle) => {
       try {
-        const res = await context.storefront.query(COLLECTION_PRODUCTS_QUERY, { variables: { handle, first: 20, language, country }, cache: context.storefront.CacheShort() });
+        const res = await context.storefront.query(COLLECTION_PRODUCTS_QUERY, { variables: { handle, first: 20, language, country } });
         productsByHandle.set(handle, (res?.collection?.products?.edges ?? [])
           .filter((e: any) => parseFloat(e.node?.priceRange?.minVariantPrice?.amount ?? "0") > 0));
       } catch { /* ignore missing collection */ }
@@ -622,7 +622,6 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     try {
       const res = await context.storefront.query(COLLECTION_PRODUCTS_QUERY, {
         variables: { handle: saleSection.collectionHandle, first: 20, language, country },
-        cache: context.storefront.CacheShort(),
       });
       saleProducts = (res?.collection?.products?.edges ?? [])
         .filter((e: any) => parseFloat(e.node?.priceRange?.minVariantPrice?.amount ?? "0") > 0);
@@ -638,7 +637,6 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     try {
       const priceData = await context.storefront.query(REEL_PRODUCT_PRICES_QUERY, {
         variables: { ids: reelProductIds, country: "AE" as const },
-        cache: context.storefront.CacheShort(),
       });
       for (const n of priceData?.nodes ?? []) {
         if (n?.id && n.priceRange?.minVariantPrice) {
@@ -655,7 +653,6 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     if (taggedEdges.length === 0) {
       const reelAll = await context.storefront.query(REELS_QUERY, {
         variables: { first: 30, query: undefined },
-        cache: context.storefront.CacheShort(),
       });
       taggedEdges = reelAll?.products?.edges ?? [];
     }
@@ -720,10 +717,6 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     reviewAverage,
   };
 }
-
-export const headers = () => ({
-  "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
-});
 
 // Default home section order + the full set of valid section keys. The mls_home_layout
 // metaobject can reorder these or omit any to hide it; anything not listed below is ignored.
