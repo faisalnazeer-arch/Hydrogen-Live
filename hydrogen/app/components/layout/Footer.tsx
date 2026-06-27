@@ -112,9 +112,7 @@ export function Footer({ settings, menuCols }: Props) {
 }
 
 function BrandCol({ contact }: { contact: ContactData }) {
-  const whatsappHref = contact.whatsapp?.startsWith("http")
-    ? contact.whatsapp
-    : `https://wa.me/${(contact.phone || DEFAULTS.phone).replace(/\D/g, "")}`;
+  const whatsappHref = "https://wa.me/971504516403";
 
   return (
     <div className="min-w-[240px] max-w-[300px] flex-1">
