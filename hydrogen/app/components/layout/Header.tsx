@@ -88,32 +88,6 @@ export function Header({ mainMenu = [], secondaryMenu = [], mobileCategoriesMenu
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-      {/* Mobile top banner — sits above nav bar, aligned to nav padding, hidden on desktop */}
-      {mobileBanners.length > 0 && (
-        <div className="md:hidden">
-          <div className="container mx-auto px-4">
-            {mobileBanners[0].url && mobileBanners[0].url !== "/" ? (
-              <Link to={mobileBanners[0].url} prefetch="intent" className="block">
-                <img
-                  src={mobileBanners[0].imageUrl}
-                  alt={mobileBanners[0].altText || ""}
-                  className="block w-full h-auto"
-                  loading="eager"
-                  fetchPriority="high"
-                />
-              </Link>
-            ) : (
-              <img
-                src={mobileBanners[0].imageUrl}
-                alt={mobileBanners[0].altText || ""}
-                className="block w-full h-auto"
-                loading="eager"
-                fetchPriority="high"
-              />
-            )}
-          </div>
-        </div>
-      )}
       {/* Top bar */}
       <div className="container relative mx-auto flex items-center gap-3 px-4 py-3">
         {/* Mobile menu */}
