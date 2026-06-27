@@ -631,6 +631,55 @@ function RichpanelWidget() {
     w.richpanel.load("mlslive1884");
     w.richpanel.loaded = true;
   }, []);
+
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.id = "rp-hide-style";
+    // Hide when footer is visible
+    // Hide when any drawer/sheet overlay is open (data-state=open on the radix overlay or sheet)
+    style.textContent = `
+      .rp-hide-near-footer #richpanel-root,
+      .rp-hide-near-footer #rp-messenger-container,
+      .rp-hide-near-footer [id^="richpanel"] {
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transition: opacity 0.2s;
+      }
+      body.rp-drawer-open #richpanel-root,
+      body.rp-drawer-open #rp-messenger-container,
+      body.rp-drawer-open [id^="richpanel"],
+      body.rp-drawer-open iframe[src*="richpanel"],
+      body.rp-drawer-open iframe[id*="richpanel"] {
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Hide on footer scroll
+    const onScroll = () => {
+      const footer = document.querySelector("footer");
+      if (!footer) return;
+      const footerTop = footer.getBoundingClientRect().top;
+      document.body.classList.toggle("rp-hide-near-footer", footerTop < window.innerHeight * 0.85);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    // Hide when any drawer/sheet is open — watch for radix data-state attribute changes
+    const mo = new MutationObserver(() => {
+      const drawerOpen = !!document.querySelector(
+        '[role="dialog"][data-state="open"], [data-radix-dialog-content][data-state="open"]'
+      );
+      document.body.classList.toggle("rp-drawer-open", drawerOpen);
+    });
+    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-state"] });
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      mo.disconnect();
+      style.remove();
+    };
+  }, []);
+
   return null;
 }
 

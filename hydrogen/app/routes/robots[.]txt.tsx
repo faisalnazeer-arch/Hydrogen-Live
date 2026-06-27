@@ -149,6 +149,42 @@ Crawl-delay: 1
 
 User-agent: GPTBot
 Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Anthropic-AI
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: YouBot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: Omgilibot
+Allow: /
+
+User-agent: FacebookBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
 `;
 
 export async function loader({ request }: LoaderFunctionArgs) {

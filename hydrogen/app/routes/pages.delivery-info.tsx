@@ -7,6 +7,28 @@ import { detectLanguage } from "../lib/locale";
 export const meta: MetaFunction = () => [
   { title: "Delivery Info — MLS UAE" },
   { name: "description", content: "Same-day delivery across Dubai, Abu Dhabi, Sharjah and Ajman. 1-hour slot delivery until 8:45 PM in Dubai." },
+  { tagName: "link", rel: "canonical", href: "https://mlsuae.ae/pages/delivery-info" },
+  { "script:ld+json": {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: "MLS UAE Meat Delivery",
+    url: "https://mlsuae.ae/pages/delivery-info",
+    provider: { "@type": "Organization", name: "MLS UAE", url: "https://mlsuae.ae" },
+    serviceType: "Food Delivery",
+    areaServed: [
+      { "@type": "City", name: "Dubai" },
+      { "@type": "City", name: "Abu Dhabi" },
+      { "@type": "City", name: "Sharjah" },
+      { "@type": "City", name: "Ajman" },
+    ],
+    description: "Fresh delivery within 1 hour across Dubai, 2 hours across Abu Dhabi, same-day across Sharjah and Ajman. Order before 8:45 PM.",
+    offers: {
+      "@type": "Offer",
+      priceCurrency: "AED",
+      price: "0",
+      description: "Free delivery on orders above AED 350",
+    },
+  }},
 ];
 
 // ─── Storefront metaobject query ──────────────────────────────────────────────
@@ -54,13 +76,13 @@ const FALLBACK_CITIES = [
     id: "abudhabi",
     label: "Abu Dhabi",
     emoji: "🌴",
-    cutoff: "8:30 PM",
+    cutoff: "8:45 PM",
     window: "2 hours",
-    hours: "10 AM – 8:30 PM, all days",
+    hours: "10 AM – 8:45 PM, all days",
     fee: "AED 20",
     notes: [
       "Express 2-hour delivery across Abu Dhabi",
-      "Order anytime up to 8:30 PM for same-day delivery",
+      "Order anytime up to 8:45 PM for same-day delivery",
       "No minimum order value",
       "Deliveries continue until 10:30 PM",
     ],

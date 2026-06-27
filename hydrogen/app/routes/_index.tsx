@@ -55,7 +55,7 @@ const HOME_METAOBJECTS_QUERY = `#graphql
       nodes { id fields { key value } }
     }
     origin: metaobjects(type: "mls_origin_section", first: 1) {
-      nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id handle fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } }
+      nodes { id fields { key value references(first: 50) { nodes { ... on Metaobject { id handle fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } }
     }
     category: metaobjects(type: "mls_category_section", first: 1) {
       nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } }
@@ -91,7 +91,7 @@ const Q_REEL_ITEMS = `{ nodes: metaobjects(type: "reel_item", first: 20) { nodes
 const Q_PROMO      = `{ nodes: metaobjects(type: "promo_side_by_side", first: 1) { nodes { id fields { ${_imgF} } } } }`;
 const Q_VALUE      = `{ nodes: metaobjects(type: "mls_value_banner", first: 1) { nodes { id fields { ${_imgF} } } } }`;
 const Q_COL_CFG    = `{ nodes: metaobjects(type: "mls_collection_section", first: 1) { nodes { id fields { key value } } } }`;
-const Q_ORIGIN     = `{ nodes: metaobjects(type: "mls_origin_section", first: 1) { nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id handle fields { ${_imgF} } } } } } } } }`;
+const Q_ORIGIN     = `{ nodes: metaobjects(type: "mls_origin_section", first: 1) { nodes { id fields { key value references(first: 50) { nodes { ... on Metaobject { id handle fields { ${_imgF} } } } } } } } }`;
 const Q_CATEGORY   = `{ nodes: metaobjects(type: "mls_category_section", first: 1) { nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id fields { ${_imgF} } } } } } } } }`;
 const Q_CUTS       = `{ nodes: metaobjects(type: "mls_cuts_section", first: 1) { nodes { id fields { key value references(first: 12) { nodes { ... on Metaobject { id fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } } } }`;
 const Q_FEATURED   = `{ nodes: metaobjects(type: "featured_collection", first: 10) { nodes { id fields { key value reference { ... on Collection { handle title } } references(first: 10) { nodes { ... on Metaobject { id fields { key value reference { ... on Collection { handle title } } } } } } } } } }`;
@@ -436,8 +436,8 @@ const HOME_JSON_LD = {
   "@type": "Organization",
   name: "MLS UAE",
   url: "https://mlsuae.ae",
-  logo: "https://mlsuae.ae/logo.png",
-  description: "Premium halal meats — Wagyu, Angus, lamb and more — delivered across the UAE.",
+  logo: "https://mlsuae.ae/cdn/shop/files/logo_97c8d848-b3ec-4a82-a68e-dcedc161529c.png?v=1711022728",
+  description: "Premium halal meats — Wagyu, Angus, lamb and more — delivered within 1 hour across Dubai, 2 hours across Abu Dhabi.",
   address: {
     "@type": "PostalAddress",
     streetAddress: "Marasi Drive, Business Bay",
@@ -448,11 +448,53 @@ const HOME_JSON_LD = {
     "@type": "ContactPoint",
     telephone: "+971504516403",
     contactType: "customer service",
+    availableLanguage: ["English", "Arabic"],
   },
   sameAs: [
     "https://www.instagram.com/mlsuae",
     "https://www.facebook.com/mlsuae",
   ],
+  aggregateRating: {
+    "@type": "AggregateRating",
+    ratingValue: "4.9",
+    reviewCount: "7000",
+    bestRating: "5",
+  },
+};
+
+const LOCAL_BUSINESS_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "FoodEstablishment",
+  name: "MLS UAE — Fresh Meat Delivery",
+  url: "https://mlsuae.ae",
+  image: "https://mlsuae.ae/cdn/shop/files/logo_97c8d848-b3ec-4a82-a68e-dcedc161529c.png?v=1711022728",
+  telephone: "+971504516403",
+  priceRange: "AED 50 - AED 500",
+  servesCuisine: "Halal Meat",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "Marasi Drive, Business Bay",
+    addressLocality: "Dubai",
+    addressCountry: "AE",
+  },
+  geo: { "@type": "GeoCoordinates", latitude: 25.185, longitude: 55.267 },
+  openingHoursSpecification: {
+    "@type": "OpeningHoursSpecification",
+    dayOfWeek: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+    opens: "09:00",
+    closes: "22:00",
+  },
+  hasOfferCatalog: {
+    "@type": "OfferCatalog",
+    name: "Fresh Halal Meat",
+    itemListElement: [
+      { "@type": "OfferCatalog", name: "Beef" },
+      { "@type": "OfferCatalog", name: "Lamb & Mutton" },
+      { "@type": "OfferCatalog", name: "Wagyu Beef" },
+      { "@type": "OfferCatalog", name: "Poultry" },
+      { "@type": "OfferCatalog", name: "Veal" },
+    ],
+  },
 };
 
 const WEBSITE_JSON_LD = {
@@ -480,6 +522,7 @@ export const meta: MetaFunction = () => [
   { tagName: "link", rel: "canonical", href: "https://mlsuae.ae/" },
   { "script:ld+json": HOME_JSON_LD },
   { "script:ld+json": WEBSITE_JSON_LD },
+  { "script:ld+json": LOCAL_BUSINESS_JSON_LD },
 ];
 
 
@@ -723,7 +766,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 const HOME_SECTION_ORDER = [
   "hero", "trust_badges", "featured_collections", "first_order_gift", "sale",
   "featured_products", "shop_by_category", "shop_by_cuts", "shop_by_origin",
-  "reels", "promo", "value_boxes", "blog", "recently_viewed", "reviews",
+  "reels", "promo", "value_boxes", "recently_viewed", "reviews", "blog",
 ] as const;
 
 export default function Home() {
