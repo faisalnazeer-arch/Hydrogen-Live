@@ -95,6 +95,7 @@ export function Footer({ settings, menuCols }: Props) {
               </AccordionTrigger>
               <AccordionContent>
                 <ContactList contact={contact} />
+                <div className="mt-5 klaviyo-form-TXvrLy" />
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -176,6 +177,8 @@ function ContactCol({ contact }: { contact: ContactData }) {
         {contact.heading}
       </h4>
       <ContactList contact={contact} />
+      {/* Klaviyo newsletter signup */}
+      <div className="mt-5 klaviyo-form-TXvrLy" />
     </div>
   );
 }
