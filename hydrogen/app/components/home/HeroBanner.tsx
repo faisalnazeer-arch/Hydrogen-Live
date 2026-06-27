@@ -3,7 +3,6 @@ import { Link } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { shopifyImageUrl } from "@/lib/shopify";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -171,13 +170,11 @@ function SlideItem({ slide, active, priority }: { slide: HeroSlide; active: bool
     <div className="relative w-full" style={{ flexShrink: 0 }}>
       {slide.mobileImage && (
         <img
-          src={shopifyImageUrl(slide.mobileImage.url, 800)}
+          src={slide.mobileImage.url}
           alt={slide.mobileImage.altText ?? ""}
           draggable={false}
           loading={priority ? "eager" : "lazy"}
-          fetchPriority={priority ? "high" : "auto"}
-          decoding={priority ? "sync" : "async"}
-          width={800}
+          fetchPriority={priority ? "high" : "low"}
           className={cn(
             "pointer-events-none block w-full select-none",
             slide.desktopImage ? "md:hidden" : "",
@@ -186,13 +183,11 @@ function SlideItem({ slide, active, priority }: { slide: HeroSlide; active: bool
       )}
       {slide.desktopImage && (
         <img
-          src={shopifyImageUrl(slide.desktopImage.url, 1600)}
+          src={slide.desktopImage.url}
           alt={slide.desktopImage.altText ?? ""}
           draggable={false}
           loading={priority ? "eager" : "lazy"}
-          fetchPriority={priority ? "high" : "auto"}
-          decoding={priority ? "sync" : "async"}
-          width={1600}
+          fetchPriority={priority ? "high" : "low"}
           className={cn(
             "pointer-events-none w-full select-none",
             slide.mobileImage ? "hidden md:block" : "block",

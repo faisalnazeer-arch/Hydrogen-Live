@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { useLocalePath } from "@/stores/localeStore";
 import { HScroller } from "./HScroller";
-import { shopifyImageUrl } from "@/lib/shopify";
 
 function OriginFlag({
   imageUrl,
@@ -24,11 +23,10 @@ function OriginFlag({
       <div className="relative h-14 w-14 md:h-16 md:w-16 transition-transform duration-300 group-hover:scale-105">
         <div className="absolute inset-0 rounded-full bg-gradient-to-br from-crimson/20 to-crimson/5 ring-2 ring-crimson/30 shadow-md" />
         <img
-          src={shopifyImageUrl(src, 100)}
+          src={src}
           alt={imageAlt}
           className="relative z-10 h-full w-full rounded-full object-cover"
           loading="lazy"
-          decoding="async"
         />
       </div>
     );

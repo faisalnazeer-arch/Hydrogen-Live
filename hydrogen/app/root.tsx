@@ -560,13 +560,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             from adding a ?t= timestamp that mismatches the SSR-rendered href and triggers a
             full hydration failure + client re-render cascade */}
         <link rel="stylesheet" href={styles} suppressHydrationWarning />
-        {/* Preconnect to critical third-party origins for faster resource loading */}
-        <link rel="preconnect" href="https://cdn.shopify.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://cdn.judge.me" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://static.klaviyo.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://a.klaviyo.com" />
-        <link rel="dns-prefetch" href="https://cdn.richpanel.com" />
-        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         {/* Inline script — sets lang/dir from cookie before React paints, eliminating Arabic flash */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var m=document.cookie.match(/(?:^|;\\s*)lang=([a-z]{2})/);if(m&&m[1]==='ar'){document.documentElement.lang='ar';document.documentElement.dir='rtl';}}catch(e){}})();` }} />
         <meta charSet="utf-8" />

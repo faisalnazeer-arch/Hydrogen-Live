@@ -2,7 +2,6 @@ import { Link } from "react-router";
 import { HScroller } from "./HScroller";
 import { useLocalePath } from "@/stores/localeStore";
 import type { CutsSectionData } from "~/routes/_index";
-import { shopifyImageUrl } from "@/lib/shopify";
 
 interface Props {
   section?: CutsSectionData | null;
@@ -58,11 +57,10 @@ function CutCard({ cut }: { cut: CutsSectionData["items"][0] }) {
       >
         {cut.imageUrl ? (
           <img
-            src={shopifyImageUrl(cut.imageUrl, 200)}
+            src={cut.imageUrl}
             alt={cut.label}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
             loading="lazy"
-            decoding="async"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-3xl transition-transform duration-300 group-hover:scale-110 md:text-4xl">

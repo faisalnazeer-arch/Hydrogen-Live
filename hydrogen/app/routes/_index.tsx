@@ -78,28 +78,29 @@ const HOME_METAOBJECTS_QUERY = `#graphql
   }
 ` as const;
 
-// Single batched Admin API query — replaces 16+ individual round trips with one request.
-// Each alias maps to what the old individual Q_* constants fetched separately.
+// Admin API queries — fallback for metaobject types that don't yet have Storefront API access.
+// When a type has Storefront API access enabled, the HOME_METAOBJECTS_QUERY above takes over
+// and serves translated content. Otherwise these ensure the sections always render.
 const _imgF = `key value reference { ... on MediaImage { image { url altText } } }`;
-const Q_ALL_ADMIN = `{
-  hero: metaobjects(type: "hero_banner", first: 10) { nodes { id fields { key value reference { ... on MediaImage { image { url altText width height } } } } } }
-  badges: metaobjects(type: "icon_with_text", first: 10) { nodes { id handle fields { key value reference { ... on MediaImage { image { url altText } } } } } }
-  priceSec: metaobjects(type: "price_range_section", first: 1) { nodes { id fields { key value } } }
-  priceTile: metaobjects(type: "price_range_tile", first: 20) { nodes { id fields { key value reference { ... on MediaImage { image { url altText } } ... on Collection { id handle title } } } } }
-  reelsSec: metaobjects(type: "reels_section", first: 1) { nodes { id fields { key value } } }
-  reelItems: metaobjects(type: "reel_item", first: 20) { nodes { id fields { key value reference { ... on Product { id handle title featuredImage { url } } ... on Video { sources { url mimeType } preview { image { url } } } } } } }
-  promo: metaobjects(type: "promo_side_by_side", first: 1) { nodes { id fields { key value reference { ... on MediaImage { image { url altText } } } } } }
-  value: metaobjects(type: "mls_value_banner", first: 1) { nodes { id fields { key value reference { ... on MediaImage { image { url altText } } } } } }
-  colCfg: metaobjects(type: "mls_collection_section", first: 1) { nodes { id fields { key value } } }
-  origin: metaobjects(type: "mls_origin_section", first: 1) { nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id handle fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } } }
-  category: metaobjects(type: "mls_category_section", first: 1) { nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } } }
-  cuts: metaobjects(type: "mls_cuts_section", first: 1) { nodes { id fields { key value references(first: 12) { nodes { ... on Metaobject { id fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } } }
-  featured: metaobjects(type: "featured_collection", first: 10) { nodes { id fields { key value reference { ... on Collection { handle title } } references(first: 10) { nodes { ... on Metaobject { id fields { key value reference { ... on Collection { handle title } } } } } } } } }
-  colList: metaobjects(type: "featured_collection_list", first: 20) { nodes { id fields { key value reference { ... on MediaImage { image { url altText } } } } } }
-  gift: metaobjects(type: "mls_first_order_gift", first: 1) { nodes { id fields { key value } } }
-  saleSec: metaobjects(type: "mls_sale_section", first: 1) { nodes { id fields { key value reference { ... on Collection { handle title } } } } }
-  homeLayout: metaobjects(type: "mls_home_layout", first: 1) { nodes { id fields { key value } } }
-}`;
+const Q_HERO       = `{ nodes: metaobjects(type: "hero_banner", first: 10) { nodes { id fields { key value reference { ... on MediaImage { image { url altText width height } } } } } } }`;
+const Q_BADGES     = `{ nodes: metaobjects(type: "icon_with_text", first: 10) { nodes { id handle fields { ${_imgF} } } } }`;
+const Q_PRICE_SEC  = `{ nodes: metaobjects(type: "price_range_section", first: 1) { nodes { id fields { key value } } } }`;
+const Q_PRICE_TILE = `{ nodes: metaobjects(type: "price_range_tile", first: 20) { nodes { id fields { key value reference { ... on MediaImage { image { url altText } } ... on Collection { id handle title } } } } } }`;
+const Q_REELS_SEC  = `{ nodes: metaobjects(type: "reels_section", first: 1) { nodes { id fields { key value } } } }`;
+const Q_REEL_ITEMS = `{ nodes: metaobjects(type: "reel_item", first: 20) { nodes { id fields { key value reference { ... on Product { id handle title featuredImage { url } } ... on Video { sources { url mimeType } preview { image { url } } } } } } } }`;
+const Q_PROMO      = `{ nodes: metaobjects(type: "promo_side_by_side", first: 1) { nodes { id fields { ${_imgF} } } } }`;
+const Q_VALUE      = `{ nodes: metaobjects(type: "mls_value_banner", first: 1) { nodes { id fields { ${_imgF} } } } }`;
+const Q_COL_CFG    = `{ nodes: metaobjects(type: "mls_collection_section", first: 1) { nodes { id fields { key value } } } }`;
+const Q_ORIGIN     = `{ nodes: metaobjects(type: "mls_origin_section", first: 1) { nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id handle fields { ${_imgF} } } } } } } } }`;
+const Q_CATEGORY   = `{ nodes: metaobjects(type: "mls_category_section", first: 1) { nodes { id fields { key value references(first: 20) { nodes { ... on Metaobject { id fields { ${_imgF} } } } } } } } }`;
+const Q_CUTS       = `{ nodes: metaobjects(type: "mls_cuts_section", first: 1) { nodes { id fields { key value references(first: 12) { nodes { ... on Metaobject { id fields { key value reference { ... on MediaImage { image { url altText } } } } } } } } } } }`;
+const Q_FEATURED   = `{ nodes: metaobjects(type: "featured_collection", first: 10) { nodes { id fields { key value reference { ... on Collection { handle title } } references(first: 10) { nodes { ... on Metaobject { id fields { key value reference { ... on Collection { handle title } } } } } } } } } }`;
+const Q_COL_LIST   = `{ nodes: metaobjects(type: "featured_collection_list", first: 20) { nodes { id fields { ${_imgF} } } } }`;
+const Q_GIFT       = `{ nodes: metaobjects(type: "mls_first_order_gift", first: 1) { nodes { id fields { key value } } } }`;
+const Q_SALE_SEC   = `{ nodes: metaobjects(type: "mls_sale_section", first: 1) { nodes { id fields { key value reference { ... on Collection { handle title } } } } } }`;
+// Home layout: one mls_home_layout metaobject with a `section_order` multi-line text field
+// (one section key per line, in display order; omit a line or prefix with # to hide it).
+const Q_HOME_LAYOUT = `{ nodes: metaobjects(type: "mls_home_layout", first: 1) { nodes { id fields { key value } } } }`;
 
 // Storefront API query to batch-fetch correct presentment prices by product GID.
 const REEL_PRODUCT_PRICES_QUERY = `#graphql
@@ -508,37 +509,32 @@ function pickReels(edges: any[]): ReelProduct[] {
 }
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
+  const af = (q: string) => context.adminFetch(q).then((d: any) => d?.nodes ?? {});
   const language = detectLanguage(request);
   const country = "AE" as const;
 
-  // One batched Admin API call (was 16+ round trips) + all Storefront queries in parallel.
-  const [adminRes, reelTagged, sfMetaRes, blogData, reviewsData, shopStats] = await Promise.all([
-    context.adminFetch(Q_ALL_ADMIN).catch(() => ({} as any)),
-    context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" }, cache: context.storefront.CacheShort() }).catch(() => ({ products: { edges: [] } })),
-    context.storefront.query(HOME_METAOBJECTS_QUERY, { variables: { language, country }, cache: context.storefront.CacheShort() }).catch(() => ({} as any)),
-    context.storefront.query(Q_BLOG_ARTICLES, { cache: context.storefront.CacheShort() }).catch(() => null),
+  // Run Admin API (structure, always available) and Storefront API (translations, requires
+  // Storefront API access per metaobject type) in parallel. For each section we prefer the
+  // Storefront result when it has nodes — that means the type has access enabled and
+  // translations are served. Otherwise we fall back to Admin API so nothing disappears.
+  const [
+    heroRes, badgesRes, priceSecRes, priceTileRes, reelSecRes,
+    promoRes, valueRes, colCfgRes, originRes, categoryRes,
+    cutsRes, featuredRes, colListRes, reelTagged, reelItemsRes, giftRes, saleSecRes,
+    sfMetaRes, blogData, reviewsData, shopStats, homeLayoutRes,
+  ] = await Promise.all([
+    af(Q_HERO), af(Q_BADGES), af(Q_PRICE_SEC), af(Q_PRICE_TILE), af(Q_REELS_SEC),
+    af(Q_PROMO), af(Q_VALUE), af(Q_COL_CFG), af(Q_ORIGIN), af(Q_CATEGORY),
+    af(Q_CUTS), af(Q_FEATURED), af(Q_COL_LIST),
+    context.storefront.query(REELS_QUERY, { variables: { first: 20, query: "tag:reel" } }).catch(() => ({ products: { edges: [] } })),
+    af(Q_REEL_ITEMS), af(Q_GIFT), af(Q_SALE_SEC),
+    context.storefront.query(HOME_METAOBJECTS_QUERY, { variables: { language, country } }).catch(() => ({} as any)),
+    context.storefront.query(Q_BLOG_ARTICLES).catch(() => null),
     fetchJudgemeStoreReviews(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN, 1, 9).catch(() => ({ reviews: [] as JudgemeReview[], current_page: 1, per_page: 9 })),
     fetchJudgemeShopStats(context.env.PUBLIC_STORE_DOMAIN, context.env.JUDGEME_API_TOKEN).catch(() => ({ average: 0, count: 0 })),
+    // Home section layout (order + visibility). Catches so a missing definition never breaks the page.
+    context.adminFetch(Q_HOME_LAYOUT).then((d: any) => d?.nodes ?? {}).catch(() => ({})),
   ]);
-
-  // Map batched admin result aliases to the old individual variable names
-  const heroRes      = { nodes: adminRes?.hero };
-  const badgesRes    = { nodes: adminRes?.badges };
-  const priceSecRes  = { nodes: adminRes?.priceSec };
-  const priceTileRes = { nodes: adminRes?.priceTile };
-  const reelSecRes   = { nodes: adminRes?.reelsSec };
-  const reelItemsRes = { nodes: adminRes?.reelItems };
-  const promoRes     = { nodes: adminRes?.promo };
-  const valueRes     = { nodes: adminRes?.value };
-  const colCfgRes    = { nodes: adminRes?.colCfg };
-  const originRes    = { nodes: adminRes?.origin };
-  const categoryRes  = { nodes: adminRes?.category };
-  const cutsRes      = { nodes: adminRes?.cuts };
-  const featuredRes  = { nodes: adminRes?.featured };
-  const colListRes   = { nodes: adminRes?.colList };
-  const giftRes      = { nodes: adminRes?.gift };
-  const saleSecRes   = { nodes: adminRes?.saleSec };
-  const homeLayoutRes = { nodes: adminRes?.homeLayout };
 
   // Prefer Storefront API section when it returned nodes (translated content available);
   // otherwise use Admin API section (untranslated but always complete).
@@ -575,7 +571,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   if (allHandles.length > 0) {
     await Promise.all(allHandles.map(async (handle) => {
       try {
-        const res = await context.storefront.query(COLLECTION_PRODUCTS_QUERY, { variables: { handle, first: 20, language, country }, cache: context.storefront.CacheShort() });
+        const res = await context.storefront.query(COLLECTION_PRODUCTS_QUERY, { variables: { handle, first: 20, language, country } });
         productsByHandle.set(handle, (res?.collection?.products?.edges ?? [])
           .filter((e: any) => parseFloat(e.node?.priceRange?.minVariantPrice?.amount ?? "0") > 0));
       } catch { /* ignore missing collection */ }
@@ -621,35 +617,33 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const reelsConfig = parseReelsSectionConfig(data?.reelsSection?.nodes ?? []);
   const saleSection = parseSaleSection(saleSecRes?.nodes ?? []);
 
+  let saleProducts: ShopifyProduct[] = [];
+  if (saleSection) {
+    try {
+      const res = await context.storefront.query(COLLECTION_PRODUCTS_QUERY, {
+        variables: { handle: saleSection.collectionHandle, first: 20, language, country },
+      });
+      saleProducts = (res?.collection?.products?.edges ?? [])
+        .filter((e: any) => parseFloat(e.node?.priceRange?.minVariantPrice?.amount ?? "0") > 0);
+    } catch { /* ignore missing collection */ }
+  }
+
   const reelItemNodes: any[] = sf(sfMetaRes?.reelItems, reelItemsRes)?.nodes ?? [];
   const reelProductIds: string[] = reelItemNodes
     .map((n: any) => n.fields?.find((f: any) => f.key === "product")?.reference?.id)
     .filter(Boolean);
-
-  // Run sale products + reel prices in parallel instead of sequentially
-  const [saleRes, reelPriceData] = await Promise.all([
-    saleSection
-      ? context.storefront.query(COLLECTION_PRODUCTS_QUERY, {
-          variables: { handle: saleSection.collectionHandle, first: 20, language, country },
-          cache: context.storefront.CacheShort(),
-        }).catch(() => null)
-      : Promise.resolve(null),
-    reelProductIds.length > 0
-      ? context.storefront.query(REEL_PRODUCT_PRICES_QUERY, {
-          variables: { ids: reelProductIds, country: "AE" as const },
-          cache: context.storefront.CacheShort(),
-        }).catch(() => null)
-      : Promise.resolve(null),
-  ]);
-
-  const saleProducts: ShopifyProduct[] = (saleRes?.collection?.products?.edges ?? [])
-    .filter((e: any) => parseFloat(e.node?.priceRange?.minVariantPrice?.amount ?? "0") > 0);
-
   const reelPriceMap: Record<string, { amount: string; currencyCode: string }> = {};
-  for (const n of reelPriceData?.nodes ?? []) {
-    if (n?.id && n.priceRange?.minVariantPrice) {
-      reelPriceMap[n.id] = n.priceRange.minVariantPrice;
-    }
+  if (reelProductIds.length > 0) {
+    try {
+      const priceData = await context.storefront.query(REEL_PRODUCT_PRICES_QUERY, {
+        variables: { ids: reelProductIds, country: "AE" as const },
+      });
+      for (const n of priceData?.nodes ?? []) {
+        if (n?.id && n.priceRange?.minVariantPrice) {
+          reelPriceMap[n.id] = n.priceRange.minVariantPrice;
+        }
+      }
+    } catch { /* ignore price fetch errors, cards still show without price */ }
   }
 
   // Use reel_item entries from metaobject; fall back to tag:reel product query when none exist
@@ -659,7 +653,6 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     if (taggedEdges.length === 0) {
       const reelAll = await context.storefront.query(REELS_QUERY, {
         variables: { first: 30, query: undefined },
-        cache: context.storefront.CacheShort(),
       });
       taggedEdges = reelAll?.products?.edges ?? [];
     }
@@ -724,10 +717,6 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     reviewAverage,
   };
 }
-
-export const headers = () => ({
-  "Cache-Control": "public, max-age=60, stale-while-revalidate=600",
-});
 
 // Default home section order + the full set of valid section keys. The mls_home_layout
 // metaobject can reorder these or omit any to hide it; anything not listed below is ignored.
