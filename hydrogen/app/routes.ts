@@ -86,9 +86,10 @@ export default hydrogenRoutes([
   route('pages/subscriptions', 'routes/pages.subscriptions.tsx'),
   route('pages/subscription', 'routes/pages.subscription.tsx'),
   route('pages/:handle', 'routes/pages.$handle.tsx'),
+  route('account/login', 'routes/account_.login.tsx'),
+  route('account/authorize', 'routes/account_.authorize.tsx'),
+  route('account/logout', 'routes/account_.logout.tsx'),
   route('account', 'routes/account.tsx', [
     index('routes/account._index.tsx'),
-    route('authorize', 'routes/account_.authorize.tsx'),
-    route('logout', 'routes/account_.logout.tsx'),
   ]),
 ]) satisfies RouteConfig;
