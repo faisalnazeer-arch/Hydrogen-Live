@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { HScroller } from "./HScroller";
 import { useLocalePath } from "@/stores/localeStore";
+import { shopifyImageUrl } from "@/lib/shopify";
 
 export interface FeaturedCollectionCard {
   id: string;
@@ -34,8 +35,10 @@ export function FeaturedCollections({ cards, title, subtitle }: FeaturedCollecti
           >
             {c.imageUrl ? (
               <img
-                src={c.imageUrl}
+                src={shopifyImageUrl(c.imageUrl, 400)}
                 alt={c.imageAlt ?? c.heading}
+                loading="lazy"
+                decoding="async"
                 className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
             ) : (
