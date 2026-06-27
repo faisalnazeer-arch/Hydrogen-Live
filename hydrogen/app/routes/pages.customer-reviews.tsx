@@ -99,7 +99,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
   const histogram = parseHistogram(header);
 
   // Map REST API reviews to ParsedReview — pictures come with correct URLs directly
-  const apiReviews: ParsedReview[] = [...(page1.reviews ?? []), ...(page2.reviews ?? [])].map((r: any) => ({
+  const apiReviews: ParsedReview[] = [...((page1 as any).reviews ?? []), ...((page2 as any).reviews ?? [])].map((r: any) => ({
     id:       String(r.id),
     rating:   r.rating ?? 5,
     author:   r.reviewer?.name ?? "Customer",
