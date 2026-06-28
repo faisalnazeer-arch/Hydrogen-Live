@@ -18,6 +18,8 @@ const DEFAULTS = {
   email:          "contactus@mlsuae.ae",
   contactHeading: "Contact Us",
   copyright:      "MLS UAE. All rights reserved.",
+  newsletterTitle:    "Want discounts?",
+  newsletterSubtitle: "Subscribe to our newsletter and get 10% off your first purchase!",
 };
 
 interface ContactData {
@@ -35,6 +37,8 @@ interface ContactData {
   brandText?: string | null;
   copyright: string;
   bottomTagline?: string | null;
+  newsletterTitle: string;
+  newsletterSubtitle: string;
 }
 
 interface Props {
@@ -51,6 +55,8 @@ export function Footer({ settings, menuCols }: Props) {
     address:       settings?.address        || DEFAULTS.address,
     phone:         settings?.phone          || DEFAULTS.phone,
     email:         settings?.email          || DEFAULTS.email,
+    newsletterTitle:    settings?.newsletterTitle    || DEFAULTS.newsletterTitle,
+    newsletterSubtitle: settings?.newsletterSubtitle || DEFAULTS.newsletterSubtitle,
     instagram:     settings?.instagramUrl,
     facebook:      settings?.facebookUrl,
     twitter:       settings?.twitterUrl,
@@ -73,7 +79,7 @@ export function Footer({ settings, menuCols }: Props) {
           {menuCols.map((col) => (
             <NavCol key={col.heading} heading={col.heading} links={col.links} />
           ))}
-          <NewsletterCol />
+          <NewsletterCol title={contact.newsletterTitle} subtitle={contact.newsletterSubtitle} />
         </div>
 
         {/* ── Mobile ──────────────────────────────────────────────── */}
@@ -93,8 +99,8 @@ export function Footer({ settings, menuCols }: Props) {
           </Accordion>
           {/* Klaviyo signup on mobile below accordions */}
           <div className="mt-8">
-            <p className="mb-1 text-base font-bold text-white">Want discounts?</p>
-            <p className="mb-4 text-sm text-off-white/70">Subscribe to our newsletter and get 10% off your first purchase!</p>
+            <p className="mb-1 text-base font-bold text-white">{contact.newsletterTitle}</p>
+            <p className="mb-4 text-sm text-off-white/70">{contact.newsletterSubtitle}</p>
             <div className="klaviyo-form-TXvrLy"></div>
           </div>
         </div>
@@ -208,7 +214,7 @@ function NavCol({ heading, links }: { heading: string; links: FooterLink[] }) {
   );
 }
 
-function NewsletterCol() {
+function NewsletterCol({ title, subtitle }: { title: string; subtitle: string }) {
   useEffect(() => {
     // Klaviyo scans DOM on load — after hydration we must re-trigger it
     if (typeof window !== "undefined") {
@@ -226,10 +232,8 @@ function NewsletterCol() {
 
   return (
     <div className="min-w-[220px] max-w-[280px] flex-1">
-      <h4 className="mb-2 font-display text-base font-bold text-white">Want discounts?</h4>
-      <p className="mb-4 text-sm text-off-white/70">
-        Subscribe to our newsletter and get 10% off your first purchase!
-      </p>
+      <h4 className="mb-2 font-display text-base font-bold text-white">{title}</h4>
+      <p className="mb-4 text-sm text-off-white/70">{subtitle}</p>
       <div className="klaviyo-form-TXvrLy"></div>
     </div>
   );

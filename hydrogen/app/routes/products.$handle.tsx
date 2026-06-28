@@ -510,6 +510,8 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
         abudhabiDeliveryInfo: (() => { try { const v = getPageMeta("abudhabi_delivery_info"); return v ? JSON.parse(v) : null; } catch { return null; } })(),
         sharjahDeliveryInfo:  (() => { try { const v = getPageMeta("sharjah_delivery_info");  return v ? JSON.parse(v) : null; } catch { return null; } })(),
         deliveryCities,
+        freeReturnsTitle: getPageMeta("free_returns_title") ?? undefined,
+        freeReturns: (() => { try { const v = getPageMeta("free_returns"); return v ? JSON.parse(v) : null; } catch { return null; } })(),
         badgeImage: getPageMeta("badge_image"),
       },
     };

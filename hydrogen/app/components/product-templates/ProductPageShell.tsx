@@ -40,6 +40,9 @@ export interface PageSettings {
   sharjahDeliveryInfo: Array<{ label: string; body: string }> | null;
   // Metaobject-driven delivery tabs (editable name + rows). Preferred over the per-city fields above.
   deliveryCities?: Array<{ name: string; rows: Array<{ label: string; body: string }> }> | null;
+  // Metaobject-driven Free Returns accordion (editable title + bullet list).
+  freeReturnsTitle?: string;
+  freeReturns?: string[] | null;
   badgeImage: string | null;
 }
 
@@ -1520,13 +1523,13 @@ export function ProductPageShell({
                 ? <DescriptionWithToggle html={product.descriptionHtml} />
                 : <p>{t("product.no_desc")}</p>}
             </AccordionItem>
-            <AccordionItem title={t("product.free_returns_title")}>
+            <AccordionItem title={pageSettings?.freeReturnsTitle ?? t("product.free_returns_title")}>
               <div className="divide-y divide-border/50">
-                {[
+                {(pageSettings?.freeReturns ?? [
                   "Drop a WhatsApp message or send us an email within 24 hours after delivery.",
                   "We will exchange the product and deliver it again to your door, or you can pick it up if you want.",
                   "You will receive the product or a refund. Refunds will be processed within 14 working days.",
-                ].map((line, i) => (
+                ]).map((line, i) => (
                   <p key={i} className="py-2 text-xs leading-relaxed text-muted-foreground sm:py-2.5 sm:text-[13px]">
                     {line}
                   </p>

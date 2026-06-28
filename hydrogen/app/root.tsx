@@ -86,6 +86,8 @@ export interface FooterSettings {
   email: string;
   copyright: string;
   bottomTagline: string;
+  newsletterTitle: string;
+  newsletterSubtitle: string;
   faviconUrl: string | null;
 }
 
@@ -279,6 +281,8 @@ function parseFooterSettings(nodes: any[]): FooterSettings | null {
     email:          f.email?.value           ?? "",
     copyright:      f.copyright?.value       ?? "",
     bottomTagline:  f.bottom_tagline?.value  ?? "",
+    newsletterTitle:    f.newsletter_title?.value    ?? "Want discounts?",
+    newsletterSubtitle: f.newsletter_subtitle?.value ?? "Subscribe to our newsletter and get 10% off your first purchase!",
     faviconUrl:     f.favicon?.reference?.image?.url ?? null,
   };
 }
