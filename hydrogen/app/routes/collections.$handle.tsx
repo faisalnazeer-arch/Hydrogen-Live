@@ -20,6 +20,11 @@ const FACET_TITLE_KEY: Record<string, TKey> = {
   "filter.p.m.custom.origin": "collection.shop_origin",
   "filter.p.m.custom.cut_style": "collection.shop_cuts",
 };
+// Plain-label overrides for facets that have no translation key (e.g. a metafield filter
+// enabled later in Search & Discovery, whose raw label would otherwise show).
+const FACET_LABEL: Record<string, string> = {
+  "filter.p.m.custom.mls_marbling_score2": "Marbling Score",
+};
 
 type FilterValue = { id: string; label: string; count: number; input: string };
 type FilterGroup = { id: string; label: string; type: string; values: FilterValue[] };
@@ -51,6 +56,9 @@ const VALUE_MERGE: Record<string, Record<string, string[]>> = {
   "filter.p.m.custom.cut_style": {
     "Shanks": ["Shank", "Shanks"],
   },
+  "filter.p.m.custom.mls_marbling_score2": {
+    "MB 8/9": ["MB 8/9", "8"], // fold the stray "8" value into the MB 8/9 band
+  },
 };
 
 type DisplayRow = { label: string; count: number; key: string; values: string[] };
@@ -72,7 +80,9 @@ function buildRows(group: FilterGroup): DisplayRow[] {
     rows[rowKey].count += v.count;
     if (!rows[rowKey].values.includes(param.value)) rows[rowKey].values.push(param.value);
   }
-  return Object.values(rows).sort((a, b) => b.count - a.count);
+  // Marbling reads naturally low→high (MB 4/5, 6/7, 8/9); other facets sort by popularity.
+  const byLabel = group.id === "filter.p.m.custom.mls_marbling_score2";
+  return Object.values(rows).sort((a, b) => (byLabel ? a.label.localeCompare(b.label) : b.count - a.count));
 }
 
 const COLLECTION_QUERY = `#graphql
@@ -614,8 +624,9 @@ function FilterPanel({ groups, appliedFilters, onToggleFacet, globalMax, priceMa
         const rows = buildRows(group);
         if (rows.length === 0) return null;
         const titleKey = FACET_TITLE_KEY[group.id];
+        const title = titleKey ? t(titleKey) : (FACET_LABEL[group.id] ?? group.label);
         return (
-          <FilterSection key={group.id} title={titleKey ? t(titleKey) : group.label}>
+          <FilterSection key={group.id} title={title}>
             <div className="flex flex-col gap-1">
               {rows.map((r) => {
                 const checked = r.values.some((v) => appliedFilters.includes(`${r.key}=${v}`));
