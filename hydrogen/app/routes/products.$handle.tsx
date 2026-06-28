@@ -22,7 +22,23 @@ import { KebabTemplate } from "~/components/product-templates/KebabTemplate";
 const PAGE_SETTINGS_QUERY = `
   query {
     metaobjects(type: "product_page_settings", first: 1) {
-      nodes { fields { key value } }
+      nodes {
+        fields {
+          key value
+          references(first: 10) {
+            nodes {
+              ... on Metaobject {
+                fields {
+                  key value
+                  references(first: 25) {
+                    nodes { ... on Metaobject { fields { key value } } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 `;
@@ -434,9 +450,28 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
       .slice(0, 8)
       .map((node: any) => ({ node }));
 
-    const pageFields: Array<{ key: string; value: string }> =
+    const pageFields: any[] =
       (settingsData as any)?.metaobjects?.nodes?.[0]?.fields ?? [];
     const getPageMeta = (key: string) => pageFields.find((f: any) => f.key === key)?.value ?? null;
+
+    // Delivery tabs — metaobject-driven: product_page_settings.delivery_cities → delivery_city
+    // (name = tab label) → rows → delivery_row (label + body). Editable in Shopify admin.
+    const deliveryCities = (() => {
+      const cityNodes = pageFields.find((f: any) => f.key === "delivery_cities")?.references?.nodes ?? [];
+      const cities = cityNodes.map((city: any) => {
+        const cf: any[] = city.fields ?? [];
+        const name = cf.find((f: any) => f.key === "name")?.value ?? "";
+        const rowNodes = cf.find((f: any) => f.key === "rows")?.references?.nodes ?? [];
+        const rows = rowNodes
+          .map((r: any) => {
+            const rf: any[] = r.fields ?? [];
+            return { label: rf.find((f: any) => f.key === "label")?.value ?? "", body: rf.find((f: any) => f.key === "body")?.value ?? "" };
+          })
+          .filter((r: any) => r.label || r.body);
+        return { name, rows };
+      }).filter((c: any) => c.name && c.rows.length);
+      return cities.length ? cities : null;
+    })();
 
     type TemplateAccordion = { heading: string; content: string };
     type TemplateSetting = {
@@ -474,6 +509,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
         dubaiDeliveryInfo:    (() => { try { const v = getPageMeta("dubai_delivery_info");    return v ? JSON.parse(v) : null; } catch { return null; } })(),
         abudhabiDeliveryInfo: (() => { try { const v = getPageMeta("abudhabi_delivery_info"); return v ? JSON.parse(v) : null; } catch { return null; } })(),
         sharjahDeliveryInfo:  (() => { try { const v = getPageMeta("sharjah_delivery_info");  return v ? JSON.parse(v) : null; } catch { return null; } })(),
+        deliveryCities,
         badgeImage: getPageMeta("badge_image"),
       },
     };

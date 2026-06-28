@@ -38,6 +38,8 @@ export interface PageSettings {
   dubaiDeliveryInfo: Array<{ label: string; body: string }> | null;
   abudhabiDeliveryInfo: Array<{ label: string; body: string }> | null;
   sharjahDeliveryInfo: Array<{ label: string; body: string }> | null;
+  // Metaobject-driven delivery tabs (editable name + rows). Preferred over the per-city fields above.
+  deliveryCities?: Array<{ name: string; rows: Array<{ label: string; body: string }> }> | null;
   badgeImage: string | null;
 }
 
@@ -359,13 +361,7 @@ type CityTab = "dubai" | "abudhabi" | "sharjah";
 
 function DeliveryTab({ pageSettings }: { pageSettings: PageSettings | undefined }) {
   const t = useT();
-  const [city, setCity] = useState<CityTab>("dubai");
-
-  const cityTabs: Array<{ id: CityTab; label: string }> = [
-    { id: "dubai",    label: t("product.city_dubai") },
-    { id: "abudhabi", label: t("product.city_abudhabi") },
-    { id: "sharjah",  label: t("product.city_sharjah") },
-  ];
+  const [cityIdx, setCityIdx] = useState(0);
 
   type CityBlock = { label: string; body: string };
 
@@ -394,11 +390,18 @@ function DeliveryTab({ pageSettings }: { pageSettings: PageSettings | undefined 
     { label: "Tipping",               body: "There's no need to tip your delivery driver — we pay a living wage that doesn't depend on tips." },
   ];
 
-  const cityContent: Record<CityTab, CityBlock[]> = {
-    dubai:    pageSettings?.dubaiDeliveryInfo    ?? DEFAULT_DUBAI,
-    abudhabi: pageSettings?.abudhabiDeliveryInfo ?? DEFAULT_ABUDHABI,
-    sharjah:  pageSettings?.sharjahDeliveryInfo  ?? DEFAULT_SHARJAH,
-  };
+  // Prefer the metaobject-driven cities (editable tab name + rows); fall back to the
+  // hardcoded defaults (with translated tab names) when not configured.
+  const cities: Array<{ name: string; rows: CityBlock[] }> =
+    pageSettings?.deliveryCities && pageSettings.deliveryCities.length
+      ? pageSettings.deliveryCities
+      : [
+          { name: t("product.city_dubai"),    rows: pageSettings?.dubaiDeliveryInfo    ?? DEFAULT_DUBAI },
+          { name: t("product.city_abudhabi"), rows: pageSettings?.abudhabiDeliveryInfo ?? DEFAULT_ABUDHABI },
+          { name: t("product.city_sharjah"),  rows: pageSettings?.sharjahDeliveryInfo  ?? DEFAULT_SHARJAH },
+        ];
+  const activeIdx = Math.min(cityIdx, cities.length - 1);
+  const active = cities[activeIdx] ?? cities[0];
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -413,20 +416,20 @@ function DeliveryTab({ pageSettings }: { pageSettings: PageSettings | undefined 
         {/* City tabs — crimson pill active */}
         <div className="mb-4 overflow-x-auto sm:mb-5">
           <div className="flex min-w-max gap-1 rounded-lg border border-border p-0.5 sm:p-1">
-            {cityTabs.map(({ id, label }) => (
-              <button key={id} type="button" onClick={() => setCity(id)}
+            {cities.map((c, i) => (
+              <button key={i} type="button" onClick={() => setCityIdx(i)}
                 className={`shrink-0 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-all sm:px-3 sm:py-2 ${
-                  city === id ? "bg-crimson text-crimson-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  i === activeIdx ? "bg-crimson text-crimson-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}>
-                {label}
+                {c.name}
               </button>
             ))}
           </div>
         </div>
 
         <div className="space-y-2 sm:space-y-3">
-          {cityContent[city].map(({ label, body }) => (
-            <div key={label} className="rounded-lg border border-border/60 px-3 py-2.5 sm:px-4 sm:py-3">
+          {active.rows.map(({ label, body }, i) => (
+            <div key={i} className="rounded-lg border border-border/60 px-3 py-2.5 sm:px-4 sm:py-3">
               <p className="mb-0.5 text-xs font-semibold text-foreground sm:mb-1 sm:text-sm">{label}</p>
               <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground sm:text-sm">{body}</p>
             </div>
