@@ -245,7 +245,7 @@ const ORIGIN_MAP: Record<string, string> = {
   nz: "NZ", "new-zealand": "NZ", "new zealand": "NZ",
   arg: "ARG", argentina: "ARG", argentinian: "ARG",
   brz: "BRZ", brazil: "BRZ", brazilian: "BRZ",
-  rsa: "ZA", za: "ZA", "south-africa": "ZA", "south-african": "ZA", "south africa": "ZA",
+  rsa: "ZA", za: "ZA", "south-africa": "ZA", "south-african": "ZA", "south africa": "ZA", "south african": "ZA",
   pak: "PAK", pakistan: "PAK", pakistani: "PAK",
   ind: "IND", india: "IND", indian: "IND",
   som: "SOM", somalia: "SOM", somali: "SOM",
@@ -254,7 +254,8 @@ const ORIGIN_MAP: Record<string, string> = {
   nl: "NL", netherlands: "NL", dutch: "NL",
   lbn: "LBN", lebanon: "LBN", lebanese: "LBN",
   uae: "UAE", emirati: "UAE", "united arab emirates": "UAE",
-  uk: "UK", gb: "UK", british: "UK", "united kingdom": "UK",
+  uk: "UK", gb: "UK", british: "UK", scottish: "UK", "united kingdom": "UK",
+  fr: "FR", france: "FR", french: "FR",
   "grass-fed": "GRASS-FED", grassfed: "GRASS-FED",
 };
 
@@ -273,6 +274,7 @@ export const ORIGIN_LABELS: Record<string, { label: string; flag: string }> = {
   LBN: { label: "Lebanon",         flag: "🇱🇧" },
   UAE: { label: "UAE",             flag: "🇦🇪" },
   UK:  { label: "United Kingdom",  flag: "🇬🇧" },
+  FR:  { label: "France",          flag: "🇫🇷" },
   "GRASS-FED": { label: "Grass-Fed", flag: "🌱" },
 };
 
