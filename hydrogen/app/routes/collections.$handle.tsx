@@ -5,43 +5,74 @@ import type { LoaderFunctionArgs, MetaFunction } from "@shopify/remix-oxygen";
 import type { ShouldRevalidateFunctionArgs } from "react-router";
 import { useLoaderData, useNavigate, useNavigation, useFetcher, useRouteError, isRouteErrorResponse } from "react-router";
 import { SlidersHorizontal, X, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
-import { getOriginFromProduct, ORIGIN_LABELS, type ShopifyProduct } from "~/lib/shopify";
+import type { ShopifyProduct } from "~/lib/shopify";
 import { ProductCard } from "~/components/product/ProductCard";
 
-// ── Cut keywords — checked against product title + tags ───────────────────────
-const CUT_KEYWORDS: Array<{ key: string; label: string; labelKey: string }> = [
-  { key: "mince",      label: "Mince",        labelKey: "cut.mince"      },
-  { key: "mishkak",    label: "Mishkak",      labelKey: "cut.mishkak"    },
-  { key: "cubes",      label: "Cubes",        labelKey: "cut.cubes"      },
-  { key: "chops",      label: "Chops",        labelKey: "cut.chops"      },
-  { key: "steak",      label: "Steak",        labelKey: "cut.steak"      },
-  { key: "ribs",       label: "Ribs",         labelKey: "cut.ribs"       },
-  { key: "shank",      label: "Shanks",       labelKey: "cut.shank"      },
-  { key: "rack",       label: "Rack",         labelKey: "cut.rack"       },
-  { key: "burger",     label: "Burgers",      labelKey: "cut.burger"     },
-  { key: "leg",        label: "Leg",          labelKey: "cut.leg"        },
-  { key: "shoulder",   label: "Shoulder",     labelKey: "cut.shoulder"   },
-  { key: "fillet",     label: "Fillet",       labelKey: "cut.fillet"     },
-  { key: "biryani",    label: "Biryani Cut",  labelKey: "cut.biryani"    },
-  { key: "curry cut",  label: "Curry Cut",    labelKey: "cut.curry_cut"  },
-  { key: "bone-in",    label: "Bone-in",      labelKey: "cut.bone_in"    },
-  { key: "boneless",   label: "Boneless",     labelKey: "cut.boneless"   },
-  { key: "whole",      label: "Whole",        labelKey: "cut.whole"      },
-  { key: "tenderloin", label: "Tenderloin",   labelKey: "cut.tenderloin" },
-  { key: "slice",      label: "Sliced",       labelKey: "cut.slice"      },
-  { key: "neck",       label: "Neck",         labelKey: "cut.neck"       },
-  { key: "breast",     label: "Breast",       labelKey: "cut.breast"     },
-  { key: "loin",       label: "Loin",         labelKey: "cut.loin"       },
-];
+// ── Native Shopify facets (Search & Discovery app — the same filters the theme used) ──
+//   filter.p.m.custom.origin              → "Shop By Origin"  (product metafield custom.origin)
+//   filter.p.m.custom.cut_style           → "Shop By Cuts"    (product metafield custom.cut_style)
+//   filter.p.m.custom.mls_marbling_score2 → "Marbling Score"  (MB 4/5, 6/7, 8/9) — only appears
+//     once the metafield is enabled as a filter in the Search & Discovery app; otherwise hidden.
+// Listed here in display order; price is handled separately as a client-side slider.
+const FACET_ORDER = ["filter.p.m.custom.origin", "filter.p.m.custom.cut_style", "filter.p.m.custom.mls_marbling_score2"];
+// Map a facet group id → a translation key for its heading (falls back to the Shopify label).
+const FACET_TITLE_KEY: Record<string, TKey> = {
+  "filter.p.m.custom.origin": "collection.shop_origin",
+  "filter.p.m.custom.cut_style": "collection.shop_cuts",
+};
 
-// Map English label → translation key for use in FilterPanel display
-const CUT_LABEL_KEY: Record<string, string> = Object.fromEntries(
-  CUT_KEYWORDS.map(({ label, labelKey }) => [label, labelKey])
-);
+type FilterValue = { id: string; label: string; count: number; input: string };
+type FilterGroup = { id: string; label: string; type: string; values: FilterValue[] };
 
-function getProductCuts(tags: string[], title: string): string[] {
-  const search = `${title} ${tags.join(" ")}`.toLowerCase();
-  return CUT_KEYWORDS.filter(({ key }) => search.includes(key)).map(({ label }) => label);
+// Map a native facet value → its Shopify filter URL param (key/value), e.g.
+// { key: "filter.p.m.custom.origin", value: "United States" } — identical to the theme's URLs.
+function facetParam(groupId: string, valueInput: string): { key: string; value: string } | null {
+  try {
+    const input = JSON.parse(valueInput);
+    if (input.productMetafield)      return { key: groupId, value: String(input.productMetafield.value) };
+    if (input.tag != null)           return { key: "filter.p.tag", value: String(input.tag) };
+    if (input.productType != null)   return { key: "filter.p.product_type", value: String(input.productType) };
+    if (input.productVendor != null) return { key: "filter.p.vendor", value: String(input.productVendor) };
+    if (input.available != null)     return { key: "filter.v.availability", value: input.available ? "1" : "0" };
+  } catch { /* ignore malformed input */ }
+  return null;
+}
+
+// Merge duplicate / inconsistent metafield spellings under one clean label. Selecting a merged
+// label filters by ALL its variant values at once (Shopify ORs same-key filter values).
+const VALUE_MERGE: Record<string, Record<string, string[]>> = {
+  "filter.p.m.custom.origin": {
+    "Australia": ["Australia", "Australian", "Australia (Grass Fed)"],
+    "India":     ["India", "Indian"],
+    "Pakistan":  ["Pakistan", "Pakistani"],
+    "Somalia":   ["Somali", "Somalian"],
+    "Japan":     ["Japan", "Japanese"],
+  },
+  "filter.p.m.custom.cut_style": {
+    "Shanks": ["Shank", "Shanks"],
+  },
+};
+
+type DisplayRow = { label: string; count: number; key: string; values: string[] };
+
+// Collapse a facet group's raw values into display rows (merging duplicate spellings),
+// summing counts and tracking every underlying metafield value for filtering.
+function buildRows(group: FilterGroup): DisplayRow[] {
+  const merge = VALUE_MERGE[group.id] ?? {};
+  const variantToCanon: Record<string, string> = {};
+  for (const [canon, variants] of Object.entries(merge)) for (const v of variants) variantToCanon[v.toLowerCase()] = canon;
+  const rows: Record<string, DisplayRow> = {};
+  for (const v of group.values) {
+    if (v.count <= 0) continue;
+    const param = facetParam(group.id, v.input);
+    if (!param) continue;
+    const canon  = variantToCanon[param.value.toLowerCase()];
+    const rowKey = canon ?? param.value;
+    if (!rows[rowKey]) rows[rowKey] = { label: canon ?? v.label, count: 0, key: param.key, values: [] };
+    rows[rowKey].count += v.count;
+    if (!rows[rowKey].values.includes(param.value)) rows[rowKey].values.push(param.value);
+  }
+  return Object.values(rows).sort((a, b) => b.count - a.count);
 }
 
 const COLLECTION_QUERY = `#graphql
@@ -51,16 +82,23 @@ const COLLECTION_QUERY = `#graphql
     $after: String
     $sortKey: ProductCollectionSortKeys
     $reverse: Boolean
+    $filters: [ProductFilter!]
     $language: LanguageCode
     $country: CountryCode
   ) @inContext(language: $language, country: $country) {
     collection(handle: $handle) {
       id title handle description descriptionHtml
       seo { title description }
-      products(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse) {
+      products(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse, filters: $filters) {
         pageInfo {
           hasNextPage
           endCursor
+        }
+        filters {
+          id
+          label
+          type
+          values { id label count input }
         }
         edges {
           node {
@@ -104,13 +142,16 @@ const SORT_OPTIONS = [
 
 const PAGE_SIZE = 24;
 
-// Re-fetch only when the collection handle or sort changes. Pagination uses
-// useFetcher directly so it bypasses shouldRevalidate entirely.
-export function shouldRevalidate({ currentUrl, nextUrl, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
-  const sameHandle = currentUrl.pathname === nextUrl.pathname;
-  const sameSort   = currentUrl.searchParams.get("sort") === nextUrl.searchParams.get("sort");
-  if (sameHandle && sameSort) return false;
-  return defaultShouldRevalidate;
+// Re-fetch when the collection handle, sort, or selected facets change. Pagination
+// (?after) uses useFetcher directly so it bypasses shouldRevalidate entirely.
+export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFunctionArgs) {
+  const filterSig = (u: URL) => [...u.searchParams.entries()].filter(([k]) => k.startsWith("filter.")).map(([k, v]) => `${k}=${v}`).sort().join("§");
+  const sameHandle  = currentUrl.pathname === nextUrl.pathname;
+  const sameSort    = currentUrl.searchParams.get("sort") === nextUrl.searchParams.get("sort");
+  const sameFilters = filterSig(currentUrl) === filterSig(nextUrl);
+  // Re-run the loader on ANY handle/sort/filter change; skip only when nothing relevant changed
+  // (e.g. ?after pagination, which goes through useFetcher and bypasses this anyway).
+  return !(sameHandle && sameSort && sameFilters);
 }
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
@@ -123,6 +164,30 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
   const after   = url.searchParams.get("after") ?? undefined;
   const { key: sortKey, reverse } = SORT_OPTIONS[sortIdx];
 
+  // Selected facets use Shopify's native filter URL params — the same scheme as the theme:
+  //   ?filter.p.m.custom.origin=United States&filter.p.m.custom.cut_style=Mince
+  const appliedFilters: string[] = [];
+  const productFilters: any[] = [];
+  let priceMin: number | undefined;
+  let priceMax: number | undefined;
+  for (const [key, value] of url.searchParams.entries()) {
+    if (!key.startsWith("filter.")) continue;
+    appliedFilters.push(`${key}=${value}`);
+    if (key.startsWith("filter.p.m.")) {
+      const rest = key.slice("filter.p.m.".length);      // e.g. "custom.origin"
+      const dot  = rest.indexOf(".");
+      if (dot > 0) productFilters.push({ productMetafield: { namespace: rest.slice(0, dot), key: rest.slice(dot + 1), value } });
+    } else if (key === "filter.p.tag")        productFilters.push({ tag: value });
+    else if (key === "filter.p.product_type") productFilters.push({ productType: value });
+    else if (key === "filter.p.vendor")       productFilters.push({ productVendor: value });
+    else if (key === "filter.v.availability") productFilters.push({ available: value === "1" || value === "true" });
+    else if (key === "filter.v.price.gte")    priceMin = parseFloat(value);
+    else if (key === "filter.v.price.lte")    priceMax = parseFloat(value);
+  }
+  if (priceMin !== undefined || priceMax !== undefined) {
+    productFilters.push({ price: { ...(priceMin !== undefined ? { min: priceMin } : {}), ...(priceMax !== undefined ? { max: priceMax } : {}) } });
+  }
+
   const data = await context.storefront.query(COLLECTION_QUERY, {
     variables: {
       handle,
@@ -130,6 +195,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
       after,
       sortKey,
       reverse,
+      filters: productFilters,
       language,
       country: "AE" as const,
     },
@@ -140,6 +206,8 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
   return {
     collection: data.collection,
     sortIdx,
+    appliedFilters,
+    availableFilters: (data.collection.products.filters ?? []) as FilterGroup[],
     pageInfo: data.collection.products.pageInfo as { hasNextPage: boolean; endCursor: string | null },
   };
 }
@@ -221,7 +289,7 @@ export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
 
 /* ─── Main route component ────────────────────────────────────────────────── */
 export default function Collection() {
-  const { collection, sortIdx, pageInfo } = useLoaderData<typeof loader>();
+  const { collection, sortIdx, appliedFilters, availableFilters, pageInfo } = useLoaderData<typeof loader>();
   const t = useT();
 
   const navigate    = useNavigate();
@@ -229,27 +297,35 @@ export default function Collection() {
   const isLoading   = navigation.state === "loading";
   const fetcher     = useFetcher<typeof loader>();
 
-  // Accumulate all loaded products across pages.
-  // Reset whenever the collection or sort order changes (new loader data).
-  const loaderKey = `${collection.id}|${sortIdx}`;
-  const activeKeyRef = useRef(loaderKey);
-  const [allProducts, setAllProducts] = useState<ShopifyProduct[]>(() => collection.products.edges);
-  const [cursor, setCursor]           = useState<string | null>(() => pageInfo.endCursor ?? null);
-  const [hasMore, setHasMore]         = useState(() => pageInfo.hasNextPage);
+  // Page 1 always comes straight from the loader (so it's fresh the instant filters/sort change);
+  // Load More appends extra pages into `extraEdges`, which we clear when the loader result changes.
+  const loaderKey = `${collection.id}|${sortIdx}|${appliedFilters.join("§")}`;
+  const [extraEdges, setExtraEdges]   = useState<ShopifyProduct[]>([]);
+  const [cursor, setCursor]           = useState<string | null>(pageInfo.endCursor ?? null);
+  const [hasMore, setHasMore]         = useState(pageInfo.hasNextPage);
+  const [maxPrice, setMaxPrice]       = useState<number | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // When collection or sort changes the loader returns fresh data — reset state.
-  if (activeKeyRef.current !== loaderKey) {
-    activeKeyRef.current = loaderKey;
-    setAllProducts(collection.products.edges);
+  // Reset pagination + price whenever the loader returns a new result set (collection/sort/filter change).
+  useEffect(() => {
+    setExtraEdges([]);
     setCursor(pageInfo.endCursor ?? null);
     setHasMore(pageInfo.hasNextPage);
-  }
+    setMaxPrice(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaderKey]);
 
-  // Append products when fetcher returns the next page.
+  // Derived list = the loader's current page 1 (never stale) + any extra pages from Load More.
+  const allProducts = useMemo(
+    () => [...collection.products.edges, ...extraEdges],
+    [collection.products.edges, extraEdges],
+  );
+
+  // Append products when the Load More fetcher returns the next page.
   useEffect(() => {
     const fd = fetcher.data as ReturnType<typeof useLoaderData<typeof loader>> | undefined;
     if (!fd?.collection?.products?.edges) return;
-    setAllProducts((prev) => [...prev, ...fd.collection.products.edges]);
+    setExtraEdges((prev) => [...prev, ...fd.collection.products.edges]);
     setCursor(fd.pageInfo.endCursor ?? null);
     setHasMore(fd.pageInfo.hasNextPage);
   }, [fetcher.data]);
@@ -261,54 +337,59 @@ export default function Collection() {
     fetcher.load(url.pathname + url.search);
   };
 
-  const [selectedOrigins, setSelectedOrigins] = useState<string[]>([]);
-  const [selectedCuts,    setSelectedCuts]    = useState<string[]>([]);
-  const [maxPrice,        setMaxPrice]        = useState<number | null>(null);
-  const [filtersOpen,     setFiltersOpen]     = useState(false);
+  // ── Facet selection (server-side via URL) ──────────────────────────────────
+  const facetGroups = useMemo(
+    () => FACET_ORDER.map((id) => availableFilters.find((f) => f.id === id)).filter(Boolean) as FilterGroup[],
+    [availableFilters]
+  );
 
-  const allPrices  = allProducts.map((p) => parseFloat(p.node.priceRange.minVariantPrice.amount));
-  const globalMax  = Math.ceil(Math.max(...allPrices, 0));
-  const priceMax   = maxPrice ?? globalMax;
-
-  const originCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const p of allProducts) {
-      const o = getOriginFromProduct(p.node.tags, p.node.title);
-      if (o && o !== "GRASS-FED") counts[o] = (counts[o] ?? 0) + 1;
+  // Reflect the in-flight navigation immediately so a ticked box feels instant — the grid
+  // stays on screen and updates in place when Shopify responds; the page never reloads.
+  const effectiveApplied = useMemo(() => {
+    if (navigation.state === "loading" && navigation.location) {
+      const sp = new URLSearchParams(navigation.location.search);
+      return [...sp.entries()].filter(([k]) => k.startsWith("filter.")).map(([k, v]) => `${k}=${v}`);
     }
-    return counts;
-  }, [allProducts]);
+    return appliedFilters;
+  }, [navigation.state, navigation.location, appliedFilters]);
 
-  const cutCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const p of allProducts) {
-      for (const cut of getProductCuts(p.node.tags, p.node.title)) {
-        counts[cut] = (counts[cut] ?? 0) + 1;
-      }
-    }
-    return counts;
-  }, [allProducts]);
+  const toggleFacet = (key: string, values: string[], checked: boolean) => {
+    const url = new URL(window.location.href);
+    const existing = url.searchParams.getAll(key);
+    url.searchParams.delete(key);
+    const next = checked ? [...existing, ...values] : existing.filter((v) => !values.includes(v));
+    [...new Set(next)].forEach((v) => url.searchParams.append(key, v));
+    url.searchParams.delete("after");
+    navigate(url.pathname + url.search, { preventScrollReset: true });
+  };
+
+  // ── Price (client-side slider over the loaded, server-filtered products) ────
+  const allPrices = allProducts.map((p) => parseFloat(p.node.priceRange.minVariantPrice.amount));
+  const globalMax = Math.ceil(Math.max(...allPrices, 0));
+  const priceMax  = maxPrice ?? globalMax;
 
   const filtered = useMemo(() => {
     return allProducts.filter((p) => {
       const price = parseFloat(p.node.priceRange.minVariantPrice.amount);
       if (price === 0) return false;
-      if (price > priceMax) return false;
-      const origin = getOriginFromProduct(p.node.tags, p.node.title);
-      if (selectedOrigins.length > 0 && (!origin || !selectedOrigins.includes(origin))) return false;
-      if (selectedCuts.length > 0) {
-        const productCuts = getProductCuts(p.node.tags, p.node.title);
-        if (!selectedCuts.some((c) => productCuts.includes(c))) return false;
-      }
-      return true;
+      return price <= priceMax;
     });
-  }, [allProducts, priceMax, selectedOrigins, selectedCuts]);
+  }, [allProducts, priceMax]);
 
-  const toggleOrigin = (o: string) =>
-    setSelectedOrigins((prev) => prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o]);
-  const toggleCut = (c: string) =>
-    setSelectedCuts((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]);
-  const clearAll = () => { setSelectedOrigins([]); setSelectedCuts([]); setMaxPrice(null); };
+  const clearAll = () => {
+    setMaxPrice(null);
+    const url = new URL(window.location.href);
+    [...url.searchParams.keys()].filter((k) => k.startsWith("filter.")).forEach((k) => url.searchParams.delete(k));
+    url.searchParams.delete("after");
+    navigate(url.pathname + url.search, { preventScrollReset: true });
+  };
+  const activeFacetCount = useMemo(
+    () => facetGroups.reduce(
+      (n, g) => n + buildRows(g).filter((r) => r.values.some((v) => effectiveApplied.includes(`${r.key}=${v}`))).length,
+      0,
+    ),
+    [facetGroups, effectiveApplied],
+  );
 
   const isLoadingMore = fetcher.state !== "idle";
 
@@ -325,10 +406,9 @@ export default function Collection() {
         {/* Sidebar desktop */}
         <aside className="hidden w-64 flex-shrink-0 lg:block">
           <FilterPanel
+            groups={facetGroups} appliedFilters={effectiveApplied} onToggleFacet={toggleFacet}
             globalMax={globalMax} priceMax={priceMax} setMaxPrice={setMaxPrice}
-            originCounts={originCounts} selectedOrigins={selectedOrigins} toggleOrigin={toggleOrigin}
-            cutCounts={cutCounts} selectedCuts={selectedCuts} toggleCut={toggleCut}
-            onClearAll={clearAll}
+            activeFacetCount={activeFacetCount} onClearAll={clearAll}
           />
         </aside>
 
@@ -343,15 +423,16 @@ export default function Collection() {
                 className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium lg:hidden"
               >
                 <SlidersHorizontal className="h-4 w-4" /> {t("collection.filters")}
-                {(selectedOrigins.length + selectedCuts.length) > 0 && (
+                {activeFacetCount > 0 && (
                   <span className="grid h-5 w-5 place-items-center rounded-full bg-crimson text-[10px] font-bold text-white">
-                    {selectedOrigins.length + selectedCuts.length}
+                    {activeFacetCount}
                   </span>
                 )}
               </button>
               {/* Count — desktop only inline */}
-              <span className="hidden text-sm text-muted-foreground lg:block">
+              <span className="hidden items-center gap-2 text-sm text-muted-foreground lg:flex">
                 {filtered.length} {t("collection.products_of")} {allProducts.length} {t("collection.products_label")}{hasMore ? "+" : ""}
+                {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-crimson" />}
               </span>
               {/* Right: Sort */}
               <div className="relative ml-auto">
@@ -379,8 +460,9 @@ export default function Collection() {
               </div>
             </div>
             {/* Count — mobile only, below the row */}
-            <p className="mt-1.5 text-xs text-muted-foreground lg:hidden">
+            <p className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground lg:hidden">
               {filtered.length} {t("collection.products_of")} {allProducts.length} {t("collection.products_label")}{hasMore ? "+" : ""}
+              {isLoading && <Loader2 className="h-3 w-3 animate-spin text-crimson" />}
             </p>
           </div>
 
@@ -394,21 +476,20 @@ export default function Collection() {
                   <button type="button" onClick={() => setFiltersOpen(false)}><X className="h-5 w-5" /></button>
                 </div>
                 <FilterPanel
+                  groups={facetGroups} appliedFilters={effectiveApplied} onToggleFacet={toggleFacet}
                   globalMax={globalMax} priceMax={priceMax} setMaxPrice={setMaxPrice}
-                  originCounts={originCounts} selectedOrigins={selectedOrigins} toggleOrigin={toggleOrigin}
-                  cutCounts={cutCounts} selectedCuts={selectedCuts} toggleCut={toggleCut}
-                  onClearAll={clearAll}
+                  activeFacetCount={activeFacetCount} onClearAll={clearAll}
                 />
               </div>
             </div>
           )}
 
           {/* Product grid */}
-          {isLoading ? (
+          {isLoading && allProducts.length === 0 ? (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: PAGE_SIZE }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : !isLoading && filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
               <p className="text-lg font-medium">{t("collection.no_products")}</p>
               <button type="button" onClick={clearAll} className="mt-3 text-sm text-crimson underline">
@@ -417,6 +498,8 @@ export default function Collection() {
             </div>
           ) : (
             <>
+              {/* Products stay on screen during a filter/sort change — they update in place
+                  when Shopify responds (the loading cue is the small spinner by the count). */}
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
                 {filtered.map((p) => (
                   <ProductCard key={p.node.id} product={p} collectionHandle={collection.handle} />
@@ -466,15 +549,13 @@ export default function Collection() {
 
 /* ─── Filter Panel ─────────────────────────────────────────────────────────── */
 interface FilterPanelProps {
+  groups: FilterGroup[];
+  appliedFilters: string[];
+  onToggleFacet: (key: string, values: string[], checked: boolean) => void;
   globalMax: number;
   priceMax: number;
   setMaxPrice: (v: number | null) => void;
-  originCounts: Record<string, number>;
-  selectedOrigins: string[];
-  toggleOrigin: (o: string) => void;
-  cutCounts: Record<string, number>;
-  selectedCuts: string[];
-  toggleCut: (c: string) => void;
+  activeFacetCount: number;
   onClearAll: () => void;
 }
 
@@ -495,13 +576,9 @@ function FilterSection({ title, children, defaultOpen = true }: { title: string;
   );
 }
 
-function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedOrigins, toggleOrigin, cutCounts, selectedCuts, toggleCut, onClearAll }: FilterPanelProps) {
+function FilterPanel({ groups, appliedFilters, onToggleFacet, globalMax, priceMax, setMaxPrice, activeFacetCount, onClearAll }: FilterPanelProps) {
   const t = useT();
-  const activeCount = selectedOrigins.length + selectedCuts.length + (priceMax < globalMax ? 1 : 0);
-  const sortedOrigins = Object.keys(originCounts).sort((a, b) =>
-    (ORIGIN_LABELS[a]?.label ?? a).localeCompare(ORIGIN_LABELS[b]?.label ?? b)
-  );
-  const sortedCuts = Object.keys(cutCounts).sort((a, b) => cutCounts[b] - cutCounts[a]);
+  const activeCount = activeFacetCount + (priceMax < globalMax ? 1 : 0);
 
   return (
     <div className="flex flex-col gap-0">
@@ -533,45 +610,27 @@ function FilterPanel({ globalMax, priceMax, setMaxPrice, originCounts, selectedO
         </div>
       </FilterSection>
 
-      {sortedOrigins.length > 0 && (
-        <FilterSection title={t("collection.shop_origin")}>
-          <div className="flex flex-col gap-1">
-            {sortedOrigins.map((code) => {
-              const info  = ORIGIN_LABELS[code];
-              const label = info?.label ?? code;
-              const count = originCounts[code];
-              const checked = selectedOrigins.includes(code);
-              return (
-                <label key={code} className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted ${checked ? "bg-crimson/5 font-medium text-crimson" : ""}`}>
-                  <input type="checkbox" checked={checked} onChange={() => toggleOrigin(code)} className="h-4 w-4 accent-crimson flex-shrink-0" />
-                  <span className="flex-1">{label}</span>
-                  <span className="text-xs text-muted-foreground">({count})</span>
-                </label>
-              );
-            })}
-          </div>
-        </FilterSection>
-      )}
-
-      {sortedCuts.length > 0 && (
-        <FilterSection title={t("collection.shop_cuts")}>
-          <div className="flex flex-col gap-1">
-            {sortedCuts.map((cut) => {
-              const count   = cutCounts[cut];
-              const checked = selectedCuts.includes(cut);
-              const lk = CUT_LABEL_KEY[cut];
-              const displayLabel = lk ? t(lk as TKey) : cut;
-              return (
-                <label key={cut} className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted ${checked ? "bg-crimson/5 font-medium text-crimson" : ""}`}>
-                  <input type="checkbox" checked={checked} onChange={() => toggleCut(cut)} className="h-4 w-4 accent-crimson flex-shrink-0" />
-                  <span className="flex-1">{displayLabel}</span>
-                  <span className="text-xs text-muted-foreground">({count})</span>
-                </label>
-              );
-            })}
-          </div>
-        </FilterSection>
-      )}
+      {groups.map((group) => {
+        const rows = buildRows(group);
+        if (rows.length === 0) return null;
+        const titleKey = FACET_TITLE_KEY[group.id];
+        return (
+          <FilterSection key={group.id} title={titleKey ? t(titleKey) : group.label}>
+            <div className="flex flex-col gap-1">
+              {rows.map((r) => {
+                const checked = r.values.some((v) => appliedFilters.includes(`${r.key}=${v}`));
+                return (
+                  <label key={r.label} className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted ${checked ? "bg-crimson/5 font-medium text-crimson" : ""}`}>
+                    <input type="checkbox" checked={checked} onChange={() => onToggleFacet(r.key, r.values, !checked)} className="h-4 w-4 accent-crimson flex-shrink-0" />
+                    <span className="flex-1">{r.label}</span>
+                    <span className="text-xs text-muted-foreground">({r.count})</span>
+                  </label>
+                );
+              })}
+            </div>
+          </FilterSection>
+        );
+      })}
     </div>
   );
 }

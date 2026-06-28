@@ -62,6 +62,7 @@ const PAGE_QUERY = `#graphql
       seo { title description }
       metafields(identifiers: [
         { namespace: "custom", key: "sections" }
+        { namespace: "custom", key: "template" }
       ]) {
         key
         value
@@ -285,6 +286,12 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
   // In Arabic, swap any landing-page image for its `*_ar` counterpart where set.
   if (userLanguage === "AR") applyArImages(lpPageNodes);
+
+  // ── Page Template override (custom.template metafield, picked from admin) ──────────
+  // "Text page" forces the simple title+body layout even if sections exist.
+  // Unset (every existing page) = current auto behavior, so nothing on the frontend changes.
+  const pageTemplate = (metafields.find((m: any) => m?.key === "template")?.value ?? "").toLowerCase();
+  if (pageTemplate.includes("text")) lpPageNodes = [];
 
   // Regular prose page
   if (lpPageNodes.length === 0) {
