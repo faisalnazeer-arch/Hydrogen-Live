@@ -930,7 +930,9 @@ export function ProductPageShell({
   const isFrozen = product.tags?.some((t: string) => t.toLowerCase() === "frozen") ?? false;
   const addToRecentlyViewed = useRecentlyViewed((s) => s.add);
 
-  const [selectedVariantId, setSelectedVariantId] = useState(variants[0]?.id ?? "");
+  const [selectedVariantId, setSelectedVariantId] = useState(
+    variants.find((v: any) => v.availableForSale)?.id ?? variants[0]?.id ?? "",
+  );
   const [activeMediaIdx, setActiveMediaIdx] = useState(0);
   const [qty, setQty] = useState(1);
   const [specialRequest, setSpecialRequest] = useState("");
@@ -1345,6 +1347,12 @@ export function ProductPageShell({
             <div className="flex flex-col gap-3">
               {product.options.map((option: any) => {
                 if (option.values.length === 1 && option.values[0] === "Default Title") return null;
+                // Values with at least one in-stock variant. Hide sold-out values, but only when
+                // the option still has an available one (a fully sold-out product keeps its options).
+                const availableValues = option.values.filter((val: any) =>
+                  variants.some((v: any) => v.selectedOptions.some((o: any) => o.name === option.name && o.value === val) && v.availableForSale),
+                );
+                const hideUnavailable = availableValues.length > 0;
                 return (
                   <div key={option.name}>
                     <p className="mb-1.5 text-xs font-semibold sm:mb-2 sm:text-sm">{option.name}</p>
@@ -1354,6 +1362,7 @@ export function ProductPageShell({
                           (variant?.selectedOptions ?? []).map((o: any) => [o.name, o.value])
                         );
                         desired[option.name] = value;
+                        if (hideUnavailable && !availableValues.includes(value)) return null;
                         const mv =
                           variants.find((v: any) =>
                             v.selectedOptions.every((o: any) => desired[o.name] === o.value)
@@ -1576,6 +1585,12 @@ export function ProductPageShell({
               <div className="space-y-3">
                 {product.options.map((option: any) => {
                   if (option.values.length === 1 && option.values[0] === "Default Title") return null;
+                  // Values with at least one in-stock variant. Hide sold-out values, but only when
+                  // the option still has an available one (a fully sold-out product keeps its options).
+                  const availableValues = option.values.filter((val: any) =>
+                    variants.some((v: any) => v.selectedOptions.some((o: any) => o.name === option.name && o.value === val) && v.availableForSale),
+                  );
+                  const hideUnavailable = availableValues.length > 0;
                   return (
                     <div key={option.name}>
                       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{option.name}</p>
@@ -1585,6 +1600,7 @@ export function ProductPageShell({
                             (variant?.selectedOptions ?? []).map((o: any) => [o.name, o.value])
                           );
                           desired[option.name] = value;
+                          if (hideUnavailable && !availableValues.includes(value)) return null;
                           const mv =
                             variants.find((v: any) =>
                               v.selectedOptions.every((o: any) => desired[o.name] === o.value)
