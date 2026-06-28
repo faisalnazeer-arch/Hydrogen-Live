@@ -599,6 +599,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* Shim window.Shopify so PushOwl can identify the store in headless mode */}
         <script dangerouslySetInnerHTML={{ __html: `window.Shopify=window.Shopify||{};window.Shopify.shop=window.Shopify.shop||'mls-uae.myshopify.com';` }} />
         <script async src="https://cdn.shopify.com/extensions/00bb358e-e093-46ce-a5ef-3b66f0295001/pushowl-brevo-email-push-sms-82/assets/pushowl-shopify.js" />
+        {/* Snowball — affiliate / referral tracking (identifies the store via the shop param) */}
+        <script async src="https://api.socialsnowball.io/js/referral.js?shop=mls-uae.myshopify.com" />
       </head>
       <body>
         {/* Google Tag Manager (noscript) */}
