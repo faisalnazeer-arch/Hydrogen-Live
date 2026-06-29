@@ -553,6 +553,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang={locale} dir={dir} suppressHydrationWarning>
       <head>
+        {/* Connect early to the Shopify image CDN so the hero (LCP) image fetches sooner */}
+        <link rel="preconnect" href="https://cdn.shopify.com" crossOrigin="anonymous" />
         {/* Critical CSS — inlined before external stylesheet so variables apply on first paint */}
         <style dangerouslySetInnerHTML={{ __html: `
           :root{--radius:.5rem;--crimson:oklch(0.36 0.18 27);--rich-red:oklch(0.52 0.21 28);--off-white:oklch(0.985 0.005 80);--bone:oklch(0.96 0.008 80);--charcoal:oklch(0.18 0.005 240);--charcoal-foreground:oklch(0.985 0.005 60);--gold:oklch(0.74 0.11 80);--background:var(--off-white);--foreground:var(--charcoal);--card:oklch(1 0 0);--card-foreground:var(--charcoal);--border:oklch(0.9 0.008 80);--muted:oklch(0.94 0.006 80);--muted-foreground:oklch(0.45 0.01 60);}

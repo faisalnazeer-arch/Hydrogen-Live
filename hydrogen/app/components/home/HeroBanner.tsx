@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { shopifyImageUrl } from "@/lib/shopify";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -166,33 +167,28 @@ export function HeroBanner({ slides: rawSlides = [] }: HeroBannerProps) {
 
 function SlideItem({ slide, active, priority }: { slide: HeroSlide; active: boolean; priority?: boolean }) {
   const hasContent = slide.content || slide.buttonText;
+  // Responsive hero: a single <picture> so only the viewport's image downloads (no mobile +
+  // desktop double-fetch), and resized via the Shopify CDN so mobile gets a small image — the
+  // hero is the LCP element, so this is the biggest mobile-speed win.
+  const mob = slide.mobileImage;
+  const desk = slide.desktopImage;
+  const primary = mob ?? desk;
   const inner = (
     <div className="relative w-full" style={{ flexShrink: 0 }}>
-      {slide.mobileImage && (
-        <img
-          src={slide.mobileImage.url}
-          alt={slide.mobileImage.altText ?? ""}
-          draggable={false}
-          loading={priority ? "eager" : "lazy"}
-          fetchPriority={priority ? "high" : "low"}
-          className={cn(
-            "pointer-events-none block w-full select-none",
-            slide.desktopImage ? "md:hidden" : "",
+      {primary && (
+        <picture>
+          {mob && desk && (
+            <source media="(min-width: 768px)" srcSet={shopifyImageUrl(desk.url, 1600)} />
           )}
-        />
-      )}
-      {slide.desktopImage && (
-        <img
-          src={slide.desktopImage.url}
-          alt={slide.desktopImage.altText ?? ""}
-          draggable={false}
-          loading={priority ? "eager" : "lazy"}
-          fetchPriority={priority ? "high" : "low"}
-          className={cn(
-            "pointer-events-none w-full select-none",
-            slide.mobileImage ? "hidden md:block" : "block",
-          )}
-        />
+          <img
+            src={shopifyImageUrl(primary.url, mob ? 828 : 1600)}
+            alt={primary.altText ?? ""}
+            draggable={false}
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "low"}
+            className="pointer-events-none block w-full select-none"
+          />
+        </picture>
       )}
 
       {/* Overlay */}
