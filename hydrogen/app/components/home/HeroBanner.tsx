@@ -178,15 +178,24 @@ function SlideItem({ slide, active, priority }: { slide: HeroSlide; active: bool
       {primary && (
         <picture>
           {mob && desk && (
-            <source media="(min-width: 768px)" srcSet={shopifyImageUrl(desk.url, 1600)} />
+            <source
+              media="(min-width: 768px)"
+              srcSet={shopifyImageUrl(desk.url, 1600)}
+              width={desk.width}
+              height={desk.height}
+            />
           )}
+          {/* width/height reserve the aspect-ratio box so the image can't shift content as it
+              loads (CLS); `h-auto w-full` keeps it scaling responsively. */}
           <img
             src={shopifyImageUrl(primary.url, mob ? 828 : 1600)}
+            width={primary.width}
+            height={primary.height}
             alt={primary.altText ?? ""}
             draggable={false}
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "low"}
-            className="pointer-events-none block w-full select-none"
+            className="pointer-events-none block h-auto w-full select-none"
           />
         </picture>
       )}
