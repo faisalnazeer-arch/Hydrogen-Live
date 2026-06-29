@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { HScroller } from "./HScroller";
 import { useLocalePath } from "@/stores/localeStore";
+import { shopifyImageUrl } from "@/lib/shopify";
 
 export interface CategoryItem {
   id: string;
@@ -86,7 +87,7 @@ function CategoryCard({ item, mobile }: { item: CategoryItem; mobile?: boolean }
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-foreground/[0.05] transition-all duration-200 group-hover:bg-crimson/10 group-hover:shadow-[0_4px_12px_rgba(185,28,28,0.15)]">
           {item.imageUrl ? (
             <img
-              src={item.imageUrl}
+              src={shopifyImageUrl(item.imageUrl, 96)}
               alt={item.imageAlt || item.heading}
               className="h-9 w-9 object-contain transition-transform duration-200 group-hover:scale-110"
               loading="lazy"
@@ -114,7 +115,7 @@ function CategoryCard({ item, mobile }: { item: CategoryItem; mobile?: boolean }
       <div className="relative flex h-[60px] w-[60px] items-center justify-center rounded-xl bg-foreground/[0.05] transition-all duration-200 group-hover:bg-crimson/8">
         {item.imageUrl ? (
           <img
-            src={item.imageUrl}
+            src={shopifyImageUrl(item.imageUrl, 400)}
             alt={item.imageAlt || item.heading}
             className="h-[68%] w-[68%] object-contain transition-transform duration-300 group-hover:scale-110"
             loading="lazy"

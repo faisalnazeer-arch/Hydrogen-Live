@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
+import { shopifyImageUrl } from "@/lib/shopify";
 
 export interface PromoSideBySideData {
   badgeText: string | null;
@@ -42,7 +43,7 @@ export function PromoSideBySide({ promo }: PromoSideBySideProps) {
         {promo.imageUrl && (
           <div className="relative order-last min-h-[260px] overflow-hidden bg-charcoal md:order-first md:min-h-[340px]">
             <img
-              src={promo.imageUrl}
+              src={shopifyImageUrl(promo.imageUrl, 1000)}
               alt={promo.imageAlt ?? promo.heading}
               className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-700 hover:scale-105"
             />

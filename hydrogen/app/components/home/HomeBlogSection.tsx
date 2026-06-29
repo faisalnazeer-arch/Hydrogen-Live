@@ -3,6 +3,7 @@ import { Calendar, ArrowRight } from "lucide-react";
 import { HScroller } from "./HScroller";
 import { useT } from "@/i18n/strings";
 import { useLocalePath } from "@/stores/localeStore";
+import { shopifyImageUrl } from "@/lib/shopify";
 
 export interface BlogArticle {
   id: string;
@@ -26,7 +27,7 @@ function BlogCard({ article }: { article: BlogArticle }) {
       {article.imageUrl ? (
         <div className="aspect-[16/9] overflow-hidden bg-muted w-full">
           <img
-            src={article.imageUrl}
+            src={shopifyImageUrl(article.imageUrl, 700)}
             alt={article.imageAlt}
             className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
             loading="lazy"

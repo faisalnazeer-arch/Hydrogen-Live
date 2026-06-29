@@ -1373,7 +1373,7 @@ export function ProductPageShell({
                   (variant?.selectedOptions ?? []).map((o: any) => [o.name, o.value])
                 );
                 const exactFor = (value: any) => {
-                  const desired = { ...baseSel, [option.name]: value };
+                  const desired: Record<string, string> = { ...baseSel, [option.name]: value };
                   return variants.find((v: any) => v.selectedOptions.every((o: any) => desired[o.name] === o.value));
                 };
                 // Hide values out of stock for the current selection; keep them all (disabled) if
@@ -1611,7 +1611,7 @@ export function ProductPageShell({
                     (variant?.selectedOptions ?? []).map((o: any) => [o.name, o.value])
                   );
                   const exactFor = (value: any) => {
-                    const desired = { ...baseSel, [option.name]: value };
+                    const desired: Record<string, string> = { ...baseSel, [option.name]: value };
                     return variants.find((v: any) => v.selectedOptions.every((o: any) => desired[o.name] === o.value));
                   };
                   // Hide values out of stock for the current selection; keep them all (disabled) if
