@@ -553,8 +553,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang={locale} dir={dir} suppressHydrationWarning>
       <head>
-        {/* Connect early to the Shopify image CDN so the hero (LCP) image fetches sooner */}
+        {/* charset + viewport FIRST (within the first 1KB of HTML) so the browser never re-parses */}
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        {/* Connect early to the CDNs the page depends on: images, and the web fonts a 3rd-party
+            app injects (those show up in the critical path, so a preconnect speeds them up) */}
         <link rel="preconnect" href="https://cdn.shopify.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Critical CSS — inlined before external stylesheet so variables apply on first paint */}
         <style dangerouslySetInnerHTML={{ __html: `
           :root{--radius:.5rem;--crimson:oklch(0.36 0.18 27);--rich-red:oklch(0.52 0.21 28);--off-white:oklch(0.985 0.005 80);--bone:oklch(0.96 0.008 80);--charcoal:oklch(0.18 0.005 240);--charcoal-foreground:oklch(0.985 0.005 60);--gold:oklch(0.74 0.11 80);--background:var(--off-white);--foreground:var(--charcoal);--card:oklch(1 0 0);--card-foreground:var(--charcoal);--border:oklch(0.9 0.008 80);--muted:oklch(0.94 0.006 80);--muted-foreground:oklch(0.45 0.01 60);}
@@ -568,8 +574,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <link rel="stylesheet" href={styles} suppressHydrationWarning />
         {/* Inline script — sets lang/dir from cookie before React paints, eliminating Arabic flash */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var m=document.cookie.match(/(?:^|;\\s*)lang=([a-z]{2})/);if(m&&m[1]==='ar'){document.documentElement.lang='ar';document.documentElement.dir='rtl';}}catch(e){}})();` }} />
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
         {/* No hardcoded <meta name="description"> here — each route's meta owns it (a static
             one would duplicate and override the per-page description for SEO). */}
         {/* Site-wide social tags (match the live site). The real page title and per-page
