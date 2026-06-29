@@ -1049,6 +1049,27 @@ export function ProductPageShell({
     if (idx !== -1) setActiveMediaIdx(idx);
   }, [selectedVariantId]); // eslint-disable-line
 
+  // Persist the selected variant in the URL (?variant=) so a refresh restores the choice.
+  // Uses history.replaceState (not the router) so it never re-runs the loader or resets state.
+  const firstVariantWrite = useRef(true);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const param = new URLSearchParams(window.location.search).get("variant");
+    if (!param) return;
+    const match = variants.find((v: any) => String(v.id).split("/").pop() === param || v.id === param);
+    if (match) setSelectedVariantId(match.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (typeof window === "undefined" || !selectedVariantId) return;
+    if (firstVariantWrite.current) { firstVariantWrite.current = false; return; }
+    const num = String(selectedVariantId).split("/").pop() ?? "";
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("variant") === num) return;
+    url.searchParams.set("variant", num);
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+  }, [selectedVariantId]);
+
   // GTM dataLayer — view_item (once per product page)
   useEffect(() => {
     pushDataLayer("view_item", {
@@ -1347,26 +1368,26 @@ export function ProductPageShell({
             <div className="flex flex-col gap-3">
               {product.options.map((option: any) => {
                 if (option.values.length === 1 && option.values[0] === "Default Title") return null;
-                // Values with at least one in-stock variant. Hide sold-out values, but only when
-                // the option still has an available one (a fully sold-out product keeps its options).
-                const availableValues = option.values.filter((val: any) =>
-                  variants.some((v: any) => v.selectedOptions.some((o: any) => o.name === option.name && o.value === val) && v.availableForSale),
+                // The exact variant a value would select, given the CURRENT choice of the other options.
+                const baseSel: Record<string, string> = Object.fromEntries(
+                  (variant?.selectedOptions ?? []).map((o: any) => [o.name, o.value])
                 );
+                const exactFor = (value: any) => {
+                  const desired = { ...baseSel, [option.name]: value };
+                  return variants.find((v: any) => v.selectedOptions.every((o: any) => desired[o.name] === o.value));
+                };
+                // Hide values out of stock for the current selection; keep them all (disabled) if
+                // none are available, so the option never renders empty.
+                const availableValues = option.values.filter((val: any) => exactFor(val)?.availableForSale);
                 const hideUnavailable = availableValues.length > 0;
                 return (
                   <div key={option.name}>
                     <p className="mb-1.5 text-xs font-semibold sm:mb-2 sm:text-sm">{option.name}</p>
                     <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {option.values.map((value: any) => {
-                        const desired: Record<string, string> = Object.fromEntries(
-                          (variant?.selectedOptions ?? []).map((o: any) => [o.name, o.value])
-                        );
-                        desired[option.name] = value;
                         if (hideUnavailable && !availableValues.includes(value)) return null;
                         const mv =
-                          variants.find((v: any) =>
-                            v.selectedOptions.every((o: any) => desired[o.name] === o.value)
-                          ) ??
+                          exactFor(value) ??
                           variants.find((v: any) =>
                             v.selectedOptions.some((o: any) => o.name === option.name && o.value === value)
                           );
@@ -1585,26 +1606,26 @@ export function ProductPageShell({
               <div className="space-y-3">
                 {product.options.map((option: any) => {
                   if (option.values.length === 1 && option.values[0] === "Default Title") return null;
-                  // Values with at least one in-stock variant. Hide sold-out values, but only when
-                  // the option still has an available one (a fully sold-out product keeps its options).
-                  const availableValues = option.values.filter((val: any) =>
-                    variants.some((v: any) => v.selectedOptions.some((o: any) => o.name === option.name && o.value === val) && v.availableForSale),
+                  // The exact variant a value would select, given the CURRENT choice of the other options.
+                  const baseSel: Record<string, string> = Object.fromEntries(
+                    (variant?.selectedOptions ?? []).map((o: any) => [o.name, o.value])
                   );
+                  const exactFor = (value: any) => {
+                    const desired = { ...baseSel, [option.name]: value };
+                    return variants.find((v: any) => v.selectedOptions.every((o: any) => desired[o.name] === o.value));
+                  };
+                  // Hide values out of stock for the current selection; keep them all (disabled) if
+                  // none are available, so the option never renders empty.
+                  const availableValues = option.values.filter((val: any) => exactFor(val)?.availableForSale);
                   const hideUnavailable = availableValues.length > 0;
                   return (
                     <div key={option.name}>
                       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{option.name}</p>
                       <div className="flex flex-wrap gap-2">
                         {option.values.map((value: any) => {
-                          const desired: Record<string, string> = Object.fromEntries(
-                            (variant?.selectedOptions ?? []).map((o: any) => [o.name, o.value])
-                          );
-                          desired[option.name] = value;
                           if (hideUnavailable && !availableValues.includes(value)) return null;
                           const mv =
-                            variants.find((v: any) =>
-                              v.selectedOptions.every((o: any) => desired[o.name] === o.value)
-                            ) ??
+                            exactFor(value) ??
                             variants.find((v: any) =>
                               v.selectedOptions.some((o: any) => o.name === option.name && o.value === value)
                             );

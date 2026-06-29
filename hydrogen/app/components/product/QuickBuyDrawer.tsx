@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -49,15 +49,18 @@ export function QuickBuyDrawer() {
   // variantId → { planId → subscriptionPriceAmount }
   const [variantAllocations, setVariantAllocations] = useState<Record<string, Record<string, string>>>({});
 
-  // Reset variant selection + qty when product changes
-  useEffect(() => {
-    if (!node) return;
+  // Reset variant selection + qty when the product changes — done DURING render (not in an
+  // effect) so the very first paint already shows the correct selection (avoids the flash where
+  // all values appear, then the unavailable ones disappear once the effect runs).
+  const lastHandle = useRef<string | null>(null);
+  if (node && lastHandle.current !== node.handle) {
+    lastHandle.current = node.handle;
     const firstAvail = variants.find((v) => v.availableForSale) ?? variants[0];
     const map: Record<string, string> = {};
     firstAvail?.selectedOptions.forEach((o) => (map[o.name] = o.value));
     setSelected(map);
     setQty(1);
-  }, [node, variants]);
+  }
 
   // Load selling plans for the current product.
   // Cache hit → instant (no spinner). Miss → fetch with one auto-retry.
@@ -226,37 +229,46 @@ export function QuickBuyDrawer() {
 
           <div className="mt-3 space-y-3 sm:mt-6 sm:space-y-5">
             {/* Variant options */}
-            {options.map((opt: any) => (
+            {options.map((opt: any) => {
+              // Given the CURRENT selection of the other options, does this value lead to an
+              // in-stock variant? (e.g. "1kg" may be in stock for Australia but not New Zealand)
+              const availForValue = (value: string) =>
+                variants.some(
+                  (v: any) =>
+                    v.selectedOptions.find((o: any) => o.name === opt.name)?.value === value &&
+                    v.selectedOptions.every(
+                      (o: any) => o.name === opt.name || selected[o.name] === undefined || selected[o.name] === o.value,
+                    ) &&
+                    v.availableForSale,
+                );
+              const availableValues = opt.values.filter(availForValue);
+              // Hide out-of-stock values for the current selection; keep them all (disabled) if
+              // NONE are available, so the option never renders empty.
+              const hideUnavailable = availableValues.length > 0;
+              return (
               <div key={opt.name}>
                 <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:mb-2 sm:text-xs">
                   {opt.name}
                 </div>
                 <div className="flex flex-wrap gap-1 sm:gap-2">
                   {opt.values.map((value: string) => {
-                    const candidate = variants.find(
-                      (v: any) =>
-                        v.selectedOptions.find((o: any) => o.name === opt.name)?.value === value &&
-                        v.selectedOptions.every(
-                          (o: any) =>
-                            o.name === opt.name ||
-                            selected[o.name] === undefined ||
-                            selected[o.name] === o.value
-                        )
-                    );
+                    if (hideUnavailable && !availableValues.includes(value)) return null;
+                    const available = availForValue(value);
                     return (
                       <OptionButton
                         key={value}
                         label={value}
                         active={selected[opt.name] === value}
-                        disabled={candidate ? !candidate.availableForSale : true}
-                        onClick={() => setSelected((s) => ({ ...s, [opt.name]: value }))}
+                        disabled={!available}
+                        onClick={() => available && setSelected((s) => ({ ...s, [opt.name]: value }))}
                         className="px-2 py-1 text-xs sm:px-3 sm:py-1.5 sm:text-sm"
                       />
                     );
                   })}
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             {/* Subscription selector */}
             {fetchingPlans ? (

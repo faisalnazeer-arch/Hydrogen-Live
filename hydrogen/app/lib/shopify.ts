@@ -106,7 +106,7 @@ export const PRODUCT_FRAGMENT = `
     }
     compareAtPriceRange { minVariantPrice { amount currencyCode } }
     images(first: 4) { edges { node { url altText width height } } }
-    variants(first: 20) {
+    variants(first: 100) {
       edges {
         node {
           id

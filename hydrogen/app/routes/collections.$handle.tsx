@@ -121,7 +121,7 @@ const COLLECTION_QUERY = `#graphql
             compareAtPriceRange { minVariantPrice { amount currencyCode } }
             images(first: 2) { edges { node { url altText width height } } }
             options { name values }
-            variants(first: 20) {
+            variants(first: 100) {
               edges {
                 node {
                   id title availableForSale quantityAvailable

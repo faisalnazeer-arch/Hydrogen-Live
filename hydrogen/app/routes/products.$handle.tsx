@@ -86,7 +86,7 @@ const RECOMMENDATIONS_QUERY = `#graphql
       }
       compareAtPriceRange { minVariantPrice { amount currencyCode } }
       images(first: 4) { edges { node { url altText width height } } }
-      variants(first: 20) {
+      variants(first: 100) {
         edges {
           node {
             id title availableForSale
@@ -142,7 +142,7 @@ const PRODUCT_QUERY = `#graphql
           }
         }
       }
-      variants(first: 30) {
+      variants(first: 250) {
         nodes {
           id title availableForSale quantityAvailable
           price { amount currencyCode }
