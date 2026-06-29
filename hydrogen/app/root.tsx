@@ -595,12 +595,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: `!function(){if(!window.klaviyo){window._klOnsite=window._klOnsite||[];try{window.klaviyo=new Proxy({},{get:function(n,i){return"push"===i?function(){var n;(n=window._klOnsite).push.apply(n,arguments)}:function(){for(var n=arguments.length,o=new Array(n),w=0;w<n;w++)o[w]=arguments[w];var t="function"==typeof o[o.length-1]?o.pop():void 0,e=new Promise((function(n){window._klOnsite.push([i].concat(o,[function(i){t&&t(i),n(i)}]))}));return e}}})}catch(n){window.klaviyo=window.klaviyo||[],window.klaviyo.push=function(){var n;(n=window._klOnsite).push.apply(n,arguments)}}}}();` }} />
         {/* Klaviyo Onsite JS — handles forms, page tracking, identify */}
         <script async src="https://static.klaviyo.com/onsite/js/RibCBS/klaviyo.js" />
-        {/* Microsoft Clarity — session recording & heatmaps */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","o54b753gku");` }} />
+        {/* Microsoft Clarity — deferred to browser idle (off the critical path → lower TBT).
+            Guaranteed to load via the requestIdleCallback timeout / setTimeout fallback. */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){function L(){(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","o54b753gku");}if("requestIdleCallback"in window){requestIdleCallback(L,{timeout:3000});}else{setTimeout(L,2500);}})();` }} />
         {/* PushOwl + Brevo — web push notifications */}
         {/* Shim window.Shopify so PushOwl can identify the store in headless mode */}
         <script dangerouslySetInnerHTML={{ __html: `window.Shopify=window.Shopify||{};window.Shopify.shop=window.Shopify.shop||'mls-uae.myshopify.com';` }} />
-        <script async src="https://cdn.shopify.com/extensions/00bb358e-e093-46ce-a5ef-3b66f0295001/pushowl-brevo-email-push-sms-82/assets/pushowl-shopify.js" />
+        {/* PushOwl/Brevo — deferred to idle (guaranteed to load via the timeout fallback) */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){function L(){var s=document.createElement("script");s.async=true;s.src="https://cdn.shopify.com/extensions/00bb358e-e093-46ce-a5ef-3b66f0295001/pushowl-brevo-email-push-sms-82/assets/pushowl-shopify.js";document.head.appendChild(s);}if("requestIdleCallback"in window){requestIdleCallback(L,{timeout:4000});}else{setTimeout(L,3000);}})();` }} />
         {/* Snowball — affiliate / referral tracking (identifies the store via the shop param) */}
         <script async src="https://api.socialsnowball.io/js/referral.js?shop=mls-uae.myshopify.com" />
       </head>
