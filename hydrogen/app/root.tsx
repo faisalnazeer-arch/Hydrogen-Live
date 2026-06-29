@@ -585,7 +585,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
         {/* Google Tag Manager */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-K59CLCPC');` }} />
+        {/* GTM — dataLayer queue is created immediately (events are never lost), but the heavy
+            gtm.js loads on first interaction OR a 4s fallback (guaranteed), keeping it off the
+            critical path. The Meta/TikTok/Snapchat ad pixels below are NOT deferred. */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(w,d){w.dataLayer=w.dataLayer||[];w.dataLayer.push({'gtm.start':new Date().getTime(),event:'gtm.js'});var done=false,t;function L(){var j=d.createElement('script');j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id=GTM-K59CLCPC';d.head.appendChild(j);}var evts=['scroll','touchstart','mousedown','keydown','mousemove'];function R(){if(done)return;done=true;clearTimeout(t);evts.forEach(function(e){w.removeEventListener(e,R)});L();}evts.forEach(function(e){w.addEventListener(e,R,{passive:true})});t=setTimeout(R,4000);})(window,document);` }} />
         {/* ── Ad pixels (Meta / TikTok / Snapchat) — loaded directly because Shopify's Web Pixels
              (Customer Events) don't run on a headless storefront. Page/product/cart events are
              mirrored to them via pushDataLayer() (see app/lib/dataLayer.ts). ── */}
