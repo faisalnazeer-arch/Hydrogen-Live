@@ -12,7 +12,7 @@ import {
   isRouteErrorResponse,
 } from "react-router";
 import type { LinksFunction, LoaderFunctionArgs, ShouldRevalidateFunctionArgs } from "react-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, lazy, Suspense } from "react";
 import { useNonce } from "@shopify/hydrogen";
 import styles from "./styles.css?url";
 import { pushDataLayer } from "./lib/dataLayer";
@@ -23,7 +23,11 @@ import { Header } from "./components/layout/Header";
 import { Footer } from "./components/layout/Footer";
 import { CartDrawer } from "./components/layout/CartDrawer";
 import { AnnouncementBar } from "./components/layout/AnnouncementBar";
-import { QuickBuyDrawer } from "./components/product/QuickBuyDrawer";
+// Lazy: the Quick Buy drawer is an overlay opened only on click, so code-splitting it keeps its
+// JS out of the initial bundle (lower TBT) with no SSR/CLS impact — it's hidden until opened.
+const QuickBuyDrawer = lazy(() =>
+  import("./components/product/QuickBuyDrawer").then((m) => ({ default: m.QuickBuyDrawer })),
+);
 import { Toaster } from "./components/ui/sonner";
 import { useCartSync } from "./hooks/useCartSync";
 import { useCartStore } from "./stores/cartStore";
@@ -918,7 +922,7 @@ export default function App() {
         <Footer settings={footerSettings} menuCols={footerMenuCols} />
       </div>
       <CartDrawer />
-      <QuickBuyDrawer />
+      <Suspense fallback={null}><QuickBuyDrawer /></Suspense>
       <Toaster position="top-center" />
     </QueryClientProvider>
   );
