@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { memo } from "react";
 import { Link } from "react-router";
 import { Facebook, Instagram, Linkedin, Phone, Twitter } from "lucide-react";
 import logo from "@/assets/mls-logo.png";
@@ -101,7 +101,7 @@ export function Footer({ settings, menuCols }: Props) {
           <div className="mt-8">
             <p className="mb-1 text-base font-bold text-white">{contact.newsletterTitle}</p>
             <p className="mb-4 text-sm text-off-white/70">{contact.newsletterSubtitle}</p>
-            <div className="klaviyo-form-TXvrLy"></div>
+            <KlaviyoEmbed />
           </div>
         </div>
       </div>
@@ -214,27 +214,24 @@ function NavCol({ heading, links }: { heading: string; links: FooterLink[] }) {
   );
 }
 
-function NewsletterCol({ title, subtitle }: { title: string; subtitle: string }) {
-  useEffect(() => {
-    // Klaviyo scans DOM on load — after hydration we must re-trigger it
-    if (typeof window !== "undefined") {
-      const kl = (window as any).klaviyo;
-      if (kl && typeof kl.push === "function") {
-        kl.push(["identify", {}]);
-      }
-      // Also fire the generic onsite re-init
-      const onsite = (window as any)._klOnsite;
-      if (Array.isArray(onsite)) {
-        onsite.push(["openForm", "TXvrLy"]);
-      }
-    }
-  }, []);
+// Klaviyo's onsite.js injects the embedded signup form into this <div>. It's memoized to
+// render ONCE and never re-render, so React's reconciliation can't wipe out the DOM that
+// Klaviyo injects — that wiping is why the embed shows in the Shopify theme (no React) but
+// vanished in this React storefront. The empty <div> is SSR'd, so Klaviyo's load-time scan
+// finds it and fills it; memo() then keeps the result untouched on every later re-render.
+const KlaviyoEmbed = memo(
+  function KlaviyoEmbed() {
+    return <div className="klaviyo-form-TXvrLy" />;
+  },
+  () => true,
+);
 
+function NewsletterCol({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="min-w-[220px] max-w-[280px] flex-1">
       <h4 className="mb-2 font-display text-base font-bold text-white">{title}</h4>
       <p className="mb-4 text-sm text-off-white/70">{subtitle}</p>
-      <div className="klaviyo-form-TXvrLy"></div>
+      <KlaviyoEmbed />
     </div>
   );
 }
