@@ -199,6 +199,13 @@ const CART_GIFT_CARD_CODES_UPDATE = `
 function formatCheckoutUrl(checkoutUrl: string): string {
   try {
     const url = new URL(checkoutUrl);
+    // Brand the WEB checkout domain (Hydrogen storefront only). The cart token + path are
+    // unchanged — only the host swaps, so the SAME checkout opens on the branded domain.
+    // This function is used solely by the web cart, so Tapcart and Shopify-level domain
+    // settings are untouched.
+    if (url.hostname === "mls-uae.myshopify.com") {
+      url.hostname = "checkout.mlsuae.ae";
+    }
     url.searchParams.set("channel", "online_store");
     return url.toString();
   } catch {
