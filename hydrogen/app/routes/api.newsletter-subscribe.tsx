@@ -39,7 +39,6 @@ export async function action({ request }: ActionFunctionArgs) {
                   type: "profile",
                   attributes: {
                     email,
-                    subscriptions: { email: { marketing: { consent: "SUBSCRIBED" } } },
                   },
                 },
               },
