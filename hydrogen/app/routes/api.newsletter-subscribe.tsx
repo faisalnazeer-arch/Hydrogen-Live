@@ -56,8 +56,9 @@ export async function action({ request }: ActionFunctionArgs) {
     if (!res.ok) {
       const errText = await res.text();
       console.error("Klaviyo newsletter subscribe error:", res.status, errText);
+      // TEMP DEBUG: surface the exact Klaviyo error so we can diagnose on staging.
       return Response.json(
-        { error: "Could not subscribe right now. Please try again." },
+        { error: `Klaviyo ${res.status}: ${errText.slice(0, 400)}` },
         { status: 502 }
       );
     }
