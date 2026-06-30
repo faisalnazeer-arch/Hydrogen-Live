@@ -829,7 +829,14 @@ export const useCartStore = create<CartStore>()(
 
       clearCart: () => set({ items: [], cartId: null, checkoutUrl: null, ...EMPTY }),
 
-      getCheckoutUrl: () => get().checkoutUrl,
+      // Re-format at read-time so the branded checkout host applies to EVERY cart —
+      // including carts rehydrated from localStorage that were created before the
+      // host rewrite (they still hold the old myshopify URL). formatCheckoutUrl is
+      // idempotent, so re-running it on an already-branded URL is a no-op.
+      getCheckoutUrl: () => {
+        const u = get().checkoutUrl;
+        return u ? formatCheckoutUrl(u) : null;
+      },
 
       syncCart: async () => {
         const { cartId, isSyncing, clearCart } = get();
