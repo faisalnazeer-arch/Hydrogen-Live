@@ -115,8 +115,8 @@ const fadeUp = (visible: boolean, delay = 0): React.CSSProperties => ({
 
 // ── Eyebrow — matches HomeBlogSection / ValueBoxesBanner ────────────────────────
 function Eyebrow({ label, light = false, center = false }: { label: string; light?: boolean; center?: boolean }) {
-  const lineClass = "bg-crimson";
-  const textClass = "text-crimson";
+  const lineClass = light ? "bg-white/50" : "bg-crimson";
+  const textClass = light ? "text-white/80" : "text-crimson";
   return (
     <div className={`flex items-center gap-3 ${center ? "justify-center" : ""}`}>
       <span className={`h-px w-6 rounded-full ${lineClass}`} />
@@ -175,7 +175,7 @@ function HeroSection({ image, quote }: { image: string; quote: string }) {
       >
         <div className="max-w-2xl pb-5 md:pb-7">
           {/* Badge */}
-          <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-crimson/40 bg-crimson/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-crimson/90">
+          <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-white/85">
             MLS UAE · Est. 1977
           </span>
           <h1 className="font-display text-2xl font-extrabold uppercase leading-tight tracking-tight text-white drop-shadow-sm md:text-3xl lg:text-[2.6rem]">
