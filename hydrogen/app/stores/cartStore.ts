@@ -428,7 +428,6 @@ const EMPTY: Pick<CartStore,
 // One rule per free gift, driven by the mls_free_gift_rule metaobjects.
 export interface FreeGiftRule {
   variantId: string;       // free product variant to add
-  quantity: number;        // how many of the free variant to add (default 1)
   matchTitles: string[];   // lowercase substrings; a line-item title must CONTAIN one (OR). Empty = any item
   minSubtotal: number;     // 0 = no minimum
   subtotalScope: "cart_total" | "matched_items" | "subscription_items";
@@ -446,7 +445,7 @@ export function warmGiftRuleCache(rules: FreeGiftRule[]) {
   for (const r of rules) if (r.variantId) void fetchGiftVariantData(r.variantId);
 }
 
-function makeGiftItem(variantId: string, quantity = 1): CartItem {
+function makeGiftItem(variantId: string): CartItem {
   return {
     lineId: null,
     product: {
@@ -466,7 +465,7 @@ function makeGiftItem(variantId: string, quantity = 1): CartItem {
     variantId,
     variantTitle: "Free Gift",
     price: { amount: "0.00", currencyCode: "AED" },
-    quantity,
+    quantity: 1,
     selectedOptions: [],
     isPending: false,
   };
@@ -527,7 +526,7 @@ async function syncFreeGifts(
       const has = items.find((i) => i.variantId === rule.variantId);
 
       if (want && !has) {
-        const gift = makeGiftItem(rule.variantId, rule.quantity);
+        const gift = makeGiftItem(rule.variantId);
         // Apply cached image/title immediately if available — no waiting
         const cached = _giftVariantCache.get(rule.variantId) ?? {};
         set((s) => ({ items: [...s.items, { ...gift, ...cached, isPending: true }] }));

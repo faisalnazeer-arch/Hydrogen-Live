@@ -431,18 +431,10 @@ export function CartDrawer() {
 
                           <div className="mt-auto flex items-center justify-between pt-1">
                           {isGift ? (
-                            /* Free gift — no qty selector or remove button. Show the quantity
-                               only when it's more than 1 (a set quantity); 1 stays hidden. */
-                            <div className="flex items-center gap-2">
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
-                                {t("cart.free_gift")}
-                              </span>
-                              {item.quantity > 1 && (
-                                <span className="text-xs text-muted-foreground">
-                                  {t("product.quantity")}: {item.quantity}
-                                </span>
-                              )}
-                            </div>
+                            /* Free gift — no qty selector or remove button */
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                              {t("cart.free_gift")}
+                            </span>
                           ) : (
                             /* Normal item controls */
                             <div className="flex items-center gap-2">

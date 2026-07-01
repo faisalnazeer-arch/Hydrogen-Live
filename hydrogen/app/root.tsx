@@ -307,46 +307,27 @@ function parseCartDrawerConfig(nodes: any[]) {
 }
 
 // Parse mls_free_gift_rule metaobjects into the cart's free-gift rule engine input.
-// A rule has up to 4 free-product slots (free_variant, free_variant_2/3/4), each with its
-// own quantity (free_variant_qty, free_variant_2_qty, ...; blank = 1). Each slot becomes one
-// internal rule sharing the rule's conditions — the cart engine evaluates each independently.
 function parseFreeGiftRules(nodes: any[]) {
-  return (nodes ?? []).flatMap((n: any) => {
-    const f = Object.fromEntries((n.fields ?? []).map((x: any) => [x.key, x.value]));
-    if (f.enabled !== "true") return [];
-
-    const qtyOf = (v: any) => {
-      const q = parseInt(String(v ?? "").trim(), 10);
-      return Number.isFinite(q) && q > 0 ? q : 1;
-    };
-    const slots = [
-      { v: f.free_variant,   q: f.free_variant_qty },
-      { v: f.free_variant_2, q: f.free_variant_2_qty },
-      { v: f.free_variant_3, q: f.free_variant_3_qty },
-      { v: f.free_variant_4, q: f.free_variant_4_qty },
-    ];
-    // Map variantId -> quantity (dedupe by variant; first slot wins).
-    const qtyByVariant = new Map<string, number>();
-    for (const s of slots) {
-      const vid = (s.v ?? "") as string;
-      if (!vid || qtyByVariant.has(vid)) continue;
-      qtyByVariant.set(vid, qtyOf(s.q));
-    }
-    if (qtyByVariant.size === 0) return [];
-
-    const scope =
-      f.subtotal_scope === "matched_items" || f.subtotal_scope === "subscription_items"
-        ? f.subtotal_scope
-        : "cart_total";
-    const base = {
-      matchTitles: ((f.match_titles ?? "") as string)
-        .split("\n").map((s) => s.trim().toLowerCase()).filter(Boolean),
-      minSubtotal: parseFloat(f.min_subtotal ?? "0") || 0,
-      subtotalScope: scope as "cart_total" | "matched_items" | "subscription_items",
-      requireSubscription: f.require_subscription === "true",
-    };
-    return Array.from(qtyByVariant, ([variantId, quantity]) => ({ variantId, quantity, ...base }));
-  });
+  return (nodes ?? [])
+    .map((n: any) => {
+      const f = Object.fromEntries((n.fields ?? []).map((x: any) => [x.key, x.value]));
+      if (f.enabled !== "true") return null;
+      const variantId = (f.free_variant ?? "") as string;
+      if (!variantId) return null;
+      const scope =
+        f.subtotal_scope === "matched_items" || f.subtotal_scope === "subscription_items"
+          ? f.subtotal_scope
+          : "cart_total";
+      return {
+        variantId,
+        matchTitles: ((f.match_titles ?? "") as string)
+          .split("\n").map((s) => s.trim().toLowerCase()).filter(Boolean),
+        minSubtotal: parseFloat(f.min_subtotal ?? "0") || 0,
+        subtotalScope: scope as "cart_total" | "matched_items" | "subscription_items",
+        requireSubscription: f.require_subscription === "true",
+      };
+    })
+    .filter(Boolean);
 }
 
 function parseAnnouncementMessages(nodes: any[]): string[] {
