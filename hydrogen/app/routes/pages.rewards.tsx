@@ -344,13 +344,13 @@ function CtaSection() {
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/collections/all"
-              className="inline-flex items-center gap-2 rounded-full bg-crimson px-7 py-3 text-xs font-bold uppercase tracking-wider text-white transition-all hover:bg-rich-red"
+              className="inline-flex items-center gap-2 rounded-full bg-crimson px-7 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all hover:bg-rich-red"
             >
               Shop & Earn Points <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             <a
               href="#rewards-dashboard"
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/40 px-5 py-3 text-xs font-bold uppercase tracking-wider text-white transition-all hover:border-white"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-charcoal transition-all hover:bg-off-white"
             >
               View My Rewards
             </a>
