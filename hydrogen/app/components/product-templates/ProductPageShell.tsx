@@ -385,8 +385,8 @@ function DeliveryTab({ pageSettings }: { pageSettings: PageSettings | undefined 
     { label: "Tipping",               body: "There's no need to tip your delivery driver — we pay a living wage that doesn't depend on tips." },
   ];
   const DEFAULT_SHARJAH: CityBlock[] = [
-    { label: "Delivery Time",         body: "Same-day delivery across Sharjah and Ajman. Order before 8:45 PM for same-day delivery, 7 days a week." },
-    { label: "Last Order Time",       body: "8:45 PM is our last order cutoff, all days of the week." },
+    { label: "Delivery Time",         body: "Same-day delivery across Sharjah and Ajman. Order before 1:00 PM for same-day delivery, 7 days a week." },
+    { label: "Last Order Time",       body: "1:00 PM is our last order cutoff for same-day delivery to Sharjah and Ajman." },
     { label: "Delivery Fee",          body: "No minimum order value. Standard delivery fee is AED 15." },
     { label: "Free Returns",          body: "We offer a \"no questions asked\" free returns policy which allows you to return delivered items to us for any reason up to 30 days from the delivery of your order, free of charge." },
     { label: "100% Satisfaction",     body: "We offer 100% satisfaction policy. Please WhatsApp us on our customer service number within 24 hours and we will fix your experience. Call or WhatsApp: +971 50 451 6403" },
