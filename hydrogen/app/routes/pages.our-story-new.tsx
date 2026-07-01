@@ -115,8 +115,8 @@ const fadeUp = (visible: boolean, delay = 0): React.CSSProperties => ({
 
 // ── Eyebrow — matches HomeBlogSection / ValueBoxesBanner ────────────────────────
 function Eyebrow({ label, light = false, center = false }: { label: string; light?: boolean; center?: boolean }) {
-  const lineClass = light ? "bg-gold/70" : "bg-crimson";
-  const textClass = light ? "text-gold/90" : "text-crimson";
+  const lineClass = "bg-crimson";
+  const textClass = "text-crimson";
   return (
     <div className={`flex items-center gap-3 ${center ? "justify-center" : ""}`}>
       <span className={`h-px w-6 rounded-full ${lineClass}`} />
@@ -175,7 +175,7 @@ function HeroSection({ image, quote }: { image: string; quote: string }) {
       >
         <div className="max-w-2xl pb-5 md:pb-7">
           {/* Badge */}
-          <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-gold/90">
+          <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-crimson/40 bg-crimson/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-crimson/90">
             MLS UAE · Est. 1977
           </span>
           <h1 className="font-display text-2xl font-extrabold uppercase leading-tight tracking-tight text-white drop-shadow-sm md:text-3xl lg:text-[2.6rem]">
@@ -487,7 +487,7 @@ function MissionSection({ heading, subheading, description, image }: {
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-charcoal via-charcoal to-crimson/20" />
           )}
-          <span className="absolute bottom-3 right-3 rounded-full bg-gold/90 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-charcoal shadow-sm">
+          <span className="absolute bottom-3 right-3 rounded-full bg-crimson px-3 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-white shadow-sm">
             Our Mission
           </span>
         </div>
@@ -503,12 +503,12 @@ function VideoSection({ embed, text }: { embed: string; text: string }) {
     <section className="container mx-auto px-4 pb-10 md:pb-14">
       <div
         ref={ref}
-        className="relative overflow-hidden rounded-2xl shadow-[var(--shadow-card)]"
-        style={{ aspectRatio: "16/7", minHeight: 220, transition: "opacity 0.6s ease", opacity: visible ? 1 : 0 }}
+        className="relative w-full max-w-full overflow-hidden rounded-2xl shadow-[var(--shadow-card)]"
+        style={{ aspectRatio: "16/9", transition: "opacity 0.6s ease", opacity: visible ? 1 : 0 }}
       >
         <div className="absolute inset-0 bg-charcoal" />
         <iframe
-          className="absolute inset-0 h-full w-full scale-[1.01]"
+          className="absolute inset-0 h-full w-full"
           src={embed}
           allow="autoplay; fullscreen; picture-in-picture"
           style={{ border: "none", pointerEvents: "none" }}
