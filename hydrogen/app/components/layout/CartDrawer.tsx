@@ -431,10 +431,15 @@ export function CartDrawer() {
 
                           <div className="mt-auto flex items-center justify-between pt-1">
                           {isGift ? (
-                            /* Free gift — no qty selector or remove button */
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
-                              {t("cart.free_gift")}
-                            </span>
+                            /* Free gift — no qty selector or remove button; show quantity as text */
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                                {t("cart.free_gift")}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {t("product.quantity")}: {item.quantity}
+                              </span>
+                            </div>
                           ) : (
                             /* Normal item controls */
                             <div className="flex items-center gap-2">
