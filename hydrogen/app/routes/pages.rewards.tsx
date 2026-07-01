@@ -116,15 +116,15 @@ function HeroSection({ image, title, subtitle }: { image: string | null; title: 
     >
       {/* Overlays */}
       <div className="absolute inset-0" style={{ background: "linear-gradient(160deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.05) 35%, rgba(0,0,0,0.6) 65%, rgba(0,0,0,0.95) 100%)" }} />
-      <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 85% 15%, rgba(201,168,76,0.14) 0%, transparent 50%)" }} />
+      <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 85% 15%, rgba(139,0,0,0.18) 0%, transparent 50%)" }} />
       <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 5% 95%, rgba(139,0,0,0.2) 0%, transparent 45%)" }} />
 
       {/* Decorative rings */}
-      <div className="pointer-events-none absolute -right-20 -top-20 h-80 w-80 rounded-full border border-gold/10" />
-      <div className="pointer-events-none absolute -right-8 -top-8 h-52 w-52 rounded-full border border-gold/8" />
-      <div className="pointer-events-none absolute right-40 top-1/2 h-2 w-2 rounded-full bg-gold/50" />
-      <div className="pointer-events-none absolute right-20 top-1/3 h-1.5 w-1.5 rounded-full bg-gold/35" />
-      <div className="pointer-events-none absolute left-1/3 bottom-1/4 h-2 w-2 rounded-full bg-gold/25" />
+      <div className="pointer-events-none absolute -right-20 -top-20 h-80 w-80 rounded-full border border-white/10" />
+      <div className="pointer-events-none absolute -right-8 -top-8 h-52 w-52 rounded-full border border-white/8" />
+      <div className="pointer-events-none absolute right-40 top-1/2 h-2 w-2 rounded-full bg-white/20" />
+      <div className="pointer-events-none absolute right-20 top-1/3 h-1.5 w-1.5 rounded-full bg-white/15" />
+      <div className="pointer-events-none absolute left-1/3 bottom-1/4 h-2 w-2 rounded-full bg-white/10" />
 
       <div
         className="relative container mx-auto flex flex-col justify-end px-4 pb-0"
@@ -132,13 +132,10 @@ function HeroSection({ image, title, subtitle }: { image: string | null; title: 
       >
         {/* Left content */}
         <div className="max-w-xl pb-5 md:pb-0">
-          <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-gold/35 bg-gold/12 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-gold">
+          <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white/90">
             <Gift className="h-3.5 w-3.5" /> MLS Rewards Program
           </span>
-          <h1
-            className="font-display text-3xl font-extrabold uppercase leading-[1.1] tracking-tight md:text-4xl lg:text-[2.8rem]"
-            style={{ background: "linear-gradient(135deg, #ffffff 0%, #ffffff 45%, #C9A84C 75%, #e8c96d 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
-          >
+          <h1 className="font-display text-3xl font-extrabold uppercase leading-[1.1] tracking-tight text-white md:text-4xl lg:text-[2.8rem]">
             {title}
           </h1>
           <p className="mt-3 max-w-md text-sm leading-relaxed text-white/65 md:text-[0.95rem]">
@@ -147,14 +144,13 @@ function HeroSection({ image, title, subtitle }: { image: string | null; title: 
           <div className="mt-5 flex flex-wrap items-center gap-3 pb-5 md:pb-8">
             <Link
               to="/collections/all"
-              className="inline-flex items-center gap-2 rounded-full bg-gold px-6 py-2.5 text-xs font-bold uppercase tracking-wider shadow-lg transition-all hover:bg-gold/90"
-              style={{ color: "#1a1a1a", boxShadow: "0 6px 24px rgba(201,168,76,0.3)" }}
+              className="inline-flex items-center gap-2 rounded-full bg-crimson px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all hover:bg-rich-red"
             >
               Start Shopping <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             <a
               href="#rewards-dashboard"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-white/55 transition-colors hover:text-gold"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-white/55 transition-colors hover:text-white"
             >
               View My Points <ArrowRight className="h-3 w-3" />
             </a>
@@ -163,7 +159,7 @@ function HeroSection({ image, title, subtitle }: { image: string | null; title: 
 
         {/* Ways to earn — floating chips, desktop only */}
         <div className="absolute right-8 top-1/2 hidden -translate-y-1/2 flex-col gap-3 xl:flex" style={{ width: 250 }}>
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-gold/55">Ways to Earn</p>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Ways to Earn</p>
           {[
             { Icon: ShoppingBag, label: "Place an Order",  note: "Earn points per order" },
             { Icon: Star,        label: "Write a Review",  note: "Earn bonus points"      },
@@ -172,10 +168,10 @@ function HeroSection({ image, title, subtitle }: { image: string | null; title: 
             <div
               key={label}
               className="flex items-center gap-3 rounded-xl px-4 py-3"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(201,168,76,0.18)", backdropFilter: "blur(8px)" }}
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(8px)" }}
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gold/15">
-                <Icon className="h-4 w-4 text-gold" />
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-crimson/20">
+                <Icon className="h-4 w-4 text-white" />
               </div>
               <div>
                 <p className="text-xs font-semibold text-white">{label}</p>
@@ -215,17 +211,16 @@ function HowItWorksSection() {
         <div className="relative grid gap-6 sm:grid-cols-3">
           {/* Connecting line */}
           <div className="pointer-events-none absolute left-[16.67%] right-[16.67%] top-[42px] hidden h-px sm:block"
-            style={{ background: "linear-gradient(90deg, transparent, rgba(201,168,76,0.35) 20%, rgba(201,168,76,0.35) 80%, transparent)" }} />
+            style={{ background: "linear-gradient(90deg, transparent, rgba(139,0,0,0.4) 20%, rgba(139,0,0,0.4) 80%, transparent)" }} />
 
           {STEPS.map(({ Icon, num, title, desc }, i) => {
             const { ref: sRef, visible: sVis } = useReveal();
             return (
               <div key={num} ref={sRef} className="flex flex-col items-center text-center" style={fadeUp(sVis, i * 0.12)}>
                 <div className="relative mb-5">
-                  <div className="absolute inset-0 rounded-full border-2 border-gold/15 animate-ping" style={{ animationDuration: `${3.5 + i}s` }} />
-                  <div className="relative flex h-[72px] w-[72px] items-center justify-center rounded-full border border-gold/30 bg-charcoal shadow-lg"
-                    style={{ boxShadow: "0 0 20px rgba(201,168,76,0.12)" }}>
-                    <Icon className="h-6 w-6 text-gold" />
+                  <div className="absolute inset-0 rounded-full border-2 border-crimson/20 animate-ping" style={{ animationDuration: `${3.5 + i}s` }} />
+                  <div className="relative flex h-[72px] w-[72px] items-center justify-center rounded-full border border-crimson/30 bg-charcoal shadow-lg">
+                    <Icon className="h-6 w-6 text-white" />
                   </div>
                   <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-crimson text-[9px] font-black text-white shadow-sm">
                     {i + 1}
@@ -255,15 +250,15 @@ function BenefitsSection() {
 
   return (
     <section className="relative overflow-hidden bg-charcoal py-12 md:py-14">
-      <div className="pointer-events-none absolute -left-16 top-8 h-72 w-72 rounded-full bg-gold/[0.04]" />
+      <div className="pointer-events-none absolute -left-16 top-8 h-72 w-72 rounded-full bg-crimson/[0.05]" />
       <div className="pointer-events-none absolute -right-10 bottom-8 h-52 w-52 rounded-full bg-crimson/[0.06]" />
 
       <div className="container mx-auto px-4">
         <div ref={ref} className="mb-8 text-center" style={fadeUp(visible)}>
           <div className="flex items-center justify-center gap-3 mb-2">
-            <span className="h-px w-6 rounded-full bg-gold/70" />
-            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-gold/90">Member Benefits</span>
-            <span className="h-px w-6 rounded-full bg-gold/70" />
+            <span className="h-px w-6 rounded-full bg-white/50" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/80">Member Benefits</span>
+            <span className="h-px w-6 rounded-full bg-white/50" />
           </div>
           <h2 className="font-display text-xl font-bold text-off-white md:text-2xl">Why Join MLS Rewards?</h2>
         </div>
@@ -274,11 +269,11 @@ function BenefitsSection() {
             return (
               <div
                 key={title} ref={bRef}
-                className="group rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5 transition-all duration-300 hover:border-gold/25 hover:bg-white/[0.06]"
+                className="group rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5 transition-all duration-300 hover:border-crimson/30 hover:bg-white/[0.06]"
                 style={fadeUp(bVis, i * 0.09)}
               >
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-gold/20 bg-gold/10 transition-all duration-300 group-hover:bg-gold/18">
-                  <Icon style={{ height: 18, width: 18 }} className="text-gold" />
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-crimson/25 bg-crimson/15 transition-all duration-300 group-hover:bg-crimson/25">
+                  <Icon style={{ height: 18, width: 18 }} className="text-white" />
                 </div>
                 <h3 className="font-display text-sm font-bold text-off-white">{title}</h3>
                 <p className="mt-1 text-xs leading-relaxed text-off-white/50">{desc}</p>
@@ -327,23 +322,20 @@ function CtaSection() {
         className="relative overflow-hidden rounded-2xl text-center"
         style={{
           ...fadeUp(visible),
-          background: "linear-gradient(135deg, #0d0605 0%, #1a0a0a 50%, #1a1208 100%)",
+          background: "linear-gradient(135deg, #0d0605 0%, #1a0a0a 50%, #1a0505 100%)",
           padding: "clamp(2rem, 5vw, 3.5rem) clamp(1.5rem, 5vw, 3rem)",
         }}
       >
-        <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 110%, rgba(201,168,76,0.15) 0%, transparent 55%)" }} />
-        <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full border border-gold/10" />
-        <div className="pointer-events-none absolute left-10 bottom-10 h-2 w-2 rounded-full bg-gold/40" />
-        <div className="pointer-events-none absolute right-1/4 top-8 h-1.5 w-1.5 rounded-full bg-gold/30" />
+        <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 110%, rgba(139,0,0,0.2) 0%, transparent 55%)" }} />
+        <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full border border-white/10" />
+        <div className="pointer-events-none absolute left-10 bottom-10 h-2 w-2 rounded-full bg-white/20" />
+        <div className="pointer-events-none absolute right-1/4 top-8 h-1.5 w-1.5 rounded-full bg-white/15" />
 
         <div className="relative">
-          <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-gold/90">
+          <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-white/85">
             <Star className="h-3 w-3" /> Free to Join
           </span>
-          <h2
-            className="font-display text-2xl font-extrabold uppercase tracking-tight md:text-3xl"
-            style={{ background: "linear-gradient(135deg, #fff 0%, #fff 45%, #C9A84C 75%, #e8c96d 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
-          >
+          <h2 className="font-display text-2xl font-extrabold uppercase tracking-tight text-white md:text-3xl">
             Every Order Brings You<br />Closer to Your Next Reward
           </h2>
           <p className="mx-auto mt-3 max-w-sm text-sm text-off-white/55">
@@ -352,15 +344,13 @@ function CtaSection() {
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/collections/all"
-              className="inline-flex items-center gap-2 rounded-full bg-gold px-7 py-3 text-xs font-bold uppercase tracking-wider transition-all hover:bg-gold/90"
-              style={{ color: "#1a1a1a", boxShadow: "0 8px 28px rgba(201,168,76,0.28)" }}
+              className="inline-flex items-center gap-2 rounded-full bg-crimson px-7 py-3 text-xs font-bold uppercase tracking-wider text-white transition-all hover:bg-rich-red"
             >
               Shop & Earn Points <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             <a
               href="#rewards-dashboard"
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/40 px-5 py-3 text-xs font-bold uppercase tracking-wider transition-all hover:border-gold"
-              style={{ color: "#fff" }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/40 px-5 py-3 text-xs font-bold uppercase tracking-wider text-white transition-all hover:border-white"
             >
               View My Rewards
             </a>

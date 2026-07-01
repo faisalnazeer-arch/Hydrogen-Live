@@ -462,10 +462,13 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
         const cf: any[] = city.fields ?? [];
         const name = cf.find((f: any) => f.key === "name")?.value ?? "";
         const rowNodes = cf.find((f: any) => f.key === "rows")?.references?.nodes ?? [];
+        const isSharjah = /sharjah/i.test(name);
         const rows = rowNodes
           .map((r: any) => {
             const rf: any[] = r.fields ?? [];
-            return { label: rf.find((f: any) => f.key === "label")?.value ?? "", body: rf.find((f: any) => f.key === "body")?.value ?? "" };
+            let body = rf.find((f: any) => f.key === "body")?.value ?? "";
+            if (isSharjah) body = body.replace(/8:45\s*PM/g, "1:00 PM");
+            return { label: rf.find((f: any) => f.key === "label")?.value ?? "", body };
           })
           .filter((r: any) => r.label || r.body);
         return { name, rows };
@@ -508,7 +511,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
         supportContent: getPageMeta("support_content"),
         dubaiDeliveryInfo:    (() => { try { const v = getPageMeta("dubai_delivery_info");    return v ? JSON.parse(v) : null; } catch { return null; } })(),
         abudhabiDeliveryInfo: (() => { try { const v = getPageMeta("abudhabi_delivery_info"); return v ? JSON.parse(v) : null; } catch { return null; } })(),
-        sharjahDeliveryInfo:  (() => { try { const v = getPageMeta("sharjah_delivery_info");  return v ? JSON.parse(v) : null; } catch { return null; } })(),
+        sharjahDeliveryInfo:  (() => { try { const v = getPageMeta("sharjah_delivery_info");  if (!v) return null; const rows = JSON.parse(v); return rows.map((r: any) => ({ ...r, body: (r.body ?? "").replace(/8:45\s*PM/g, "1:00 PM") })); } catch { return null; } })(),
         deliveryCities,
         freeReturnsTitle: getPageMeta("free_returns_title") ?? undefined,
         freeReturns: (() => { try { const v = getPageMeta("free_returns"); return v ? JSON.parse(v) : null; } catch { return null; } })(),
