@@ -144,7 +144,8 @@ function HeroSection({ image, title, subtitle }: { image: string | null; title: 
           <div className="mt-5 flex flex-wrap items-center gap-3 pb-5 md:pb-8">
             <Link
               to="/collections/all"
-              className="inline-flex items-center gap-2 rounded-full bg-crimson px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all hover:bg-rich-red"
+              className="inline-flex items-center gap-2 rounded-full bg-crimson px-6 py-2.5 text-xs font-bold uppercase tracking-wider shadow-lg transition-all hover:bg-rich-red"
+              style={{ color: "#ffffff" }}
             >
               Start Shopping <ArrowRight className="h-3.5 w-3.5" />
             </Link>
@@ -344,7 +345,8 @@ function CtaSection() {
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/collections/all"
-              className="inline-flex items-center gap-2 rounded-full bg-crimson px-7 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all hover:bg-rich-red"
+              className="inline-flex items-center gap-2 rounded-full bg-crimson px-7 py-3 text-xs font-bold uppercase tracking-wider shadow-lg transition-all hover:bg-rich-red"
+              style={{ color: "#ffffff" }}
             >
               Shop & Earn Points <ArrowRight className="h-3.5 w-3.5" />
             </Link>
