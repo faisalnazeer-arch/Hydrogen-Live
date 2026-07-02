@@ -459,7 +459,12 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   });
   const cartPromise = context.cart.get();
   const analyticsConsent = {
-    checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN,
+    // PUBLIC_CHECKOUT_DOMAIN is not set in the Oxygen env, which left checkoutDomain undefined —
+    // Analytics.Provider then errors ("consent.checkoutDomain is required") and the Customer
+    // Privacy API silently falls back to "mock.shop", so NO analytics events reach monorail.
+    // Fall back to the store domain (mls-uae.myshopify.com) — the intended value — so it always
+    // initializes even if the env var is missing.
+    checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN || context.env.PUBLIC_STORE_DOMAIN,
     storefrontAccessToken: context.env.PUBLIC_STOREFRONT_API_TOKEN,
     withPrivacyBanner: false,
     country: "AE" as const,

@@ -20,7 +20,9 @@ export default async function handleRequest(
     context.env
       ? {
           shop: {
-            checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN,
+            // Fall back to the store domain — PUBLIC_CHECKOUT_DOMAIN isn't set in the Oxygen env,
+            // and an undefined checkoutDomain breaks the CSP directives for the consent/analytics API.
+            checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN || context.env.PUBLIC_STORE_DOMAIN,
             storeDomain: context.env.PUBLIC_STORE_DOMAIN,
           },
         }
