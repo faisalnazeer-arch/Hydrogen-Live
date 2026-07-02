@@ -199,6 +199,13 @@ const CART_GIFT_CARD_CODES_UPDATE = `
 function formatCheckoutUrl(checkoutUrl: string): string {
   try {
     const url = new URL(checkoutUrl);
+    // Brand the WEB checkout domain (Hydrogen storefront only). The cart token + path are
+    // unchanged — only the host swaps, so the SAME checkout opens on the branded domain.
+    // This function is used solely by the web cart, so Tapcart and Shopify-level domain
+    // settings are untouched.
+    if (url.hostname === "mls-uae.myshopify.com") {
+      url.hostname = "checkout.mlsuae.ae";
+    }
     url.searchParams.set("channel", "online_store");
     return url.toString();
   } catch {
@@ -822,7 +829,14 @@ export const useCartStore = create<CartStore>()(
 
       clearCart: () => set({ items: [], cartId: null, checkoutUrl: null, ...EMPTY }),
 
-      getCheckoutUrl: () => get().checkoutUrl,
+      // Re-format at read-time so the branded checkout host applies to EVERY cart —
+      // including carts rehydrated from localStorage that were created before the
+      // host rewrite (they still hold the old myshopify URL). formatCheckoutUrl is
+      // idempotent, so re-running it on an already-branded URL is a no-op.
+      getCheckoutUrl: () => {
+        const u = get().checkoutUrl;
+        return u ? formatCheckoutUrl(u) : null;
+      },
 
       syncCart: async () => {
         const { cartId, isSyncing, clearCart } = get();

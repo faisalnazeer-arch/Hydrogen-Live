@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router";
 import { Facebook, Instagram, Linkedin, Phone, Twitter } from "lucide-react";
 import logo from "@/assets/mls-logo.png";
@@ -97,11 +97,11 @@ export function Footer({ settings, menuCols }: Props) {
               </AccordionItem>
             ))}
           </Accordion>
-          {/* Klaviyo signup on mobile below accordions */}
+          {/* Newsletter signup on mobile below accordions */}
           <div className="mt-8">
             <p className="mb-1 text-base font-bold text-white">{contact.newsletterTitle}</p>
             <p className="mb-4 text-sm text-off-white/70">{contact.newsletterSubtitle}</p>
-            <div className="klaviyo-form-TXvrLy"></div>
+            <NewsletterForm />
           </div>
         </div>
       </div>
@@ -214,27 +214,77 @@ function NavCol({ heading, links }: { heading: string; links: FooterLink[] }) {
   );
 }
 
-function NewsletterCol({ title, subtitle }: { title: string; subtitle: string }) {
-  useEffect(() => {
-    // Klaviyo scans DOM on load — after hydration we must re-trigger it
-    if (typeof window !== "undefined") {
-      const kl = (window as any).klaviyo;
-      if (kl && typeof kl.push === "function") {
-        kl.push(["identify", {}]);
-      }
-      // Also fire the generic onsite re-init
-      const onsite = (window as any)._klOnsite;
-      if (Array.isArray(onsite)) {
-        onsite.push(["openForm", "TXvrLy"]);
-      }
-    }
-  }, []);
+// Native newsletter signup. Replaces the Klaviyo embed (klaviyo-form-TXvrLy) which never
+// rendered on the headless storefront — that embed relies on the Klaviyo Shopify app, which
+// only exists inside an Online Store theme, not in Hydrogen. This posts straight to Klaviyo's
+// client API (see app/routes/api.newsletter-subscribe.tsx) to subscribe to the Main Newsletter
+// list and trigger the 10%-off welcome flow.
+function NewsletterForm() {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [message, setMessage] = useState("");
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (status === "loading") return;
+    setStatus("loading");
+    setMessage("");
+    try {
+      const res = await fetch("/api/newsletter-subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = (await res.json()) as { success?: boolean; error?: string };
+      if (res.ok && data.success) {
+        setStatus("success");
+        setMessage("🎉 You're in! Check your inbox for your 10% off code.");
+        setEmail("");
+      } else {
+        setStatus("error");
+        setMessage(data.error || "Something went wrong. Please try again.");
+      }
+    } catch {
+      setStatus("error");
+      setMessage("Network error. Please try again.");
+    }
+  }
+
+  if (status === "success") {
+    return <p className="text-sm font-medium text-green-400">{message}</p>;
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="w-full">
+      <div className="flex overflow-hidden rounded-md">
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Enter your email"
+          aria-label="Email address"
+          className="min-w-0 flex-1 bg-white px-4 py-2.5 text-sm text-charcoal placeholder:text-charcoal/50 focus:outline-none"
+        />
+        <button
+          type="submit"
+          disabled={status === "loading"}
+          className="shrink-0 bg-crimson px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-crimson-foreground transition-colors hover:bg-rich-red disabled:opacity-60"
+        >
+          {status === "loading" ? "…" : "Subscribe"}
+        </button>
+      </div>
+      {status === "error" && <p className="mt-2 text-xs text-red-400">{message}</p>}
+    </form>
+  );
+}
+
+function NewsletterCol({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="min-w-[220px] max-w-[280px] flex-1">
       <h4 className="mb-2 font-display text-base font-bold text-white">{title}</h4>
       <p className="mb-4 text-sm text-off-white/70">{subtitle}</p>
-      <div className="klaviyo-form-TXvrLy"></div>
+      <NewsletterForm />
     </div>
   );
 }

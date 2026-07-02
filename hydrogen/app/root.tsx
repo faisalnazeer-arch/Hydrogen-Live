@@ -13,7 +13,7 @@ import {
 } from "react-router";
 import type { LinksFunction, LoaderFunctionArgs, ShouldRevalidateFunctionArgs } from "react-router";
 import { useEffect, useRef, lazy, Suspense } from "react";
-import { useNonce } from "@shopify/hydrogen";
+import { useNonce, Analytics, getShopAnalytics } from "@shopify/hydrogen";
 import styles from "./styles.css?url";
 import { pushDataLayer } from "./lib/dataLayer";
 import mlsLogo from "./assets/mls-logo.png";
@@ -449,6 +449,22 @@ export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFuncti
 // ── Loader ────────────────────────────────────────────────────────────────────
 export async function loader({ context, request }: LoaderFunctionArgs) {
   const language = detectLanguage(request);
+
+  // Shopify Analytics — sends page-view events to Shopify's analytics pipeline so the
+  // Hydrogen sales channel counts SESSIONS in the Shopify dashboard. (Ad pixels report to
+  // Meta/TikTok/Snap, NOT to Shopify's own analytics — this was the missing piece.)
+  const shopAnalytics = getShopAnalytics({
+    storefront: context.storefront,
+    publicStorefrontId: context.env.PUBLIC_STOREFRONT_ID,
+  });
+  const cartPromise = context.cart.get();
+  const analyticsConsent = {
+    checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN,
+    storefrontAccessToken: context.env.PUBLIC_STOREFRONT_API_TOKEN,
+    withPrivacyBanner: false,
+    country: "AE" as const,
+    language: (language === "AR" ? "AR" : "EN") as "AR" | "EN",
+  };
   try {
     const [data, adminData] = await Promise.all([
       context.storefront.query(LAYOUT_QUERY, {
@@ -522,7 +538,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     }
 
     const faviconUrl = footerSettings?.faviconUrl ?? null;
-    return { mainMenu, secondaryMenu, mobileMenu, mobileCategoriesMenu, footerSettings, footerMenuCols, announcementMessages, cartDrawerConfig, navItemImages, mobileBanners, faviconUrl, locale: (language === "AR" ? "ar" : "en") as "ar" | "en" };
+    return { mainMenu, secondaryMenu, mobileMenu, mobileCategoriesMenu, footerSettings, footerMenuCols, announcementMessages, cartDrawerConfig, navItemImages, mobileBanners, faviconUrl, locale: (language === "AR" ? "ar" : "en") as "ar" | "en", shop: shopAnalytics, cart: cartPromise, consent: analyticsConsent };
   } catch (e) {
     console.error("[root loader]", e);
     return {
@@ -538,6 +554,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       mobileCategoriesMenu: [] as NavEntry[],
       faviconUrl: null as string | null,
       locale: "en" as "ar" | "en",
+      shop: shopAnalytics,
+      cart: cartPromise,
+      consent: analyticsConsent,
     };
   }
 }
@@ -904,12 +923,52 @@ function DataLayerRouteTracker() {
   return null;
 }
 
+// Shopify's Analytics.Provider only sends page/product-view events to the Shopify dashboard when
+// the Customer Privacy API reports analytics consent is GRANTED — sendShopifyAnalytics drops the
+// event when hasUserConsent (= customerPrivacy.analyticsProcessingAllowed()) is false. We show no
+// Shopify privacy banner (UAE store, withPrivacyBanner: false), so consent is never collected and
+// those events never fire, leaving the dashboard undercounting sessions. `canTrack` only governs
+// cookie writes, NOT this send gate. So we programmatically grant tracking consent the moment the
+// privacy API loads — matching our intent to track all visitors. Runs before the Provider flushes
+// the first page-view (the load event dispatches synchronously, before its onReady fires).
+function GrantShopifyConsent() {
+  useEffect(() => {
+    const grant = () => {
+      const cp = (window as unknown as { Shopify?: { customerPrivacy?: {
+        setTrackingConsent?: (c: Record<string, boolean>, cb: () => void) => void;
+        analyticsProcessingAllowed?: () => boolean;
+      } } }).Shopify?.customerPrivacy;
+      if (!cp || typeof cp.setTrackingConsent !== "function") return false;
+      try {
+        if (!cp.analyticsProcessingAllowed?.()) {
+          cp.setTrackingConsent(
+            { analytics: true, marketing: true, preferences: true, sale_of_data: true },
+            () => {},
+          );
+        }
+      } catch { /* privacy API not ready in the expected shape — ignore */ }
+      return true;
+    };
+    // The API may already be loaded (event fired before this mounted), so try immediately…
+    if (grant()) return;
+    // …otherwise wait for Hydrogen's ready event, which fires once, synchronously.
+    const onLoaded = () => grant();
+    document.addEventListener("shopifyCustomerPrivacyApiLoaded", onLoaded);
+    return () => document.removeEventListener("shopifyCustomerPrivacyApiLoaded", onLoaded);
+  }, []);
+  return null;
+}
+
 export default function App() {
-  const { mainMenu, secondaryMenu, mobileMenu, mobileCategoriesMenu, footerSettings, footerMenuCols, announcementMessages, navItemImages, mobileBanners } = useLoaderData<typeof loader>();
+  const { mainMenu, secondaryMenu, mobileMenu, mobileCategoriesMenu, footerSettings, footerMenuCols, announcementMessages, navItemImages, mobileBanners, shop, cart, consent } = useLoaderData<typeof loader>();
+  // canTrack forces Shopify analytics page-views to fire (we handle consent via our own pixels and
+  // show no Shopify privacy banner) — without it they're consent-gated and the dashboard undercounts.
   return (
+    <Analytics.Provider cart={cart} shop={shop} consent={consent} canTrack={() => true}>
     <QueryClientProvider client={queryClient}>
       <PageLoader />
       <LocaleSync />
+      <GrantShopifyConsent />
       <DataLayerRouteTracker />
       <CartSyncWrapper />
       <RichpanelWidget />
@@ -925,5 +984,6 @@ export default function App() {
       <Suspense fallback={null}><QuickBuyDrawer /></Suspense>
       <Toaster position="top-center" />
     </QueryClientProvider>
+    </Analytics.Provider>
   );
 }
