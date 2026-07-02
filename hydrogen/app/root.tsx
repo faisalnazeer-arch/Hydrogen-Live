@@ -13,7 +13,7 @@ import {
 } from "react-router";
 import type { LinksFunction, LoaderFunctionArgs, ShouldRevalidateFunctionArgs } from "react-router";
 import { useEffect, useRef, lazy, Suspense } from "react";
-import { useNonce, Analytics, getShopAnalytics } from "@shopify/hydrogen";
+import { useNonce, Analytics, getShopAnalytics, useAnalytics } from "@shopify/hydrogen";
 import styles from "./styles.css?url";
 import { pushDataLayer } from "./lib/dataLayer";
 import mlsLogo from "./assets/mls-logo.png";
@@ -459,7 +459,12 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   });
   const cartPromise = context.cart.get();
   const analyticsConsent = {
-    checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN,
+    // PUBLIC_CHECKOUT_DOMAIN is not set in the Oxygen env, which left checkoutDomain undefined —
+    // Analytics.Provider then errors ("consent.checkoutDomain is required") and the Customer
+    // Privacy API silently falls back to "mock.shop", so NO analytics events reach monorail.
+    // Fall back to the store domain (mls-uae.myshopify.com) — the intended value — so it always
+    // initializes even if the env var is missing.
+    checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN || context.env.PUBLIC_STORE_DOMAIN,
     storefrontAccessToken: context.env.PUBLIC_STOREFRONT_API_TOKEN,
     withPrivacyBanner: false,
     country: "AE" as const,
@@ -928,34 +933,51 @@ function DataLayerRouteTracker() {
 // event when hasUserConsent (= customerPrivacy.analyticsProcessingAllowed()) is false. We show no
 // Shopify privacy banner (UAE store, withPrivacyBanner: false), so consent is never collected and
 // those events never fire, leaving the dashboard undercounting sessions. `canTrack` only governs
-// cookie writes, NOT this send gate. So we programmatically grant tracking consent the moment the
-// privacy API loads — matching our intent to track all visitors. Runs before the Provider flushes
-// the first page-view (the load event dispatches synchronously, before its onReady fires).
+// cookie writes, NOT this send gate. So we programmatically grant tracking consent.
+//
+// The catch: setTrackingConsent commits ASYNCHRONOUSLY, a beat AFTER the Provider auto-fires its
+// first `page_viewed` — so that first event is dropped (consent still false at flush time), and on
+// a load with no in-app navigation nothing is ever recorded. So once consent is confirmed granted,
+// we RE-PUBLISH page_viewed to recover it — but only when we actually had to grant consent this
+// load (`neededGrant`); if consent was already cached, the automatic event fired fine and we skip
+// re-publishing to avoid double-counting.
 function GrantShopifyConsent() {
+  const { publish, shop, customData } = useAnalytics();
   useEffect(() => {
-    const grant = () => {
+    let done = false;
+    let neededGrant: boolean | null = null;
+    let tries = 0;
+    const tick = () => {
+      if (done) return;
       const cp = (window as unknown as { Shopify?: { customerPrivacy?: {
         setTrackingConsent?: (c: Record<string, boolean>, cb: () => void) => void;
         analyticsProcessingAllowed?: () => boolean;
       } } }).Shopify?.customerPrivacy;
-      if (!cp || typeof cp.setTrackingConsent !== "function") return false;
-      try {
-        if (!cp.analyticsProcessingAllowed?.()) {
-          cp.setTrackingConsent(
-            { analytics: true, marketing: true, preferences: true, sale_of_data: true },
-            () => {},
-          );
+      if (cp && typeof cp.setTrackingConsent === "function") {
+        const allowed = !!cp.analyticsProcessingAllowed?.();
+        if (neededGrant === null) neededGrant = !allowed; // record consent state on first sight
+        if (!allowed) {
+          try {
+            cp.setTrackingConsent(
+              { analytics: true, marketing: true, preferences: true, sale_of_data: true },
+              () => {},
+            );
+          } catch { /* API not in the expected shape — ignore */ }
+        } else {
+          // Consent is granted. If we had to grant it this load, the Provider's automatic
+          // page_viewed already flushed while consent was false and was dropped — re-publish it.
+          if (neededGrant && shop?.shopId) {
+            publish("page_viewed", { url: window.location.href, shop, customData });
+          }
+          done = true;
+          return;
         }
-      } catch { /* privacy API not ready in the expected shape — ignore */ }
-      return true;
+      }
+      if (tries++ < 40) window.setTimeout(tick, 150); // poll up to ~6s for the async commit
     };
-    // The API may already be loaded (event fired before this mounted), so try immediately…
-    if (grant()) return;
-    // …otherwise wait for Hydrogen's ready event, which fires once, synchronously.
-    const onLoaded = () => grant();
-    document.addEventListener("shopifyCustomerPrivacyApiLoaded", onLoaded);
-    return () => document.removeEventListener("shopifyCustomerPrivacyApiLoaded", onLoaded);
-  }, []);
+    tick();
+    return () => { done = true; };
+  }, [publish, shop, customData]);
   return null;
 }
 
