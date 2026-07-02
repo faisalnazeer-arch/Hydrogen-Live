@@ -925,8 +925,10 @@ function DataLayerRouteTracker() {
 
 export default function App() {
   const { mainMenu, secondaryMenu, mobileMenu, mobileCategoriesMenu, footerSettings, footerMenuCols, announcementMessages, navItemImages, mobileBanners, shop, cart, consent } = useLoaderData<typeof loader>();
+  // canTrack forces Shopify analytics page-views to fire (we handle consent via our own pixels and
+  // show no Shopify privacy banner) — without it they're consent-gated and the dashboard undercounts.
   return (
-    <Analytics.Provider cart={cart} shop={shop} consent={consent}>
+    <Analytics.Provider cart={cart} shop={shop} consent={consent} canTrack={() => true}>
     <QueryClientProvider client={queryClient}>
       <PageLoader />
       <LocaleSync />
