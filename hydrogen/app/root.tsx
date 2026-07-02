@@ -923,6 +923,42 @@ function DataLayerRouteTracker() {
   return null;
 }
 
+// Shopify's Analytics.Provider only sends page/product-view events to the Shopify dashboard when
+// the Customer Privacy API reports analytics consent is GRANTED — sendShopifyAnalytics drops the
+// event when hasUserConsent (= customerPrivacy.analyticsProcessingAllowed()) is false. We show no
+// Shopify privacy banner (UAE store, withPrivacyBanner: false), so consent is never collected and
+// those events never fire, leaving the dashboard undercounting sessions. `canTrack` only governs
+// cookie writes, NOT this send gate. So we programmatically grant tracking consent the moment the
+// privacy API loads — matching our intent to track all visitors. Runs before the Provider flushes
+// the first page-view (the load event dispatches synchronously, before its onReady fires).
+function GrantShopifyConsent() {
+  useEffect(() => {
+    const grant = () => {
+      const cp = (window as unknown as { Shopify?: { customerPrivacy?: {
+        setTrackingConsent?: (c: Record<string, boolean>, cb: () => void) => void;
+        analyticsProcessingAllowed?: () => boolean;
+      } } }).Shopify?.customerPrivacy;
+      if (!cp || typeof cp.setTrackingConsent !== "function") return false;
+      try {
+        if (!cp.analyticsProcessingAllowed?.()) {
+          cp.setTrackingConsent(
+            { analytics: true, marketing: true, preferences: true, sale_of_data: true },
+            () => {},
+          );
+        }
+      } catch { /* privacy API not ready in the expected shape — ignore */ }
+      return true;
+    };
+    // The API may already be loaded (event fired before this mounted), so try immediately…
+    if (grant()) return;
+    // …otherwise wait for Hydrogen's ready event, which fires once, synchronously.
+    const onLoaded = () => grant();
+    document.addEventListener("shopifyCustomerPrivacyApiLoaded", onLoaded);
+    return () => document.removeEventListener("shopifyCustomerPrivacyApiLoaded", onLoaded);
+  }, []);
+  return null;
+}
+
 export default function App() {
   const { mainMenu, secondaryMenu, mobileMenu, mobileCategoriesMenu, footerSettings, footerMenuCols, announcementMessages, navItemImages, mobileBanners, shop, cart, consent } = useLoaderData<typeof loader>();
   // canTrack forces Shopify analytics page-views to fire (we handle consent via our own pixels and
@@ -932,6 +968,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <PageLoader />
       <LocaleSync />
+      <GrantShopifyConsent />
       <DataLayerRouteTracker />
       <CartSyncWrapper />
       <RichpanelWidget />
